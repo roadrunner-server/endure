@@ -1,6 +1,7 @@
 package cascade
 
 type serviceGraph struct {
+	nodes map[string]interface{}
 }
 
 func (sg *serviceGraph) Push(name string, node interface{}) {
