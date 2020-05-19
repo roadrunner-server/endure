@@ -29,23 +29,3 @@ type Provider interface { // <<--
 type Register interface { // -->>
 	Registers() []interface{}
 }
-
-// + Init() <<--
-
-type Cascade struct {
-	providers []Provider
-	registers []Register
-	services  map[string]interface{}
-}
-
-func (c *Cascade) Register(name string, svc Service) {
-	c.services[name] = svc
-
-	if r, ok := svc.(Provider); ok {
-		c.providers = append(c.providers, r)
-	}
-
-	if r, ok := svc.(Register); ok {
-		c.registers = append(c.registers, r)
-	}
-}

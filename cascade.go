@@ -5,6 +5,36 @@ import (
 	"reflect"
 )
 
+// + Init() <<--
+
+type Cascade struct {
+	serviceGraph *serviceGraph
+	providers    []Provider
+	registers    []Register
+	services     map[string]interface{}
+}
+
+func NewContainer() *Cascade {
+	return &Cascade{
+		serviceGraph: nil,
+		registers:    nil,
+		providers:    nil,
+		services:     nil,
+	}
+}
+
+func (c *Cascade) Register(name string, svc Service) {
+	c.services[name] = svc
+
+	if r, ok := svc.(Provider); ok {
+		c.providers = append(c.providers, r)
+	}
+
+	if r, ok := svc.(Register); ok {
+		c.registers = append(c.registers, r)
+	}
+}
+
 func (c *Cascade) Init() {
 	// todo: SORT BASED ON INIT AND BASED ON PROVIDERS AND BASED ON REGISTERS
 
