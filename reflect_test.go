@@ -10,3 +10,9 @@ func TestReturnType(t *testing.T) {
 		return "hello"
 	}))
 }
+
+func TestArgType(t *testing.T) {
+	log.Print(argType(func(string, int) string {
+		return "hello"
+	}))
+}

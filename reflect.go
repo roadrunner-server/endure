@@ -18,6 +18,16 @@ func returnType(m interface{}) (reflect.Type, error) {
 	return r.Out(0), nil
 }
 
-func argumentKind(m interface{}) ([]reflect.Type, error) {
-	return nil, nil
+func argType(m interface{}) ([]reflect.Type, error) {
+	r := reflect.TypeOf(m)
+	if r.Kind() != reflect.Func {
+		return nil, fmt.Errorf("unable to reflect `%s`, expected func", r.String())
+	}
+
+	out := make([]reflect.Type, 0)
+	for i := 0; i < r.NumIn(); i++ {
+		out = append(out, r.In(i))
+	}
+
+	return out, nil
 }
