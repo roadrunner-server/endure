@@ -1,4 +1,4 @@
-package cascade
+package off
 
 import "reflect"
 
@@ -18,7 +18,9 @@ func NewContainer() *Cascade {
 	}
 }
 
-func (c *Cascade) Register(name string, service Service) {
+func (c *Cascade) Register(name string, service Service) error {
+	// todo: check if has
+
 	c.services.Push(name, service)
 
 	if provider, ok := service.(Provider); ok {
