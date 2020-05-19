@@ -8,18 +8,16 @@ import (
 // + Init() <<--
 
 type Cascade struct {
-	serviceGraph *serviceGraph
-	providers    []Provider
-	registers    []Register
-	services     map[string]interface{}
+	providers []Provider
+	registers []Register
+	services  *serviceGraph
 }
 
 func NewContainer() *Cascade {
 	return &Cascade{
-		serviceGraph: nil,
-		registers:    nil,
-		providers:    nil,
-		services:     nil,
+		registers: nil,
+		providers: nil,
+		services:  nil,
 	}
 }
 
