@@ -10,6 +10,10 @@ type Service interface {
 	Stop()
 }
 
+type Restated interface {
+	Restart(upstream chan interface{}) error
+}
+
 type Container interface {
 	Service
 	Register(name string, service interface{})
