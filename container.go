@@ -23,7 +23,7 @@ type ForkedContainer interface {
 }
 
 type Provider interface { // <<--
-	Providers() []interface{}
+	Provides() []interface{}
 }
 
 type Register interface { // -->>

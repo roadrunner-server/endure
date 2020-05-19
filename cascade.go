@@ -1,10 +1,12 @@
 package cascade
 
+import "reflect"
+
 // + Init() <<--
 
 type Cascade struct {
 	providers []Provider
-	registers []Register
+	registers map[reflect.Type]interface{}
 	services  *serviceGraph
 }
 
@@ -19,19 +21,22 @@ func NewContainer() *Cascade {
 func (c *Cascade) Register(name string, service Service) {
 	c.services.Push(name, service)
 
-	if r, ok := service.(Provider); ok {
-		c.providers = append(c.providers, r)
+	if provider, ok := service.(Provider); ok {
+		for p, _ := range provider.Provides() {
+			//c.providers = append(c.providers, p)
+		}
 	}
 
-	if r, ok := service.(Register); ok {
-		c.registers = append(c.registers, r)
+	if register, ok := service.(Register); ok {
+		for r, _ := range register.Registers() {
+			//c.registers = append(c.registers, r)
+		}
 	}
 }
 
 func (c *Cascade) Init() {
-	for name, svc := range c.services.nodes {
-
-	}
+	//for name, svc := range c.services.nodes {
+	//}
 
 	// todo: SORT BASED ON INIT AND BASED ON PROVIDERS AND BASED ON REGISTERS
 	//for _, e := range c.services.Sort() {
