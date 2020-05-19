@@ -1,7 +1,7 @@
 package cascade
 
 import (
-	"spiral/cascade/logger"
+	"github.com/spiral/cascade/logger"
 )
 
 type Demo struct {
@@ -16,18 +16,18 @@ func (d *Demo) Init(logger logger.Logger, d2 Demo2) error {
 	return Disabled
 }
 
-func (d *Demo) Observe() {
-
-}
-
-func (d *Demo) Serve(health chan error) error {
-
-	// 1: we don't when service alive
-	// 2: we don't know when service stopped
-
+func (d *Demo) RPC() interface{} {
 	return nil
 }
 
+// ?????
+func (d *Demo) Serve(health chan error) error {
+	// 1: we don't when service alive
+	// 2: we don't know when service stopped
+	return nil
+}
+
+// ???
 func (d *Demo) Stop() {
 	// return ?
 }
