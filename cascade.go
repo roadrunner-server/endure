@@ -108,6 +108,14 @@ func (c *Cascade) calculateDependencies() error {
 				c.services.depends(e.name, sn)
 			}
 		}
+
+		// todo: do we need it?
+		for tp, te := range c.providers {
+			if typeMatches(t, tp) {
+				// found dependency via Init method (provided by Provider)
+				c.services.depends(e.name, te.name)
+			}
+		}
 	}
 
 	return nil
