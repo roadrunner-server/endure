@@ -2,10 +2,12 @@ package service
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"reflect"
 	"sync"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 var errNoConfig = fmt.Errorf("no config has been provided")
@@ -77,7 +79,7 @@ type DefaultsConfig interface {
 }
 
 type container struct {
-	log      logrus.FieldLogger
+	log      zap.SugaredLogger
 	mu       sync.Mutex
 	services []*entry
 	errc     chan struct {
@@ -87,7 +89,7 @@ type container struct {
 }
 
 // NewContainer creates new service container.
-func NewContainer(log logrus.FieldLogger) Container {
+func NewContainer(log zap.SugaredLogger) Container {
 	return &container{
 		log:      log,
 		services: make([]*entry, 0),
@@ -149,7 +151,7 @@ func (c *container) Init(cfg Config) error {
 		if ok, err := c.initService(e.svc, cfg.Get(e.name)); err != nil {
 			// soft error (skipping)
 			if err == errNoConfig {
-				c.log.Debugf("[%s]: disabled", e.name)
+				c.log.Debug("[%s]: disabled", e.name)
 				continue
 			}
 

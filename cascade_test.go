@@ -3,6 +3,8 @@ package cascade
 import (
 	"log"
 	"testing"
+
+	"github.com/spiral/cascade/test_other_package"
 )
 
 type DB struct {
@@ -38,7 +40,9 @@ func TestCascade_Init(t *testing.T) {
 	c.Register("s2", &S2{})
 	c.Register("s3", &S3{})
 	c.Register("s1", &S1{})
+	// this is the same type as S3 create DB
+	c.Register("s4", &test_other_package.S4{})
 
 	c.Init()
-	log.Print(c.services.dependecies)
+	log.Print(c.services.dependencies)
 }

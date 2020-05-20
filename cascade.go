@@ -21,8 +21,8 @@ func NewContainer() *Cascade {
 		registers: make(map[reflect.Type]entry),
 		providers: make(map[reflect.Type]entry),
 		services: &serviceGraph{
-			nodes:       map[string]interface{}{},
-			dependecies: map[string][]string{},
+			nodes:        map[string]interface{}{},
+			dependencies: map[string][]string{},
 		},
 	}
 }
@@ -59,7 +59,12 @@ func (c *Cascade) Register(name string, service interface{}) error {
 				return fmt.Errorf("%s must accept exactly one argument", fn)
 			}
 
-			c.registers[argsTypes[0]] = entry{name: name, node: fn}
+			if len(argsTypes) > 0 {
+				c.registers[argsTypes[0]] = entry{name: name, node: fn}
+			} else {
+				// todo temporary
+				panic("argsTypes less than 0")
+			}
 		}
 	}
 
@@ -68,13 +73,16 @@ func (c *Cascade) Register(name string, service interface{}) error {
 
 // Init container and all service dependencies.
 func (c *Cascade) Init() error {
+	// traverse the graph
 	if err := c.calculateDependencies(); err != nil {
 		return err
 	}
 
+
 	return nil
 }
 
+//
 func (c *Cascade) calculateDependencies() error {
 	// Calculate service dependencies
 	for name, node := range c.services.nodes {
