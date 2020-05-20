@@ -17,7 +17,7 @@ func (s1 *S1) Init(s2 S2, db DB) {
 type S2 struct {
 }
 
-func (s2 *S2) Init(s3 S3, db DB) {
+func (s2 *S2) Init(s3 S3) {
 
 }
 
