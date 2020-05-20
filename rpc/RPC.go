@@ -16,10 +16,10 @@ func (r *RPC) Init() error {
 }
 
 func (r *RPC) Registers() []interface{} {
-	return []interface{}{r.Register}
+	return []interface{}{r.AddService}
 }
 
-func (r *RPC) Register(svc RPCService) error {
+func (r *RPC) AddService(svc RPCService) error {
 	return r.rpc.RegisterName(
 		svc.Name(),
 		svc.RCPService(),

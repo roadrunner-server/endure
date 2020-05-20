@@ -29,7 +29,7 @@ type Service interface {
 
 // Container controls all internal RR services and provides plugin based system.
 type Container interface {
-	// Register add new service to the container under given name.
+	// AddService add new service to the container under given name.
 	Register(name string, service interface{})
 
 	// Reconfigure configures all underlying services with given configuration.
@@ -98,7 +98,7 @@ func NewContainer(log logrus.FieldLogger) Container {
 	}
 }
 
-// Register add new service to the container under given name.
+// AddService add new service to the container under given name.
 func (c *container) Register(name string, service interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
