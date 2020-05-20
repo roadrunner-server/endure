@@ -1,17 +1,21 @@
 package cascade
 
+// manages the set of services and their dependencies
 type serviceGraph struct {
-	nodes map[string]interface{}
+	nodes       map[string]interface{}
+	dependecies map[string][]string
 }
 
-func (sg *serviceGraph) Push(name string, node interface{}) {
-
+func (g *serviceGraph) has(name string) bool {
+	_, ok := g.nodes[name]
+	return ok
 }
 
-func (sg *serviceGraph) Depends(name string, depends ...string) {
-
+func (g *serviceGraph) push(name string, node interface{}) {
+	g.nodes[name] = node
+	g.dependecies[name] = []string{}
 }
 
-func (sg *serviceGraph) Provides(name string, provides ...string) {
+func (g *serviceGraph) depends(name string, depends ...string) {
 
 }

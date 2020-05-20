@@ -31,3 +31,17 @@ func argType(m interface{}) ([]reflect.Type, error) {
 
 	return out, nil
 }
+
+func argrType(r reflect.Method) ([]reflect.Type, error) {
+
+	out := make([]reflect.Type, 0)
+	for i := 0; i < r.NumIn(); i++ {
+		out = append(out, r.In(i))
+	}
+
+	return out, nil
+}
+
+func typeMatches(r reflect.Type, v interface{}) bool {
+
+}
