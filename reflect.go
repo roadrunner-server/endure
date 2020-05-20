@@ -33,15 +33,24 @@ func argType(m interface{}) ([]reflect.Type, error) {
 }
 
 func argrType(r reflect.Method) ([]reflect.Type, error) {
-
 	out := make([]reflect.Type, 0)
-	for i := 0; i < r.NumIn(); i++ {
-		out = append(out, r.In(i))
+	for i := 0; i < r.Type.NumIn(); i++ {
+		out = append(out, r.Type.In(i))
 	}
 
 	return out, nil
 }
 
 func typeMatches(r reflect.Type, v interface{}) bool {
+	to := reflect.TypeOf(v)
 
+	//if to.Implements(r) {
+	//	return true
+	//}
+
+	if r.ConvertibleTo(to) {
+		return true
+	}
+
+	return false
 }

@@ -18,13 +18,16 @@ type entry struct {
 
 func NewContainer() *Cascade {
 	return &Cascade{
-		registers: nil,
-		providers: nil,
-		services:  nil,
+		registers: make(map[reflect.Type]entry),
+		providers: make(map[reflect.Type]entry),
+		services: &serviceGraph{
+			nodes:       map[string]interface{}{},
+			dependecies: map[string][]string{},
+		},
 	}
 }
 
-func (c *Cascade) Register(name string, service Service) error {
+func (c *Cascade) Register(name string, service interface{}) error {
 	if c.services.has(name) {
 		return fmt.Errorf("service `%s` already exists", name)
 	}
@@ -68,6 +71,8 @@ func (c *Cascade) Init() error {
 	if err := c.calculateDependencies(); err != nil {
 		return err
 	}
+
+	return nil
 }
 
 func (c *Cascade) calculateDependencies() error {
@@ -86,6 +91,10 @@ func (c *Cascade) calculateDependencies() error {
 
 		for _, arg := range initArgs {
 			for nn, nd := range c.services.nodes {
+				if nn == name {
+					continue
+				}
+
 				if typeMatches(arg, nd) {
 					// found dependency via Init method
 					c.services.depends(name, nn)
