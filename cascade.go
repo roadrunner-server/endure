@@ -109,4 +109,6 @@ func (c *Cascade) calculateDependencies() error {
 			}
 		}
 	}
+
+	return nil
 }

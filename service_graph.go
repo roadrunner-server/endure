@@ -17,5 +17,7 @@ func (g *serviceGraph) push(name string, node interface{}) {
 }
 
 func (g *serviceGraph) depends(name string, depends ...string) {
-
+	for _, n := range depends {
+		g.dependecies[name] = append(g.dependecies[name], n)
+	}
 }
