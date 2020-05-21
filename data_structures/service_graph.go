@@ -1,42 +1,42 @@
 package data_structures
 
 // manages the set of services and their edges
-// type of the graph: directed
-type graph struct {
+// type of the Graph: directed
+type Graph struct {
 	// nodes, which can have values
-	nodes map[string]node
+	Nodes map[string]Node
 	// rows, connections
-	edges map[string][]string
+	Edges map[string][]string
 
-	// global property of the graph
-	// if the graph has disconnected nodes
+	// global property of the Graph
+	// if the Graph Has disconnected nodes
 	// this field will be set to true
-	connected bool
+	Connected bool
 }
 
 // since we can have cyclic dependencies
-// when we traverse the graph, we should mark nodes os visited or not to detect cycle
-type node struct {
-	value   interface{}
-	visited bool
+// when we traverse the Graph, we should mark nodes as Visited or not to detect cycle
+type Node struct {
+	Value   interface{}
+	Visited bool
 }
 
-func (g *graph) has(name string) bool {
-	_, ok := g.nodes[name]
+func (g *Graph) Has(name string) bool {
+	_, ok := g.Nodes[name]
 	return ok
 }
 
-func (g *graph) push(name string, node interface{}) {
+func (g *Graph) Push(name string, node interface{}) {
 	// todo temporary do not vidited
-	g.nodes[name] = struct {
-		value   interface{}
-		visited bool
-	}{value: node, visited: false}
-	g.edges[name] = []string{}
+	g.Nodes[name] = struct {
+		Value   interface{}
+		Visited bool
+	}{Value: node, Visited: false}
+	g.Edges[name] = []string{}
 }
 
-func (g *graph) depends(name string, depends ...string) {
+func (g *Graph) Depends(name string, depends ...string) {
 	for _, n := range depends {
-		g.edges[name] = append(g.edges[name], n)
+		g.Edges[name] = append(g.Edges[name], n)
 	}
 }

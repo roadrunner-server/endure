@@ -10,7 +10,7 @@ import (
 type Cascade struct {
 	providers map[reflect.Type]entry
 	registers map[reflect.Type]entry
-	services  *data_structures.graph
+	services  *data_structures.Graph
 }
 
 type entry struct {
@@ -22,19 +22,20 @@ func NewContainer() *Cascade {
 	return &Cascade{
 		registers: make(map[reflect.Type]entry),
 		providers: make(map[reflect.Type]entry),
-		services: &data_structures.graph{
-			nodes: map[string]interface{}{},
-			edges: map[string][]string{},
+		services: &data_structures.Graph{
+			Nodes: map[string]data_structures.Node{},
+			Edges: map[string][]string{},
 		},
 	}
 }
 
+// Register registers the dependencies
 func (c *Cascade) Register(name string, service interface{}) error {
-	if c.services.has(name) {
+	if c.services.Has(name) {
 		return fmt.Errorf("service `%s` already exists", name)
 	}
 
-	c.services.push(name, service)
+	c.services.Push(name, service)
 
 	if provider, ok := service.(Provider); ok {
 		for _, fn := range provider.Provides() {
@@ -87,44 +88,48 @@ func (c *Cascade) Init() error {
 //
 func (c *Cascade) calculateDependencies() error {
 	// Calculate service edges
-	for name, node := range c.services.nodes {
-		init, ok := reflect.TypeOf(node).MethodByName("Init")
+	for name, node := range c.services.Nodes {
+		init, ok := reflect.TypeOf(node.Value).MethodByName("Init")
 		if !ok {
 			// no init method
 			continue
 		}
 
+		// get arg types from the Init methods Init(a A1, b B1)
+		// A1 and B1 types will be in initArgs
 		initArgs, err := argrType(init)
 		if err != nil {
 			return err
 		}
 
+		// interate over all args 
 		for _, arg := range initArgs {
-			for nn, nd := range c.services.nodes {
+			for nn, nd := range c.services.Nodes {
 				if nn == name {
 					continue
 				}
 
-				if typeMatches(arg, nd) {
+				if typeMatches(arg, nd.Value) {
 					// found dependency via Init method
-					c.services.depends(name, nn)
+					c.services.Depends(name, nn)
 				}
 			}
 
 			for t, e := range c.providers {
 				if typeMatches(arg, t) {
 					// found dependency via Init method (provided by Provider)
-					c.services.depends(name, e.name)
+					c.services.Depends(name, e.name)
 				}
 			}
 		}
 	}
 
+	// iterate over all registered types
 	for t, e := range c.registers {
-		for sn, se := range c.services.nodes {
-			if typeMatches(t, se) {
+		for sn, se := range c.services.Nodes {
+			if typeMatches(t, se.Value) {
 				// depends via dynamic dependency declared as Registers method
-				c.services.depends(e.name, sn)
+				c.services.Depends(e.name, sn)
 			}
 		}
 
@@ -132,7 +137,7 @@ func (c *Cascade) calculateDependencies() error {
 		for tp, te := range c.providers {
 			if typeMatches(t, tp) {
 				// found dependency via Init method (provided by Provider)
-				c.services.depends(e.name, te.name)
+				c.services.Depends(e.name, te.name)
 			}
 		}
 	}

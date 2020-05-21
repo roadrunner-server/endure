@@ -54,5 +54,5 @@ func TestCascade_Init(t *testing.T) {
 	c.Register("s4", &test_other_package.S4{})
 
 	c.Init()
-	log.Print(c.services.edges)
+	log.Print(c.services.Edges)
 }
