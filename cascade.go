@@ -3,12 +3,14 @@ package cascade
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/spiral/cascade/data_structures"
 )
 
 type Cascade struct {
 	providers map[reflect.Type]entry
 	registers map[reflect.Type]entry
-	services  *serviceGraph
+	services  *data_structures.graph
 }
 
 type entry struct {
@@ -20,9 +22,9 @@ func NewContainer() *Cascade {
 	return &Cascade{
 		registers: make(map[reflect.Type]entry),
 		providers: make(map[reflect.Type]entry),
-		services: &serviceGraph{
-			nodes:        map[string]interface{}{},
-			dependencies: map[string][]string{},
+		services: &data_structures.graph{
+			nodes: map[string]interface{}{},
+			edges: map[string][]string{},
 		},
 	}
 }
@@ -71,7 +73,7 @@ func (c *Cascade) Register(name string, service interface{}) error {
 	return nil
 }
 
-// Init container and all service dependencies.
+// Init container and all service edges.
 func (c *Cascade) Init() error {
 	// traverse the graph
 	if err := c.calculateDependencies(); err != nil {
@@ -84,7 +86,7 @@ func (c *Cascade) Init() error {
 
 //
 func (c *Cascade) calculateDependencies() error {
-	// Calculate service dependencies
+	// Calculate service edges
 	for name, node := range c.services.nodes {
 		init, ok := reflect.TypeOf(node).MethodByName("Init")
 		if !ok {

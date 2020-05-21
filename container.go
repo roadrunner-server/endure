@@ -15,7 +15,7 @@ type (
 		List() []string
 	}
 
-	// Provider declares the ability to provide service dependencies of declared types.
+	// Provider declares the ability to provide service edges of declared types.
 	Provider interface {
 		Provides() []interface{}
 	}
