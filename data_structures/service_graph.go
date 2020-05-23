@@ -14,10 +14,18 @@ type Graph struct {
 	Connected bool
 }
 
+// Meta information included into the Node
+// May include:
+// 1. Disabled info
+// 2. Relation status
+type Meta struct {
+}
+
 // since we can have cyclic dependencies
 // when we traverse the Graph, we should mark nodes as Visited or not to detect cycle
 type Node struct {
 	Value   interface{}
+	Meta    Meta
 	Visited bool
 }
 
@@ -30,8 +38,13 @@ func (g *Graph) Push(name string, node interface{}) {
 	// todo temporary do not vidited
 	g.Nodes[name] = struct {
 		Value   interface{}
+		Meta    Meta
 		Visited bool
-	}{Value: node, Visited: false}
+	}{
+		Value:   node,
+		Visited: false,
+		Meta:    Meta{},
+	}
 	g.Edges[name] = []string{}
 }
 
