@@ -29,6 +29,14 @@ type Node struct {
 	Visited bool
 }
 
+func NewGraph() *Graph {
+	return &Graph{
+		Nodes:     nil,
+		Edges:     nil,
+		Connected: false,
+	}
+}
+
 func (g *Graph) Has(name string) bool {
 	_, ok := g.Nodes[name]
 	return ok
@@ -52,4 +60,17 @@ func (g *Graph) Depends(name string, depends ...string) {
 	for _, n := range depends {
 		g.Edges[name] = append(g.Edges[name], n)
 	}
+}
+
+// Find will return pointer to the Node or nil, if the Node does not exist
+func (g* Graph) FindDFS(name string) *Node {
+	for k, v := range g.Nodes {
+
+	}
+}
+
+// BuildRunList builds run list from the graph
+// If Graph is not connected, separate lists could be run in parallel
+func (g *Graph) BuildRunList() []*DoublyLinkedList {
+	return nil
 }
