@@ -34,7 +34,7 @@ func (c *Cascade) Register(name string, service interface{}) error {
 
 	// just push the node
 	// here we can append in future some meta information
-	c.servicesGraph.Push(name, service)
+	c.servicesGraph.AddVertex(name, service)
 
 	if provider, ok := service.(Provider); ok {
 		for _, fn := range provider.Provides() {
@@ -86,7 +86,7 @@ func (c *Cascade) Init() error {
 //
 func (c *Cascade) calculateDependencies() error {
 	// Calculate service edges
-	for name, node := range c.servicesGraph.Nodes {
+	for name, node := range c.servicesGraph.Vertices {
 		init, ok := reflect.TypeOf(node.Value).MethodByName("Init")
 		if !ok {
 			// no init method
@@ -102,21 +102,21 @@ func (c *Cascade) calculateDependencies() error {
 
 		// interate over all args 
 		for _, arg := range initArgs {
-			for nn, nd := range c.servicesGraph.Nodes {
+			for nn, nd := range c.servicesGraph.Vertices {
 				if nn == name {
 					continue
 				}
 
 				if typeMatches(arg, nd.Value) {
 					// found dependency via Init method
-					c.servicesGraph.Depends(name, nn)
+					c.servicesGraph.AddEdge(name, nn)
 				}
 			}
 
 			for t, e := range c.providers {
 				if typeMatches(arg, t) {
 					// found dependency via Init method (provided by Provider)
-					c.servicesGraph.Depends(name, e.name)
+					c.servicesGraph.AddEdge(name, e.name)
 				}
 			}
 		}
@@ -124,10 +124,10 @@ func (c *Cascade) calculateDependencies() error {
 
 	// iterate over all registered types
 	for t, e := range c.registers {
-		for sn, se := range c.servicesGraph.Nodes {
+		for sn, se := range c.servicesGraph.Vertices {
 			if typeMatches(t, se.Value) {
 				// depends via dynamic dependency declared as Registers method
-				c.servicesGraph.Depends(e.name, sn)
+				c.servicesGraph.AddEdge(e.name, sn)
 			}
 		}
 
@@ -135,7 +135,7 @@ func (c *Cascade) calculateDependencies() error {
 		for tp, te := range c.providers {
 			if typeMatches(t, tp) {
 				// found dependency via Init method (provided by Provider)
-				c.servicesGraph.Depends(e.name, te.name)
+				c.servicesGraph.AddEdge(e.name, te.name)
 			}
 		}
 	}
