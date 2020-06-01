@@ -8,9 +8,11 @@ import (
 )
 
 type Cascade struct {
+	Deps []*data_structures.Dep
+
 	providers     map[reflect.Type]entry
-	registers     map[reflect.Type]entry
-	servicesGraph *data_structures.AdjacencyList
+	depends       map[reflect.Type]entry
+	servicesGraph *data_structures.Graph
 }
 
 type entry struct {
@@ -20,13 +22,14 @@ type entry struct {
 
 func NewContainer() *Cascade {
 	return &Cascade{
-		registers:     make(map[reflect.Type]entry),
+		Deps:          []*data_structures.Dep{},
+		depends:       make(map[reflect.Type]entry),
 		providers:     make(map[reflect.Type]entry),
 		servicesGraph: data_structures.NewAL(),
 	}
 }
 
-// Register registers the dependencies
+// Register depends the dependencies
 func (c *Cascade) Register(name string, service interface{}) error {
 	if c.servicesGraph.Has(name) {
 		return fmt.Errorf("service `%s` already exists", name)
@@ -49,7 +52,7 @@ func (c *Cascade) Register(name string, service interface{}) error {
 	}
 
 	if register, ok := service.(Register); ok {
-		for _, fn := range register.Registers() {
+		for _, fn := range register.Depends() {
 			// what type it might depend on?
 			argsTypes, err := argType(fn)
 			if err != nil {
@@ -62,7 +65,7 @@ func (c *Cascade) Register(name string, service interface{}) error {
 			}
 
 			if len(argsTypes) > 0 {
-				c.registers[argsTypes[0]] = entry{name: name, node: fn}
+				c.depends[argsTypes[0]] = entry{name: name, node: fn}
 			} else {
 				// todo temporary
 				panic("argsTypes less than 0")
@@ -87,6 +90,10 @@ func (c *Cascade) Init() error {
 func (c *Cascade) calculateDependencies() error {
 	// Calculate service edges
 	for name, node := range c.servicesGraph.Vertices {
+		//d := &data_structures.Dep{
+		//	Id: name,
+		//}
+
 		init, ok := reflect.TypeOf(node.Value).MethodByName("Init")
 		if !ok {
 			// no init method
@@ -95,50 +102,56 @@ func (c *Cascade) calculateDependencies() error {
 
 		// get arg types from the Init methods Init(a A1, b B1)
 		// A1 and B1 types will be in initArgs
-		initArgs, err := argrType(init)
+		initArgs, err := functionParameters(init)
 		if err != nil {
 			return err
 		}
 
 		// interate over all args
 		for _, arg := range initArgs {
-			for nn, nd := range c.servicesGraph.Vertices {
-				if nn == name {
+			for verticesName, nd := range c.servicesGraph.Vertices {
+				if verticesName == name {
 					continue
 				}
 
-				if typeMatches(arg, nd.Value) {
+				if reflect.TypeOf(nd.Value).ConvertibleTo(arg) {
 					// found dependency via Init method
-					c.servicesGraph.AddEdge(name, nn)
+					c.servicesGraph.AddEdge(name, verticesName)
 				}
 			}
 
-			for t, e := range c.providers {
-				if typeMatches(arg, t) {
+			for reflectType, entry := range c.providers {
+				if reflect.TypeOf(entry).ConvertibleTo(reflectType) {
+					//d.D = e
+					//c.Deps = append(c.Deps, d)
 					// found dependency via Init method (provided by Provider)
-					c.servicesGraph.AddEdge(name, e.name)
+					c.servicesGraph.AddEdge(name, entry.name)
 				}
 			}
 		}
+
+
 	}
 
 	// iterate over all registered types
-	for t, e := range c.registers {
-		for sn, se := range c.servicesGraph.Vertices {
-			if typeMatches(t, se.Value) {
-				// depends via dynamic dependency declared as Registers method
-				c.servicesGraph.AddEdge(e.name, sn)
+	for reflectType, entry := range c.depends {
+		for srvName, srvNode := range c.servicesGraph.Vertices {
+			if reflect.TypeOf(srvNode).ConvertibleTo(reflectType) {
+				// depends via dynamic dependency declared as Depends method
+				c.servicesGraph.AddEdge(entry.name, srvName)
 			}
 		}
 
 		// todo: do we need it?
-		for tp, te := range c.providers {
-			if typeMatches(t, tp) {
+		for providersType, prvEntry := range c.providers {
+			if reflect.TypeOf(providersType).ConvertibleTo(reflectType) {
 				// found dependency via Init method (provided by Provider)
-				c.servicesGraph.AddEdge(e.name, te.name)
+				c.servicesGraph.AddEdge(entry.name, prvEntry.name)
 			}
 		}
 	}
+
+
 
 	return nil
 }

@@ -1,8 +1,8 @@
 package data_structures
 
 // manages the set of services and their edges
-// type of the AdjacencyList: directed
-type AdjacencyList struct {
+// type of the Graph: directed
+type Graph struct {
 	// nodes, which can have values
 	// [a, b, c, etc..]
 	Vertices map[string]Node
@@ -10,8 +10,8 @@ type AdjacencyList struct {
 	// [a --> b], [a --> c] etc..
 	Edges map[string][]string
 
-	// global property of the AdjacencyList
-	// if the AdjacencyList Has disconnected nodes
+	// global property of the Graph
+	// if the Graph Has disconnected nodes
 	// this field will be set to true
 	Connected bool
 }
@@ -23,13 +23,27 @@ type AdjacencyList struct {
 type Meta struct {
 }
 
+// it results in "RPC" --> S1, and at the end slice with Deps will looks like:
+// []Deps{Dep{"RPC", S1}, Dep{"RPC", S2"}..etc}
+type Dep struct {
+	Id string // for example rpc
+	D  interface{} // S1
+}
+
+func NewDeps() Dep {
+	return Dep{}
+}
+
 // since we can have cyclic dependencies
-// when we traverse the AdjacencyList, we should mark nodes as Visited or not to detect cycle
+// when we traverse the Graph, we should mark nodes as Visited or not to detect cycle
 type Node struct {
+	//Id string
 	// Value
 	Value interface{}
 	// Meta information about current Node
 	Meta Meta
+	// Dependencies of the node
+	//Dependencies []*Node
 	// Visited used for the cyclic graphs to detect cycle
 	Visited bool
 }
@@ -62,25 +76,25 @@ type Node struct {
 // 1. DIRECTED
 // 2. ACYCLIC
 //
-func NewAL() *AdjacencyList {
-	return &AdjacencyList{
+func NewAL() *Graph {
+	return &Graph{
 		Vertices:  make(map[string]Node),
 		Edges:     make(map[string][]string),
 		Connected: false,
 	}
 }
 
-func (g *AdjacencyList) Has(name string) bool {
+func (g *Graph) Has(name string) bool {
 	_, ok := g.Vertices[name]
 	return ok
 }
 
 // tests whether there is an edge from the vertex x to the vertex y;
-func (g *AdjacencyList) Adjacent() {
+func (g *Graph) Adjacent() {
 
 }
 
-func (g *AdjacencyList) AddVertex(name string, node interface{}) {
+func (g *Graph) AddVertex(name string, node interface{}) {
 	// todo temporary do not visited
 	g.Vertices[name] = struct {
 		Value   interface{}
@@ -94,27 +108,20 @@ func (g *AdjacencyList) AddVertex(name string, node interface{}) {
 	g.Edges[name] = []string{}
 }
 
-func (g *AdjacencyList) AddEdge(name string, depends ...string) {
+func (g *Graph) AddEdge(name string, depends ...string) {
 	for _, n := range depends {
 		g.Edges[name] = append(g.Edges[name], n)
 	}
 }
 
-// Find will return pointer to the Node or nil, if the Node does not exist
-// O(V+E) time complexity
-// O(V) space complexity
-//func (g *AdjacencyList) FindDFS(name string) *Node {
-//	for k, v := range g.Vertices {
-//		if k == name {
-//
-//		} else {
-//			g.FindDFS(name)
-//		}
-//	}
-//}
+func (g *Graph) createServicesGraph() {
+
+}
 
 // BuildRunList builds run list from the graph after topological sort
-// If AdjacencyList is not connected, separate lists could be run in parallel
-func (g *AdjacencyList) BuildRunList() []*DoublyLinkedList {
+// If Graph is not connected, separate lists could be run in parallel
+func (g *Graph) BuildRunList() []*DoublyLinkedList {
+	//graph := g.createServicesGraph()
+
 	return nil
 }

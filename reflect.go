@@ -32,25 +32,26 @@ func argType(m interface{}) ([]reflect.Type, error) {
 	return out, nil
 }
 
-func argrType(r reflect.Method) ([]reflect.Type, error) {
+func functionParameters(r reflect.Method) ([]reflect.Type, error) {
 	out := make([]reflect.Type, 0)
+	// NumIn returns a function type's input parameter count.
+	// It panics if the type's Kind is not Func.
 	for i := 0; i < r.Type.NumIn(); i++ {
+		// In returns the type of a function type's i'th input parameter.
+		// It panics if the type's Kind is not Func.
+		// It panics if i is not in the range [0, NumIn()).
 		out = append(out, r.Type.In(i))
 	}
 
 	return out, nil
 }
 
-func typeMatches(r reflect.Type, v interface{}) bool {
-	to := reflect.TypeOf(v)
-
-	//if to.Implements(r) {
-	//	return true
-	//}
-
-	if r.ConvertibleTo(to) {
-		return true
-	}
-
-	return false
-}
+//func typeMatches(r reflect.Type, v interface{}) bool {
+//	to := reflect.TypeOf(v)
+//
+//	if r.ConvertibleTo(to) {
+//		return true
+//	}
+//
+//	return false
+//}

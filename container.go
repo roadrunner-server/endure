@@ -22,6 +22,6 @@ type (
 
 	// Register declares the ability to accept the plugins which match the provided method signature.
 	Register interface {
-		Registers() []interface{}
+		Depends() []interface{}
 	}
 )
