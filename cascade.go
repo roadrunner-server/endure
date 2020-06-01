@@ -10,7 +10,7 @@ import (
 type Cascade struct {
 	providers     map[reflect.Type]entry
 	registers     map[reflect.Type]entry
-	servicesGraph *data_structures.Graph
+	servicesGraph *data_structures.AdjacencyList
 }
 
 type entry struct {
@@ -22,7 +22,7 @@ func NewContainer() *Cascade {
 	return &Cascade{
 		registers:     make(map[reflect.Type]entry),
 		providers:     make(map[reflect.Type]entry),
-		servicesGraph: data_structures.NewGraph(),
+		servicesGraph: data_structures.NewAL(),
 	}
 }
 
@@ -100,7 +100,7 @@ func (c *Cascade) calculateDependencies() error {
 			return err
 		}
 
-		// interate over all args 
+		// interate over all args
 		for _, arg := range initArgs {
 			for nn, nd := range c.servicesGraph.Vertices {
 				if nn == name {
