@@ -1,6 +1,6 @@
 package data_structures
 
-// Node of the DoublyLL
+// Vertex of the DoublyLL
 type DllNode struct {
 	Value      int
 	Prev, Next *DllNode

@@ -7,6 +7,8 @@ import (
 	"github.com/spiral/cascade/data_structures"
 )
 
+const Init = "Init"
+
 type Cascade struct {
 	Deps []*data_structures.Dep
 
@@ -16,8 +18,8 @@ type Cascade struct {
 }
 
 type entry struct {
-	name string
-	node interface{}
+	name   string
+	vertex interface{}
 }
 
 func NewContainer() *Cascade {
@@ -30,33 +32,33 @@ func NewContainer() *Cascade {
 }
 
 // Register depends the dependencies
-func (c *Cascade) Register(name string, service interface{}) error {
+func (c *Cascade) Register(name string, vertex interface{}) error {
 	if c.servicesGraph.Has(name) {
-		return fmt.Errorf("service `%s` already exists", name)
+		return fmt.Errorf("vertex `%s` already exists", name)
 	}
 
-	// just push the node
+	// just push the vertex
 	// here we can append in future some meta information
-	c.servicesGraph.AddVertex(name, service)
+	c.servicesGraph.AddVertex(name, vertex)
 
-	if provider, ok := service.(Provider); ok {
+	if provider, ok := vertex.(Provider); ok {
 		for _, fn := range provider.Provides() {
 			ret, err := returnType(fn)
 			if err != nil {
-				// todo: delete service
+				// todo: delete vertex
 				return err
 			}
 
-			c.providers[ret] = entry{name: name, node: fn}
+			c.providers[ret] = entry{name: name, vertex: fn}
 		}
 	}
 
-	if register, ok := service.(Register); ok {
+	if register, ok := vertex.(Register); ok {
 		for _, fn := range register.Depends() {
 			// what type it might depend on?
 			argsTypes, err := argType(fn)
 			if err != nil {
-				// todo: delete service
+				// todo: delete vertex
 				return err
 			}
 
@@ -65,7 +67,7 @@ func (c *Cascade) Register(name string, service interface{}) error {
 			}
 
 			if len(argsTypes) > 0 {
-				c.depends[argsTypes[0]] = entry{name: name, node: fn}
+				c.depends[argsTypes[0]] = entry{name: name, vertex: fn}
 			} else {
 				// todo temporary
 				panic("argsTypes less than 0")
@@ -94,34 +96,47 @@ func (c *Cascade) calculateDependencies() error {
 		//	Id: name,
 		//}
 
-		init, ok := reflect.TypeOf(node.Value).MethodByName("Init")
+		init, ok := reflect.TypeOf(node.Value).MethodByName(Init)
 		if !ok {
 			// no init method
 			continue
 		}
 
-		// get arg types from the Init methods Init(a A1, b B1)
+		// get arg types from the Init methods Init(a A1, b B1) + receiver
 		// A1 and B1 types will be in initArgs
 		initArgs, err := functionParameters(init)
 		if err != nil {
 			return err
 		}
 
-		// interate over all args
 		for _, arg := range initArgs {
-			for verticesName, nd := range c.servicesGraph.Vertices {
-				if verticesName == name {
+			for vertexName, vertex := range c.servicesGraph.Vertices {
+				if vertexName == name {
 					continue
 				}
 
-				if reflect.TypeOf(nd.Value).ConvertibleTo(arg) {
+				if typeMatches(arg, vertex.Value) {
+					c.servicesGraph.AddEdge(name, vertexName)
+				}
+			}
+		}
+
+
+		// interate over all args
+		for _, arg := range initArgs {
+			for vertexName, vertex := range c.servicesGraph.Vertices {
+				if vertexName == name {
+					continue
+				}
+
+				if typeMatches(arg, vertex.Value) {
 					// found dependency via Init method
-					c.servicesGraph.AddEdge(name, verticesName)
+					c.servicesGraph.AddEdge(vertexName, name)
 				}
 			}
 
 			for reflectType, entry := range c.providers {
-				if reflect.TypeOf(entry).ConvertibleTo(reflectType) {
+				if typeMatches(reflectType, entry.vertex) {
 					//d.D = e
 					//c.Deps = append(c.Deps, d)
 					// found dependency via Init method (provided by Provider)
@@ -129,22 +144,20 @@ func (c *Cascade) calculateDependencies() error {
 				}
 			}
 		}
-
-
 	}
 
 	// iterate over all registered types
 	for reflectType, entry := range c.depends {
-		for srvName, srvNode := range c.servicesGraph.Vertices {
-			if reflect.TypeOf(srvNode).ConvertibleTo(reflectType) {
+		for vertexName, vertex := range c.servicesGraph.Vertices {
+			if typeMatches(reflectType, vertex.Value) {
 				// depends via dynamic dependency declared as Depends method
-				c.servicesGraph.AddEdge(entry.name, srvName)
+				c.servicesGraph.AddEdge(entry.name, vertexName)
 			}
 		}
 
 		// todo: do we need it?
 		for providersType, prvEntry := range c.providers {
-			if reflect.TypeOf(providersType).ConvertibleTo(reflectType) {
+			if typeMatches(providersType, prvEntry.vertex) {
 				// found dependency via Init method (provided by Provider)
 				c.servicesGraph.AddEdge(entry.name, prvEntry.name)
 			}

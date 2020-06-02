@@ -5,7 +5,7 @@ package data_structures
 type Graph struct {
 	// nodes, which can have values
 	// [a, b, c, etc..]
-	Vertices map[string]Node
+	Vertices map[string]Vertex
 	// rows, connections
 	// [a --> b], [a --> c] etc..
 	Edges map[string][]string
@@ -16,7 +16,7 @@ type Graph struct {
 	Connected bool
 }
 
-// Meta information included into the Node
+// Meta information included into the Vertex
 // May include:
 // 1. Disabled info
 // 2. Relation status
@@ -36,14 +36,14 @@ func NewDeps() Dep {
 
 // since we can have cyclic dependencies
 // when we traverse the Graph, we should mark nodes as Visited or not to detect cycle
-type Node struct {
+type Vertex struct {
 	//Id string
 	// Value
 	Value interface{}
-	// Meta information about current Node
+	// Meta information about current Vertex
 	Meta Meta
 	// Dependencies of the node
-	//Dependencies []*Node
+	//Dependencies []*Vertex
 	// Visited used for the cyclic graphs to detect cycle
 	Visited bool
 }
@@ -78,7 +78,7 @@ type Node struct {
 //
 func NewAL() *Graph {
 	return &Graph{
-		Vertices:  make(map[string]Node),
+		Vertices:  make(map[string]Vertex),
 		Edges:     make(map[string][]string),
 		Connected: false,
 	}
