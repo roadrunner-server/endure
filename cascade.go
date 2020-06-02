@@ -3,6 +3,7 @@ package cascade
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/spiral/cascade/data_structures"
 )
@@ -32,6 +33,8 @@ func NewContainer() *Cascade {
 }
 
 // Register depends the dependencies
+// name is a name of the dependency, for example - S2
+// vertex is a value -> pointer to the structure
 func (c *Cascade) Register(name string, vertex interface{}) error {
 	if c.servicesGraph.Has(name) {
 		return fmt.Errorf("vertex `%s` already exists", name)
@@ -48,8 +51,7 @@ func (c *Cascade) Register(name string, vertex interface{}) error {
 				// todo: delete vertex
 				return err
 			}
-
-			c.providers[ret] = entry{name: name, vertex: fn}
+			c.providers[ret] = entry{name: ret.String(), vertex: fn}
 		}
 	}
 
@@ -113,18 +115,38 @@ func (c *Cascade) calculateDependencies() error {
 				if id == name {
 					continue
 				}
-				// if initArgs is a vertex.Value (s2 for example)
-				if typeMatches(initArg, vertex.Value) {
+
+				ff := reflect.TypeOf(vertex.Value)
+				fn := ff.String()
+				fn = strings.Trim(fn, "*")
+
+				inittr := strings.Trim(initArg.String(), "*")
+
+				if inittr == fn {
 					c.servicesGraph.AddEdge(name, id)
 				}
+
+				println(fn)
+
+				// if initArgs is a vertex.Value (s2 for example)
+				//if typeMatches(initArg, vertex.Value) {
+				//	c.servicesGraph.AddEdge(name, id)
+				//}
 			}
 
 			// provides type (DB for example)
 			// and entry for that type
 			for t, e := range c.providers {
-				if typeMatches(t, e.vertex) {
+				a := t.String()
+				a = strings.Trim(a, "*")
+
+				if a == initArg.String() {
 					c.servicesGraph.AddEdge(name, e.name)
 				}
+
+				//if typeMatches(t, e.vertex) {
+				//	c.servicesGraph.AddEdge(name, e.name)
+				//}
 			}
 		}
 	}

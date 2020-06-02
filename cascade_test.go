@@ -13,7 +13,6 @@ type DB struct {
 type S1 struct {
 }
 
-
 func (s1 *S1) Depends() []interface{} {
 	return []interface{}{
 		s1.AddService,
