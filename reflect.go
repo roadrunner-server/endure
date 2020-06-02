@@ -41,6 +41,7 @@ func functionParameters(r reflect.Method) ([]reflect.Type, error) {
 		// It panics if the type's Kind is not Func.
 		// It panics if i is not in the range [0, NumIn()).
 		args = append(args, r.Type.In(i))
+		//println(r.Type.In(i).String())
 	}
 
 	return args, nil
@@ -48,6 +49,10 @@ func functionParameters(r reflect.Method) ([]reflect.Type, error) {
 
 func typeMatches(r reflect.Type, v interface{}) bool {
 	to := reflect.TypeOf(v)
+
+	println(to.String())
+	println(r.String())
+
 
 	if r.ConvertibleTo(to) {
 		return true

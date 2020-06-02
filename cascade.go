@@ -90,81 +90,126 @@ func (c *Cascade) Init() error {
 
 //
 func (c *Cascade) calculateDependencies() error {
-	// Calculate service edges
-	for name, node := range c.servicesGraph.Vertices {
-		//d := &data_structures.Dep{
-		//	Id: name,
-		//}
-
-		init, ok := reflect.TypeOf(node.Value).MethodByName(Init)
+	// name for example S2
+	for name, vrtx := range c.servicesGraph.Vertices {
+		init, ok := reflect.TypeOf(vrtx.Value).MethodByName(Init)
 		if !ok {
-			// no init method
 			continue
 		}
 
-		// get arg types from the Init methods Init(a A1, b B1) + receiver
-		// A1 and B1 types will be in initArgs
+		// S2 init args
 		initArgs, err := functionParameters(init)
 		if err != nil {
 			return err
 		}
 
-		for _, arg := range initArgs {
-			for vertexName, vertex := range c.servicesGraph.Vertices {
-				if vertexName == name {
-					continue
-				}
+		//for _, ia := range initArgs {
+		//	println(ia.String())
+		//}
 
-				if typeMatches(arg, vertex.Value) {
-					c.servicesGraph.AddEdge(name, vertexName)
-				}
-			}
-		}
-
-
-		// interate over all args
-		for _, arg := range initArgs {
-			for vertexName, vertex := range c.servicesGraph.Vertices {
-				if vertexName == name {
-					continue
-				}
-
-				if typeMatches(arg, vertex.Value) {
-					// found dependency via Init method
-					c.servicesGraph.AddEdge(vertexName, name)
+		// iterate over all function parameters
+		for _, initArg := range initArgs {
+			for id, vertex :=range c.servicesGraph.Vertices {
+				// if initArgs is a vertex.Value (s2 for example)
+				if typeMatches(initArg, vertex.Value) {
+					c.servicesGraph.AddEdge(id, name)
 				}
 			}
 
-			for reflectType, entry := range c.providers {
-				if typeMatches(reflectType, entry.vertex) {
-					//d.D = e
-					//c.Deps = append(c.Deps, d)
-					// found dependency via Init method (provided by Provider)
-					c.servicesGraph.AddEdge(name, entry.name)
+			// provides type (DB for example)
+			// and entry for that type
+			for t, e := range c.providers {
+				if typeMatches(t, e.vertex) {
+					c.servicesGraph.AddEdge(name, e.name)
 				}
 			}
 		}
 	}
 
-	// iterate over all registered types
-	for reflectType, entry := range c.depends {
-		for vertexName, vertex := range c.servicesGraph.Vertices {
-			if typeMatches(reflectType, vertex.Value) {
-				// depends via dynamic dependency declared as Depends method
-				c.servicesGraph.AddEdge(entry.name, vertexName)
-			}
-		}
-
-		// todo: do we need it?
-		for providersType, prvEntry := range c.providers {
-			if typeMatches(providersType, prvEntry.vertex) {
-				// found dependency via Init method (provided by Provider)
-				c.servicesGraph.AddEdge(entry.name, prvEntry.name)
-			}
-		}
+		return nil
 	}
 
-
-
-	return nil
-}
+	// Calculate service edges
+	//for name, vrtx := range c.servicesGraph.Vertices {
+	////d := &data_structures.Dep{
+	////	Id: name,
+	////}
+	//
+	//init, ok := reflect.TypeOf(vrtx.Value).MethodByName(Init)
+	//if !ok {
+	//// no init method
+	//continue
+	//}
+	//
+	//// get arg types from the Init methods Init(a A1, b B1) + receiver
+	//// A1 and B1 types will be in initArgs
+	//initArgs, err := functionParameters(init)
+	//if err != nil {
+	//return err
+	//}
+	//
+	////for _, arg := range initArgs {
+	////	for vertexName, vertex := range c.servicesGraph.Vertices {
+	////		if vertexName == name {
+	////			continue
+	////		}
+	////
+	////		if typeMatches(arg, vertex.Value) {
+	////			c.servicesGraph.AddEdge(name, vertexName)
+	////		}
+	////	}
+	////
+	////	for rt, entry := range c.providers {
+	////		if typeMatches(rt, entry.vertex) {
+	////
+	////		}
+	////	}
+	////}
+	//
+	//
+	//// interate over all args
+	//for _, arg := range initArgs {
+	//println(arg.String())
+	//for vertexName, vertex := range c.servicesGraph.Vertices {
+	//if vertexName == name {
+	//continue
+	//}
+	//
+	//if typeMatches(arg, vertex.Value) {
+	//// found dependency via Init method
+	//c.servicesGraph.AddEdge(vertexName, name)
+	//}
+	//}
+	//
+	//for reflectType, entry := range c.providers {
+	//if typeMatches(reflectType, entry.vertex) {
+	////d.D = e
+	////c.Deps = append(c.Deps, d)
+	//// found dependency via Init method (provided by Provider)
+	//c.servicesGraph.AddEdge(name, entry.name)
+	//}
+	//}
+	//}
+	//}
+	//
+	//// iterate over all registered types
+	//for reflectType, entry := range c.depends {
+	//for vertexName, vertex := range c.servicesGraph.Vertices {
+	//if typeMatches(reflectType, vertex.Value) {
+	//// depends via dynamic dependency declared as Depends method
+	//c.servicesGraph.AddEdge(entry.name, vertexName)
+	//}
+	//}
+	//
+	//// todo: do we need it?
+	//for providersType, prvEntry := range c.providers {
+	//if typeMatches(providersType, prvEntry.vertex) {
+	//// found dependency via Init method (provided by Provider)
+	//c.servicesGraph.AddEdge(entry.name, prvEntry.name)
+	//}
+	//}
+	//}
+	//
+	//
+	//
+	//return nil

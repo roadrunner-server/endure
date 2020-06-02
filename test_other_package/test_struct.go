@@ -1,8 +1,11 @@
 package test_other_package
 
-import "database/sql"
 
 type S4 struct {
+
+}
+
+type DB struct {
 
 }
 
@@ -19,6 +22,6 @@ func (s *S4) Provides() []interface{} {
 }
 
 // this is the same type but different packages
-func (s *S4) createAnotherDB() *sql.DB {
-	return &sql.DB{}
+func (s *S4) createAnotherDB() DB {
+	return DB{}
 }
