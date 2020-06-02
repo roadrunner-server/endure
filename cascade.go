@@ -105,10 +105,6 @@ func (c *Cascade) calculateDependencies() error {
 			return err
 		}
 
-		//for _, ia := range initArgs {
-		//	println(ia.String())
-		//}
-
 		// iterate over all function parameters
 		for _, initArg := range initArgs {
 			for id, vertex := range c.servicesGraph.Vertices {
@@ -126,8 +122,6 @@ func (c *Cascade) calculateDependencies() error {
 					c.servicesGraph.AddEdge(name, id)
 				}
 
-				println(fn)
-
 				// if initArgs is a vertex.Value (s2 for example)
 				//if typeMatches(initArg, vertex.Value) {
 				//	c.servicesGraph.AddEdge(name, id)
@@ -143,10 +137,6 @@ func (c *Cascade) calculateDependencies() error {
 				if a == initArg.String() {
 					c.servicesGraph.AddEdge(name, e.name)
 				}
-
-				//if typeMatches(t, e.vertex) {
-				//	c.servicesGraph.AddEdge(name, e.name)
-				//}
 			}
 		}
 	}

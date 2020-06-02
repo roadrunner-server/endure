@@ -54,12 +54,27 @@ func (s3 *S3) createDB() DB {
 func TestCascade_Init(t *testing.T) {
 	c := NewContainer()
 
-	c.Register("s2", &S2{})
-	c.Register("s3", &S3{})
-	c.Register("s1", &S1{})
+	err := c.Register("s2", &S2{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = c.Register("s3", &S3{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = c.Register("s1", &S1{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	// this is the same type as S3 create DB
-	c.Register("s4", &test_other_package.S4{})
+	err = c.Register("s4", &test_other_package.S4{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	c.Init()
+	err = c.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 	log.Print(c.servicesGraph.Edges)
 }
