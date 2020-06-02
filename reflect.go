@@ -41,44 +41,7 @@ func functionParameters(r reflect.Method) ([]reflect.Type, error) {
 		// It panics if the type's Kind is not Func.
 		// It panics if i is not in the range [0, NumIn()).
 		args = append(args, r.Type.In(i))
-		//println(r.Type.In(i).String())
 	}
 
 	return args, nil
-}
-
-func typeMatches(r reflect.Type, v interface{}) bool {
-	if reflect.TypeOf(v).Kind() == reflect.Func {
-		t := reflect.TypeOf(v)
-		a := t.Out(0)
-
-		//println("---------------------------------")
-		//println(a.String())
-		//println(r.String())
-		//println("---------------------------------")
-
-		//reflect.DeepEqual(a, v)
-		//g := a.ConvertibleTo(reflect.TypeOf(v))
-		return a.PkgPath() == r.PkgPath()
-	}
-
-
-
-	to := reflect.TypeOf(v)
-
-	if r.PkgPath() == to.PkgPath() {
-		return true
-	}
-	return false
-
-	println("---------------------------------")
-	println(to.String())
-	println(r.String())
-	println("---------------------------------")
-
-	if r.ConvertibleTo(to) {
-		return true
-	}
-
-	return false
 }
