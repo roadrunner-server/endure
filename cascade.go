@@ -98,6 +98,8 @@ func (c *Cascade) Init() error {
 	}
 
 	c.flattenSimpleGraph()
+	s := c.topologicalSort()
+	fmt.Println(s)
 
 	return nil
 }
@@ -199,14 +201,22 @@ func (c *Cascade) flattenSimpleGraph() {
 
 // []string here all the deps (vertices) S1, S2, S3, S4
 func NewDepsGraph(deps []string) *depsGraph {
-	g := make(map[string]depsGraph)
-	for _, d := range deps {
-
+	g := &depsGraph{
+		vertices: make([]*structures.Vertex, 0, 10),
+		graph:    make(map[string]*structures.Vertex),
 	}
+	for _, d := range deps {
+		g.AddVertex(d)
+	}
+	return g
 }
 
 func (g *depsGraph) AddDep(id, dep string) {
-
+	// get vertex for ID and for the deps
+	idV, depV := g.GetVertex(id), g.GetVertex(dep)
+	// append dep vertex
+	idV.Dependencies = append(idV.Dependencies, depV)
+	depV.NumOfPrereqs++
 }
 
 func (g *depsGraph) AddVertex(id string) {
@@ -230,12 +240,58 @@ func (g *depsGraph) GetVertex(id string) *structures.Vertex {
 }
 
 func (c *Cascade) topologicalSort() []string {
-	for k, v := range
+	ids := make([]string, 0)
+	for k, _ := range c.servicesGraph.Vertices {
+		ids = append(ids, k)
+	}
 
-	return nil
+	gr := NewDepsGraph(ids)
+
+	for id, dep := range c.deps {
+		for _, v := range dep {
+			if v.D == nil {
+				continue
+			}
+			gr.AddDep(id, v.D.(string))
+		}
+	}
+
+	return gr.orderDeps()
 }
 
-//func createCascadeGraph()
+func (g *depsGraph) orderDeps() []string {
+	var ord []string
+	var verticesWoPeres []*structures.Vertex
+
+	for _ ,v := range g.vertices {
+		if v.NumOfPrereqs == 0 {
+			verticesWoPeres = append(verticesWoPeres, v)
+		}
+	}
+
+	for len(verticesWoPeres) > 0 {
+		v := verticesWoPeres[len(verticesWoPeres) - 1]
+		verticesWoPeres = verticesWoPeres[:len(verticesWoPeres) - 1]
+
+		ord = append(ord, v.Id)
+		g.removeDep(v, &verticesWoPeres)
+	}
+
+	return ord
+
+}
+
+func (g *depsGraph) removeDep(vertex *structures.Vertex, verticesWoPrereqs *[]*structures.Vertex) {
+	for len(vertex.Dependencies) > 0 {
+		dep := vertex.Dependencies[len(vertex.Dependencies) - 1]
+		vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies) - 1]
+		dep.NumOfPrereqs --
+		if dep.NumOfPrereqs == 0 {
+			*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
+		}
+	}
+}
+
 
 func removePointerAsterisk(s string) string {
 	return strings.Trim(s, "*")

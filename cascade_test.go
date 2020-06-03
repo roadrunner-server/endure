@@ -30,18 +30,18 @@ func (s1 *S1) Init(s2 S2, db DB) {
 type S2 struct {
 }
 
-func (s2 *S2) Depends() []interface{} {
+func (s3 *S3) Depends() []interface{} {
 	return []interface{}{
-		s2.SomeOtherDep,
+		s3.SomeOtherDep,
 	}
 }
 
-func (s2 *S2) SomeOtherDep(svc test_other_package.S4) error {
+func (s3 *S3) SomeOtherDep(svc test_other_package.S4) error {
 	return nil
 }
 
 // Depends on S3
-func (s2 *S2) Init(s3 S3) {
+func (s3 *S3) Init(s2 S2) {
 
 }
 
@@ -49,15 +49,15 @@ func (s2 *S2) Init(s3 S3) {
 type S3 struct {
 }
 
-func (s3 *S3) Init() {
+func (s2 *S2) Init(s4 *test_other_package.S4) {
 
 }
 
-func (s3 *S3) Provides() []interface{} {
-	return []interface{}{s3.createDB}
+func (s2 *S2) Provides() []interface{} {
+	return []interface{}{s2.createDB}
 }
 
-func (s3 *S3) createDB() DB {
+func (s2 *S2) createDB() DB {
 	return DB{}
 }
 

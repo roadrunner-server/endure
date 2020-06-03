@@ -47,6 +47,9 @@ type Vertex struct {
 	Dependencies []*Vertex
 	// Visited used for the cyclic graphs to detect cycle
 	Visited bool
+
+	// for the toposort
+	NumOfPrereqs int
 }
 
 // NewAL initializes adjacency list to store the Graph
@@ -103,6 +106,7 @@ func (g *Graph) AddVertex(name string, value interface{}, raw string) {
 		Meta         Meta
 		Dependencies []*Vertex
 		Visited      bool
+		NumOfPrereqs int
 	}{
 		Value:   value,
 		Visited: false,
