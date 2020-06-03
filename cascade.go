@@ -42,7 +42,7 @@ func (c *Cascade) Register(name string, vertex interface{}) error {
 
 	// just push the vertex
 	// here we can append in future some meta information
-	c.servicesGraph.AddVertex(name, vertex)
+	c.servicesGraph.AddVertex(name, vertex, reflect.TypeOf(vertex).String())
 
 	if provider, ok := vertex.(Provider); ok {
 		for _, fn := range provider.Provides() {
@@ -136,33 +136,30 @@ func (c *Cascade) calculateDependencies() error {
 				}
 			}
 		}
-	}
 
-	// second round of the dependencies search
-	// via the depends
-	// in the tests, S1 depends on the S4 and S2 on the S4 via the Depends interface
-	for rflType, slice := range c.depends {
-		for _, entry := range slice {
-			// rflType --> S4
-			// in slice s1, s2
-			rfl, _ := argType(entry.vertex)
-			if len(rfl) > 0 {
-				rflTypeStr := removePointerAsterisk(rfl[0].String())
+		// second round of the dependencies search
+		// via the depends
+		// in the tests, S1 depends on the S4 and S2 on the S4 via the Depends interface
+		// a lot of stupid allocations here, needed to be optimized in the future
+		for rflType, slice := range c.depends {
+			// check if we iterate over the needed type
+			if removePointerAsterisk(rflType.String()) == removePointerAsterisk(vrtx.Meta.RawPackage) {
+				for _, entry := range slice {
+					// rflType --> S4
+					// in slice s1, s2
 
-				entryStr := rflType.String()
-
-				aa := reflect.TypeOf(entry.vertex).PkgPath()
-				_ = aa
-
-				if rflTypeStr == entryStr {
-					c.servicesGraph.AddEdge(entry.name, "name")
-					continue
-					println(rflTypeStr)
-					println(entryStr)
+					// guard here
+					entryType, _ := argType(entry.vertex)
+					if len(entryType) > 0 {
+						if removePointerAsterisk(entryType[0].String()) == removePointerAsterisk(rflType.String()) {
+							c.servicesGraph.AddEdge(entry.name, name)
+						}
+					}
 				}
 			}
 		}
 	}
+
 
 	return nil
 }

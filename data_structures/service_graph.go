@@ -21,6 +21,7 @@ type Graph struct {
 // 1. Disabled info
 // 2. Relation status
 type Meta struct {
+	RawPackage string
 }
 
 // it results in "RPC" --> S1, and at the end slice with Deps will looks like:
@@ -94,7 +95,7 @@ func (g *Graph) Adjacent() {
 
 }
 
-func (g *Graph) AddVertex(name string, value interface{}) {
+func (g *Graph) AddVertex(name string, value interface{}, raw string) {
 	// todo temporary do not visited
 	g.Vertices[name] = struct {
 		Value        interface{}
@@ -104,7 +105,9 @@ func (g *Graph) AddVertex(name string, value interface{}) {
 	}{
 		Value:   value,
 		Visited: false,
-		Meta:    Meta{},
+		Meta:    Meta{
+			RawPackage: raw,
+		},
 	}
 	// initialization
 	g.Edges[name] = []string{}
