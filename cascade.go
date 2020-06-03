@@ -141,7 +141,9 @@ func (c *Cascade) calculateDependencies() error {
 				provider := removePointerAsterisk(t.String())
 
 				if provider == initArg.String() {
-					c.servicesGraph.AddEdge(name, e.name)
+					if c.servicesGraph.Has(name) == false {
+						c.servicesGraph.AddEdge(name, e.name)
+					}
 				}
 			}
 		}
