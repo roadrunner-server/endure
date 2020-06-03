@@ -26,7 +26,7 @@ type Meta struct {
 // it results in "RPC" --> S1, and at the end slice with Deps will looks like:
 // []Deps{Dep{"RPC", S1}, Dep{"RPC", S2"}..etc}
 type Dep struct {
-	Id string // for example rpc
+	Id string      // for example rpc
 	D  interface{} // S1
 }
 
@@ -43,7 +43,7 @@ type Vertex struct {
 	// Meta information about current Vertex
 	Meta Meta
 	// Dependencies of the node
-	//Dependencies []*Vertex
+	Dependencies []*Vertex
 	// Visited used for the cyclic graphs to detect cycle
 	Visited bool
 }
@@ -94,17 +94,19 @@ func (g *Graph) Adjacent() {
 
 }
 
-func (g *Graph) AddVertex(name string, node interface{}) {
+func (g *Graph) AddVertex(name string, value interface{}) {
 	// todo temporary do not visited
 	g.Vertices[name] = struct {
-		Value   interface{}
-		Meta    Meta
-		Visited bool
+		Value        interface{}
+		Meta         Meta
+		Dependencies []*Vertex
+		Visited      bool
 	}{
-		Value:   node,
+		Value:   value,
 		Visited: false,
 		Meta:    Meta{},
 	}
+	// initialization
 	g.Edges[name] = []string{}
 }
 

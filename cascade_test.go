@@ -30,6 +30,16 @@ func (s1 *S1) Init(s2 S2, db DB) {
 type S2 struct {
 }
 
+func (s2 *S2) Depends() []interface{} {
+	return []interface{}{
+		s2.SomeOtherDep,
+	}
+}
+
+func (s2 *S2) SomeOtherDep(svc test_other_package.S4) error {
+	return nil
+}
+
 // Depends on S3
 func (s2 *S2) Init(s3 S3) {
 
