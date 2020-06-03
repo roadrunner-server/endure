@@ -112,29 +112,20 @@ func (c *Cascade) calculateDependencies() error {
 					continue
 				}
 
-				ff := reflect.TypeOf(vertex.Value)
-				fn := ff.String()
-				fn = strings.Trim(fn, "*")
+				initArgTr := removePointerAsterisk(initArg.String())
+				vertexTypeTr := removePointerAsterisk(reflect.TypeOf(vertex.Value).String())
 
-				inittr := strings.Trim(initArg.String(), "*")
-
-				if inittr == fn {
+				if initArgTr == vertexTypeTr {
 					c.servicesGraph.AddEdge(name, id)
 				}
-
-				// if initArgs is a vertex.Value (s2 for example)
-				//if typeMatches(initArg, vertex.Value) {
-				//	c.servicesGraph.AddEdge(name, id)
-				//}
 			}
 
 			// provides type (DB for example)
 			// and entry for that type
 			for t, e := range c.providers {
-				a := t.String()
-				a = strings.Trim(a, "*")
+				provider := removePointerAsterisk(t.String())
 
-				if a == initArg.String() {
+				if provider == initArg.String() {
 					c.servicesGraph.AddEdge(name, e.name)
 				}
 			}
@@ -142,4 +133,8 @@ func (c *Cascade) calculateDependencies() error {
 	}
 
 	return nil
+}
+
+func removePointerAsterisk(s string) string {
+	return strings.Trim(s, "*")
 }
