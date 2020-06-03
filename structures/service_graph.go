@@ -1,4 +1,4 @@
-package data_structures
+package structures
 
 // manages the set of services and their edges
 // type of the Graph: directed
@@ -24,8 +24,8 @@ type Meta struct {
 	RawPackage string
 }
 
-// it results in "RPC" --> S1, and at the end slice with Deps will looks like:
-// []Deps{Dep{"RPC", S1}, Dep{"RPC", S2"}..etc}
+// it results in "RPC" --> S1, and at the end slice with deps will looks like:
+// []deps{Dep{"RPC", S1}, Dep{"RPC", S2"}..etc}
 type Dep struct {
 	Id string      // for example rpc
 	D  interface{} // S1

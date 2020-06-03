@@ -45,7 +45,7 @@ func (s2 *S2) Init(s3 S3) {
 
 }
 
-// No Deps, but provides DB dependency
+// No deps, but provides DB dependency
 type S3 struct {
 }
 

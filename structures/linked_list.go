@@ -1,4 +1,4 @@
-package data_structures
+package structures
 
 // Vertex of the DoublyLL
 type DllNode struct {

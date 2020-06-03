@@ -5,17 +5,17 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/spiral/cascade/data_structures"
+	"github.com/spiral/cascade/structures"
 )
 
 const Init = "Init"
 
 type Cascade struct {
-	Deps []*data_structures.Dep
+	deps []*structures.Dep
 
 	providers     map[reflect.Type]entry
 	depends       map[reflect.Type][]entry
-	servicesGraph *data_structures.Graph
+	servicesGraph *structures.Graph
 }
 
 type entry struct {
@@ -25,10 +25,10 @@ type entry struct {
 
 func NewContainer() *Cascade {
 	return &Cascade{
-		Deps:          []*data_structures.Dep{},
+		deps:          []*structures.Dep{},
 		depends:       make(map[reflect.Type][]entry),
 		providers:     make(map[reflect.Type]entry),
-		servicesGraph: data_structures.NewAL(),
+		servicesGraph: structures.NewAL(),
 	}
 }
 
@@ -95,7 +95,7 @@ func (c *Cascade) Init() error {
 	return nil
 }
 
-//
+// calculateDependencies calculates simple graph for the dependencies
 func (c *Cascade) calculateDependencies() error {
 	// name for example S2
 	for name, vrtx := range c.servicesGraph.Vertices {
@@ -160,7 +160,11 @@ func (c *Cascade) calculateDependencies() error {
 		}
 	}
 
+	return nil
+}
 
+func (c *Cascade) flattenSimpleGraph() []structures.Dep {
+	
 	return nil
 }
 
