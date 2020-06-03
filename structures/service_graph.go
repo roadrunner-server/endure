@@ -49,7 +49,7 @@ type Vertex struct {
 	Visited bool
 
 	// for the toposort
-	NumOfPrereqs int
+	NumOfDeps int
 }
 
 // NewAL initializes adjacency list to store the Graph
@@ -106,7 +106,7 @@ func (g *Graph) AddVertex(name string, value interface{}, raw string) {
 		Meta         Meta
 		Dependencies []*Vertex
 		Visited      bool
-		NumOfPrereqs int
+		NumOfDeps    int
 	}{
 		Value:   value,
 		Visited: false,
@@ -122,10 +122,6 @@ func (g *Graph) AddEdge(name string, depends ...string) {
 	for _, n := range depends {
 		g.Edges[name] = append(g.Edges[name], n)
 	}
-}
-
-func (g *Graph) AddDep() {
-
 }
 
 // BuildRunList builds run list from the graph after topological sort

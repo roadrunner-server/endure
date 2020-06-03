@@ -175,9 +175,9 @@ func (c *Cascade) calculateDependencies() error {
 }
 
 // flattenSimpleGraph flattens the graph, making the following structure
-// S1 -> S2 | S2 -> S3 | S3 | S4 |
-// S1 -> S3 | S2 -> S4 |    |    |
-// S1 -> S4 |		   |    |    |
+// S1 -> S2 | S2 -> S4 | S3 -> S2 | S4 |
+// S1 -> S4 |          | S3 -> S4 |    |
+//
 func (c *Cascade) flattenSimpleGraph() {
 	for key, edge := range c.servicesGraph.Edges {
 		if len(edge) == 0 {
@@ -218,7 +218,7 @@ func (g *depsGraph) AddDep(id, dep string) {
 	idV, depV := g.GetVertex(id), g.GetVertex(dep)
 	// append dep vertex
 	idV.Dependencies = append(idV.Dependencies, depV)
-	depV.NumOfPrereqs++
+	depV.NumOfDeps++
 }
 
 func (g *depsGraph) AddVertex(id string) {
@@ -263,20 +263,20 @@ func (c *Cascade) topologicalSort() []string {
 
 func (g *depsGraph) orderDeps() []string {
 	var ord []string
-	var verticesWoPeres []*structures.Vertex
+	var verticesWoDeps []*structures.Vertex
 
 	for _ ,v := range g.vertices {
-		if v.NumOfPrereqs == 0 {
-			verticesWoPeres = append(verticesWoPeres, v)
+		if v.NumOfDeps == 0 {
+			verticesWoDeps = append(verticesWoDeps, v)
 		}
 	}
 
-	for len(verticesWoPeres) > 0 {
-		v := verticesWoPeres[len(verticesWoPeres) - 1]
-		verticesWoPeres = verticesWoPeres[:len(verticesWoPeres) - 1]
+	for len(verticesWoDeps) > 0 {
+		v := verticesWoDeps[len(verticesWoDeps) - 1]
+		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps) - 1]
 
 		ord = append(ord, v.Id)
-		g.removeDep(v, &verticesWoPeres)
+		g.removeDep(v, &verticesWoDeps)
 	}
 
 	return ord
@@ -287,8 +287,8 @@ func (g *depsGraph) removeDep(vertex *structures.Vertex, verticesWoPrereqs *[]*s
 	for len(vertex.Dependencies) > 0 {
 		dep := vertex.Dependencies[len(vertex.Dependencies) - 1]
 		vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies) - 1]
-		dep.NumOfPrereqs --
-		if dep.NumOfPrereqs == 0 {
+		dep.NumOfDeps--
+		if dep.NumOfDeps == 0 {
 			*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
 		}
 	}
