@@ -18,6 +18,11 @@ type Cascade struct {
 	servicesGraph *structures.Graph
 }
 
+type depsGraph struct {
+	vertices []*structures.Vertex
+	graph    map[string]*structures.Vertex
+}
+
 type entry struct {
 	name   string
 	vertex interface{}
@@ -191,6 +196,46 @@ func (c *Cascade) flattenSimpleGraph() {
 
 	}
 }
+
+// []string here all the deps (vertices) S1, S2, S3, S4
+func NewDepsGraph(deps []string) *depsGraph {
+	g := make(map[string]depsGraph)
+	for _, d := range deps {
+
+	}
+}
+
+func (g *depsGraph) AddDep(id, dep string) {
+
+}
+
+func (g *depsGraph) AddVertex(id string) {
+	g.graph[id] = &structures.Vertex{
+		// todo fill all the information
+		Id:           id,
+		Value:        nil,
+		Meta:         structures.Meta{},
+		Dependencies: nil,
+		Visited:      false,
+	}
+	g.vertices = append(g.vertices, g.graph[id])
+}
+
+func (g *depsGraph) GetVertex(id string) *structures.Vertex {
+	if _, found := g.graph[id]; !found {
+		g.AddVertex(id)
+	}
+
+	return g.graph[id]
+}
+
+func (c *Cascade) topologicalSort() []string {
+	for k, v := range
+
+	return nil
+}
+
+//func createCascadeGraph()
 
 func removePointerAsterisk(s string) string {
 	return strings.Trim(s, "*")

@@ -38,7 +38,7 @@ func NewDeps() Dep {
 // since we can have cyclic dependencies
 // when we traverse the Graph, we should mark nodes as Visited or not to detect cycle
 type Vertex struct {
-	//Id string
+	Id string
 	// Value
 	Value interface{}
 	// Meta information about current Vertex
@@ -98,6 +98,7 @@ func (g *Graph) Adjacent() {
 func (g *Graph) AddVertex(name string, value interface{}, raw string) {
 	// todo temporary do not visited
 	g.Vertices[name] = struct {
+		Id           string
 		Value        interface{}
 		Meta         Meta
 		Dependencies []*Vertex
@@ -105,7 +106,7 @@ func (g *Graph) AddVertex(name string, value interface{}, raw string) {
 	}{
 		Value:   value,
 		Visited: false,
-		Meta:    Meta{
+		Meta: Meta{
 			RawPackage: raw,
 		},
 	}
@@ -119,7 +120,7 @@ func (g *Graph) AddEdge(name string, depends ...string) {
 	}
 }
 
-func (g *Graph) createServicesGraph() {
+func (g *Graph) AddDep() {
 
 }
 
