@@ -11,7 +11,7 @@ import (
 const Init = "Init"
 
 type Cascade struct {
-	deps []*structures.Dep
+	deps map[string][]structures.Dep
 
 	providers     map[reflect.Type]entry
 	depends       map[reflect.Type][]entry
@@ -25,7 +25,7 @@ type entry struct {
 
 func NewContainer() *Cascade {
 	return &Cascade{
-		deps:          []*structures.Dep{},
+		deps:          make(map[string][]structures.Dep),
 		depends:       make(map[reflect.Type][]entry),
 		providers:     make(map[reflect.Type]entry),
 		servicesGraph: structures.NewAL(),
@@ -91,6 +91,8 @@ func (c *Cascade) Init() error {
 	if err := c.calculateDependencies(); err != nil {
 		return err
 	}
+
+	c.flattenSimpleGraph()
 
 	return nil
 }
@@ -163,9 +165,31 @@ func (c *Cascade) calculateDependencies() error {
 	return nil
 }
 
-func (c *Cascade) flattenSimpleGraph() []structures.Dep {
-	
-	return nil
+// flattenSimpleGraph flattens the graph, making the following structure
+// S1 -> S2 | S2 -> S3 | S3 | S4 |
+// S1 -> S3 | S2 -> S4 |    |    |
+// S1 -> S4 |		   |    |    |
+func (c *Cascade) flattenSimpleGraph() {
+	for key, edge := range c.servicesGraph.Edges {
+		if len(edge) == 0 {
+			// no dependencies, just add the standalone
+			d := structures.Dep{
+				Id: key,
+				D:  nil,
+			}
+
+			c.deps[key] = append(c.deps[key], d)
+		}
+		for _, e := range edge {
+			d := structures.Dep{
+				Id: key,
+				D:  e,
+			}
+
+			c.deps[key] = append(c.deps[key], d)
+		}
+
+	}
 }
 
 func removePointerAsterisk(s string) string {
