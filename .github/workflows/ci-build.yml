@@ -37,7 +37,6 @@ jobs:
 
       - name: Run golang tests
         run: |
-          composer update
           go test -race -v -coverprofile=cascade.txt -covermode=atomic
 
       - name: Run code coverage
