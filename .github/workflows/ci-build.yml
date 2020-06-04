@@ -1,0 +1,62 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build (Go ${{ matrix.go }}, OS ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        go: [1.13, 1.14]
+        os: [ubuntu-latest]
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Show versions
+        run: go version
+
+      - name: Debug if needed
+        env:
+          DEBUG: ${{ secrets.DEBUG }}
+        run: if [[ "$DEBUG" == "true" ]]; then env && go env; fi
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Run golang tests
+        run: |
+          composer update
+          go test -race -v -coverprofile=cascade.txt -covermode=atomic
+
+      - name: Run code coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [[ "$CODECOV_TOKEN" != "" ]]; then
+            curl https://codecov.io/bash -o codecov-bash
+            chmod +x codecov-bash
+            ./codecov-bash -f cascade.txt
+          fi
+
+  golangci-check:
+    name: runner / golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v1
+      - name: golangci-lint
+        uses: reviewdog/action-golangci-lint@v1
+        with:
+          github_token: ${{ secrets.github_token }}
