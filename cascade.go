@@ -70,16 +70,19 @@ func (c *Cascade) Register(name string, vertex interface{}) error {
 				return err
 			}
 
-			if len(argsTypes) != 1 {
-				return fmt.Errorf("%s must accept exactly one argument", fn)
+			// empty Depends, show warning and continue
+			if len(argsTypes) == 0 {
+				fmt.Printf("%s must accept exactly one argument", fn)
 			}
 
 			if len(argsTypes) > 0 {
-				// if we found, that some structure depends on some type
-				// we also save it in the `depends` section
-				// name s1 (for example)
-				// vertex - S4 func
-				c.depends[argsTypes[0]] = append(c.depends[argsTypes[0]], entry{name: name, vertex: fn})
+				for _, at := range argsTypes {
+					// if we found, that some structure depends on some type
+					// we also save it in the `depends` section
+					// name s1 (for example)
+					// vertex - S4 func
+					c.depends[at] = append(c.depends[at], entry{name: name, vertex: fn})
+				}
 			} else {
 				// todo temporary
 				panic("argsTypes less than 0")
