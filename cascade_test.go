@@ -56,7 +56,7 @@ func (s3 *S3) SomeOtherDep(svc test_other_package.S4, svc2 S2) error {
 }
 
 // Depends on S3
-func (s3 *S3) Init() {
+func (s3 *S3) Init(svc S2) {
 
 }
 

@@ -5,7 +5,7 @@ package structures
 type Graph struct {
 	// nodes, which can have values
 	// [a, b, c, etc..]
-	Vertices map[string]Vertex
+	Vertices map[string]*Vertex
 	// rows, connections
 	// [a --> b], [a --> c] etc..
 	Edges map[string][]string
@@ -22,17 +22,6 @@ type Graph struct {
 // 2. Relation status
 type Meta struct {
 	RawPackage string
-}
-
-// it results in "RPC" --> S1, and at the end slice with deps will looks like:
-// []deps{Dep{"RPC", S1}, Dep{"RPC", S2"}..etc}
-type Dep struct {
-	Id string      // for example rpc
-	D  interface{} // S1
-}
-
-func NewDeps() Dep {
-	return Dep{}
 }
 
 // since we can have cyclic dependencies
@@ -82,7 +71,7 @@ type Vertex struct {
 //
 func NewAL() *Graph {
 	return &Graph{
-		Vertices:  make(map[string]Vertex),
+		Vertices:  make(map[string]*Vertex),
 		Edges:     make(map[string][]string),
 		Connected: false,
 	}
@@ -93,26 +82,17 @@ func (g *Graph) Has(name string) bool {
 	return ok
 }
 
-// tests whether there is an edge from the vertex x to the vertex y;
-func (g *Graph) Adjacent() {
-
-}
-
 func (g *Graph) AddVertex(name string, value interface{}, raw string) {
 	// todo temporary do not visited
-	g.Vertices[name] = struct {
-		Id           string
-		Value        interface{}
-		Meta         Meta
-		Dependencies []*Vertex
-		Visited      bool
-		NumOfDeps    int
-	}{
-		Value:   value,
-		Visited: false,
-		Meta: Meta{
+	g.Vertices[name] = &Vertex{
+		Id:           "",
+		Value:        value,
+		Meta:         Meta{
 			RawPackage: raw,
 		},
+		Dependencies: nil,
+		Visited:      false,
+		NumOfDeps:    0,
 	}
 	// initialization
 	g.Edges[name] = []string{}
@@ -130,4 +110,89 @@ func (g *Graph) BuildRunList() []*DoublyLinkedList {
 	//graph := g.createServicesGraph()
 
 	return nil
+}
+
+type depsGraph struct {
+	vertices []*Vertex
+	graph    map[string]*Vertex
+}
+
+// it results in "RPC" --> S1, and at the end slice with deps will looks like:
+// []deps{Dep{"RPC", S1}, Dep{"RPC", S2"}..etc}
+type Dep struct {
+	Id string      // for example rpc
+	D  interface{} // S1
+}
+
+// []string here all the deps (vertices) S1, S2, S3, S4
+func NewDepsGraph(deps []string) *depsGraph {
+	g := &depsGraph{
+		vertices: make([]*Vertex, 0, 10),
+		graph:    make(map[string]*Vertex),
+	}
+	for _, d := range deps {
+		g.AddVertex(d)
+	}
+	return g
+}
+
+func (g *depsGraph) AddDep(id, dep string) {
+	// get vertex for ID and for the deps
+	idV, depV := g.GetVertex(id), g.GetVertex(dep)
+	// append dep vertex
+	idV.Dependencies = append(idV.Dependencies, depV)
+	depV.NumOfDeps++
+}
+
+func (g *depsGraph) AddVertex(id string) {
+	g.graph[id] = &Vertex{
+		// todo fill all the information
+		Id:           id,
+		Value:        nil,
+		Meta:         Meta{},
+		Dependencies: nil,
+		Visited:      false,
+	}
+	g.vertices = append(g.vertices, g.graph[id])
+}
+
+func (g *depsGraph) GetVertex(id string) *Vertex {
+	if _, found := g.graph[id]; !found {
+		g.AddVertex(id)
+	}
+
+	return g.graph[id]
+}
+
+func (g *depsGraph) Order() []string {
+	var ord []string
+	var verticesWoDeps []*Vertex
+
+	for _ ,v := range g.vertices {
+		if v.NumOfDeps == 0 {
+			verticesWoDeps = append(verticesWoDeps, v)
+		}
+	}
+
+	for len(verticesWoDeps) > 0 {
+		v := verticesWoDeps[len(verticesWoDeps) - 1]
+		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps) - 1]
+
+		ord = append(ord, v.Id)
+		g.removeDep(v, &verticesWoDeps)
+	}
+
+	return ord
+
+}
+
+func (g *depsGraph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
+	for len(vertex.Dependencies) > 0 {
+		dep := vertex.Dependencies[len(vertex.Dependencies) - 1]
+		vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies) - 1]
+		dep.NumOfDeps--
+		if dep.NumOfDeps == 0 {
+			*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
+		}
+	}
 }

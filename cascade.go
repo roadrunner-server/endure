@@ -18,11 +18,6 @@ type Cascade struct {
 	servicesGraph *structures.Graph
 }
 
-type depsGraph struct {
-	vertices []*structures.Vertex
-	graph    map[string]*structures.Vertex
-}
-
 type entry struct {
 	name   string
 	vertex interface{}
@@ -163,10 +158,16 @@ func (c *Cascade) calculateDependencies() error {
 					// in slice s1, s2
 
 					// guard here
-					entryType, _ := argType(entry.vertex)
+					entryType, err := argType(entry.vertex)
+					if err != nil {
+						return err
+					}
 					if len(entryType) > 0 {
-						if removePointerAsterisk(entryType[0].String()) == removePointerAsterisk(rflType.String()) {
-							c.servicesGraph.AddEdge(entry.name, name)
+						for _, et := range entryType {
+							// s3:[s4 s2 s2] TODO
+							if removePointerAsterisk(et.String()) == removePointerAsterisk(rflType.String()) {
+								c.servicesGraph.AddEdge(entry.name, name)
+							}
 						}
 					}
 				}
@@ -200,48 +201,7 @@ func (c *Cascade) flattenSimpleGraph() {
 
 			c.deps[key] = append(c.deps[key], d)
 		}
-
 	}
-}
-
-// []string here all the deps (vertices) S1, S2, S3, S4
-func NewDepsGraph(deps []string) *depsGraph {
-	g := &depsGraph{
-		vertices: make([]*structures.Vertex, 0, 10),
-		graph:    make(map[string]*structures.Vertex),
-	}
-	for _, d := range deps {
-		g.AddVertex(d)
-	}
-	return g
-}
-
-func (g *depsGraph) AddDep(id, dep string) {
-	// get vertex for ID and for the deps
-	idV, depV := g.GetVertex(id), g.GetVertex(dep)
-	// append dep vertex
-	idV.Dependencies = append(idV.Dependencies, depV)
-	depV.NumOfDeps++
-}
-
-func (g *depsGraph) AddVertex(id string) {
-	g.graph[id] = &structures.Vertex{
-		// todo fill all the information
-		Id:           id,
-		Value:        nil,
-		Meta:         structures.Meta{},
-		Dependencies: nil,
-		Visited:      false,
-	}
-	g.vertices = append(g.vertices, g.graph[id])
-}
-
-func (g *depsGraph) GetVertex(id string) *structures.Vertex {
-	if _, found := g.graph[id]; !found {
-		g.AddVertex(id)
-	}
-
-	return g.graph[id]
 }
 
 func (c *Cascade) topologicalSort() []string {
@@ -250,7 +210,7 @@ func (c *Cascade) topologicalSort() []string {
 		ids = append(ids, k)
 	}
 
-	gr := NewDepsGraph(ids)
+	gr := structures.NewDepsGraph(ids)
 
 	for id, dep := range c.deps {
 		for _, v := range dep {
@@ -261,42 +221,8 @@ func (c *Cascade) topologicalSort() []string {
 		}
 	}
 
-	return gr.orderDeps()
+	return gr.Order()
 }
-
-func (g *depsGraph) orderDeps() []string {
-	var ord []string
-	var verticesWoDeps []*structures.Vertex
-
-	for _ ,v := range g.vertices {
-		if v.NumOfDeps == 0 {
-			verticesWoDeps = append(verticesWoDeps, v)
-		}
-	}
-
-	for len(verticesWoDeps) > 0 {
-		v := verticesWoDeps[len(verticesWoDeps) - 1]
-		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps) - 1]
-
-		ord = append(ord, v.Id)
-		g.removeDep(v, &verticesWoDeps)
-	}
-
-	return ord
-
-}
-
-func (g *depsGraph) removeDep(vertex *structures.Vertex, verticesWoPrereqs *[]*structures.Vertex) {
-	for len(vertex.Dependencies) > 0 {
-		dep := vertex.Dependencies[len(vertex.Dependencies) - 1]
-		vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies) - 1]
-		dep.NumOfDeps--
-		if dep.NumOfDeps == 0 {
-			*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
-		}
-	}
-}
-
 
 func removePointerAsterisk(s string) string {
 	return strings.Trim(s, "*")
