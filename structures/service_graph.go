@@ -82,14 +82,12 @@ func (g *Graph) Has(name string) bool {
 	return ok
 }
 
-func (g *Graph) AddVertex(name string, value interface{}, raw string) {
+func (g *Graph) AddVertex(name string, value interface{}, meta Meta) {
 	// todo temporary do not visited
 	g.Vertices[name] = &Vertex{
 		Id:           "",
 		Value:        value,
-		Meta:         Meta{
-			RawPackage: raw,
-		},
+		Meta:         meta,
 		Dependencies: nil,
 		Visited:      false,
 		NumOfDeps:    0,
