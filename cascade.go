@@ -125,7 +125,7 @@ func (c *Cascade) addDependencies(vertexId string, vertex interface{}) error {
 // Init container and all service edges.
 func (c *Cascade) Init() error {
 	// traverse the graph
-	if err := c.calculateDependencies(); err != nil {
+	if err := c.calculateEdges(); err != nil {
 		return err
 	}
 
@@ -136,8 +136,8 @@ func (c *Cascade) Init() error {
 	return nil
 }
 
-// calculateDependencies calculates simple graph for the dependencies
-func (c *Cascade) calculateDependencies() error {
+// calculateEdges calculates simple graph for the dependencies
+func (c *Cascade) calculateEdges() error {
 	// vertexId for example S2
 	for vertexId, vrtx := range c.servicesGraph.Vertices {
 		init, ok := reflect.TypeOf(vrtx.Value).MethodByName(Init)
@@ -145,6 +145,7 @@ func (c *Cascade) calculateDependencies() error {
 			continue
 		}
 
+		// calcu
 		err := c.calculateInitEdges(vertexId, init)
 		if err != nil {
 			return err
@@ -183,19 +184,24 @@ func (c *Cascade) calculateInitEdges(vertexId string, method reflect.Method) err
 			}
 		}
 
-		// provides type (DB for example)
-		// and entry for that type
-		for t, e := range c.providers {
-			provider := removePointerAsterisk(t.String())
+		// think about optimization
+		c.calculateProvidersEdges(vertexId, initArg)
+	}
+	return nil
+}
 
-			if provider == initArg.String() {
-				if c.servicesGraph.Has(vertexId) == false {
-					c.servicesGraph.AddEdge(vertexId, e.name)
-				}
+func (c *Cascade) calculateProvidersEdges(vertexId string, initArg reflect.Type) {
+	// provides type (DB for example)
+	// and entry for that type
+	for t, e := range c.providers {
+		provider := removePointerAsterisk(t.String())
+
+		if provider == initArg.String() {
+			if c.servicesGraph.Has(vertexId) == false {
+				c.servicesGraph.AddEdge(vertexId, e.name)
 			}
 		}
 	}
-	return nil
 }
 
 func (c *Cascade) calculateDepEdges(vertexId string, meta structures.Meta) error {
