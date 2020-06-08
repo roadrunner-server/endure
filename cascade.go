@@ -13,6 +13,8 @@ const Init = "Init"
 type Cascade struct {
 	deps map[string][]structures.Dep
 
+	depsGraph []*structures.Vertex
+
 	providers     map[reflect.Type]entry
 	depends       map[reflect.Type][]entry
 	servicesGraph *structures.Graph
@@ -53,7 +55,6 @@ func (c *Cascade) Register(name string, vertex interface{}) error {
 	if err != nil {
 		return err
 	}
-
 
 	err = c.addDependencies(name, vertex)
 	if err != nil {
@@ -132,6 +133,8 @@ func (c *Cascade) Init() error {
 	c.flattenSimpleGraph()
 	s := c.topologicalSort()
 	fmt.Println(s)
+
+	c.validateSorting(s, nil, c.depsGraph)
 
 	return nil
 }
@@ -278,7 +281,28 @@ func (c *Cascade) topologicalSort() []string {
 		}
 	}
 
+	c.depsGraph = gr.Vertices()
+
 	return gr.Order()
+}
+
+func (c *Cascade) validateSorting(order []string, deps []structures.Dep, vertices []*structures.Vertex) bool {
+	visited := map[string]bool{}
+	for _, candidate := range order {
+		for _, dep := range vertices {
+			println(dep)
+			//if _, found := visited[dep.Id]; found && candidate == dep.NumOfDeps {
+			//	return false
+			//}
+		}
+		visited[candidate] = true
+	}
+	for _, dep := range deps {
+		if _, found := visited[dep.Id]; !found {
+			return false
+		}
+	}
+	return len(order) == len(deps)
 }
 
 func removePointerAsterisk(s string) string {
