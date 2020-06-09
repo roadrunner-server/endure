@@ -1,5 +1,4 @@
-package test_other_package
-
+package foo4
 
 type S4 struct {
 

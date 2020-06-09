@@ -11,26 +11,31 @@ import (
 const Init = "Init"
 
 type Cascade struct {
+	// new
+	graph     *structures.Graph
+	providers map[string]reflect.Value
+	// old
+
 	deps map[string][]structures.Dep
 
 	depsGraph []*structures.Vertex
 
-	providers     map[reflect.Type]entry
-	depends       map[reflect.Type][]entry
+	//depends       map[reflect.Type][]entry
 	servicesGraph *structures.Graph
 }
 
-type entry struct {
-	name   string
-	vertex interface{}
-}
+//type entry struct {
+//	name   string
+//	vertex interface{}
+//}
 
 func NewContainer() *Cascade {
 	return &Cascade{
-		deps:          make(map[string][]structures.Dep),
-		depends:       make(map[reflect.Type][]entry),
-		providers:     make(map[reflect.Type]entry),
-		servicesGraph: structures.NewAL(),
+		graph: structures.NewGraph(),
+		deps:  make(map[string][]structures.Dep),
+		//depends:       make(map[reflect.Type][]entry),
+		providers:     make(map[string]reflect.Value),
+		servicesGraph: structures.NewGraph(),
 	}
 }
 
@@ -71,7 +76,7 @@ func (c *Cascade) register(name string, vertex interface{}, meta structures.Meta
 
 	// just push the vertex
 	// here we can append in future some meta information
-	c.servicesGraph.AddVertex(name, vertex, meta)
+	//c.servicesGraph.AddVertex(name, vertex, meta)
 	return nil
 }
 
@@ -84,7 +89,16 @@ func (c *Cascade) addProviders(vertexId string, vertex interface{}) error {
 				return err
 			}
 			// save providers
-			c.providers[ret] = entry{name: vertexId, vertex: fn}
+			// put into the map with deps
+
+			a := ret.String()
+			_ = a
+
+			b := reflect.TypeOf(fn).String()
+			_ = b
+
+			c.providers[reflect.ValueOf(ret).String()] = reflect.ValueOf(ret) //entry{name: vertexId, vertex: fn}
+			// c.providers[ret] = entry{name: vertexId, vertex: fn}
 		}
 	}
 	return nil
@@ -111,7 +125,10 @@ func (c *Cascade) addDependencies(vertexId string, vertex interface{}) error {
 					// we also save it in the `depends` section
 					// name s1 (for example)
 					// vertex - S4 func
-					c.depends[at] = append(c.depends[at], entry{name: vertexId, vertex: fn})
+
+					// from --> to
+					c.graph.AddDep(vertexId, at.String())
+					//c.depends[at] = append(c.depends[at], entry{name: vertexId, vertex: fn})
 				}
 			} else {
 				// todo temporary
@@ -131,10 +148,10 @@ func (c *Cascade) Init() error {
 	}
 
 	c.flattenSimpleGraph()
-	s := c.topologicalSort()
-	fmt.Println(s)
-
-	c.validateSorting(s, nil, c.depsGraph)
+	//s := c.topologicalSort()
+	//fmt.Println(s)
+	//
+	//c.validateSorting(s, nil, c.depsGraph)
 
 	return nil
 }
@@ -142,7 +159,7 @@ func (c *Cascade) Init() error {
 // calculateEdges calculates simple graph for the dependencies
 func (c *Cascade) calculateEdges() error {
 	// vertexId for example S2
-	for vertexId, vrtx := range c.servicesGraph.Vertices {
+	for vertexId, vrtx := range c.servicesGraph.Graph {
 		init, ok := reflect.TypeOf(vrtx.Value).MethodByName(Init)
 		if !ok {
 			continue
@@ -173,7 +190,7 @@ func (c *Cascade) calculateInitEdges(vertexId string, method reflect.Method) err
 
 	// iterate over all function parameters
 	for _, initArg := range initArgs {
-		for id, vertex := range c.servicesGraph.Vertices {
+		for id, vertex := range c.servicesGraph.Graph {
 			if id == vertexId {
 				continue
 			}
@@ -196,15 +213,15 @@ func (c *Cascade) calculateInitEdges(vertexId string, method reflect.Method) err
 func (c *Cascade) calculateProvidersEdges(vertexId string, initArg reflect.Type) {
 	// provides type (DB for example)
 	// and entry for that type
-	for t, e := range c.providers {
-		provider := removePointerAsterisk(t.String())
-
-		if provider == initArg.String() {
-			if c.servicesGraph.Has(vertexId) == false {
-				c.servicesGraph.AddEdge(vertexId, e.name)
-			}
-		}
-	}
+	//for t, e := range c.providers {
+	//	provider := removePointerAsterisk(t.String())
+	//
+	//	if provider == initArg.String() {
+	//		if c.servicesGraph.Has(vertexId) == false {
+	//			c.servicesGraph.AddEdge(vertexId, e.name)
+	//		}
+	//	}
+	//}
 }
 
 func (c *Cascade) calculateDepEdges(vertexId string, meta structures.Meta) error {
@@ -212,29 +229,29 @@ func (c *Cascade) calculateDepEdges(vertexId string, meta structures.Meta) error
 	// via the depends
 	// in the tests, S1 depends on the S4 and S2 on the S4 via the Depends interface
 	// a lot of stupid allocations here, needed to be optimized in the future
-	for rflType, slice := range c.depends {
-		// check if we iterate over the needed type
-		if removePointerAsterisk(rflType.String()) == removePointerAsterisk(meta.RawPackage) {
-			for _, entry := range slice {
-				// rflType --> S4
-				// in slice s1, s2
-
-				// guard here
-				entryType, err := argType(entry.vertex)
-				if err != nil {
-					return err
-				}
-				if len(entryType) > 0 {
-					for _, et := range entryType {
-						// s3:[s4 s2 s2] TODO
-						if removePointerAsterisk(et.String()) == removePointerAsterisk(rflType.String()) {
-							c.servicesGraph.AddEdge(entry.name, vertexId)
-						}
-					}
-				}
-			}
-		}
-	}
+	//for rflType, slice := range c.depends {
+	//	// check if we iterate over the needed type
+	//	if removePointerAsterisk(rflType.String()) == removePointerAsterisk(meta.RawPackage) {
+	//		for _, entry := range slice {
+	//			// rflType --> S4
+	//			// in slice s1, s2
+	//
+	//			// guard here
+	//			entryType, err := argType(entry.vertex)
+	//			if err != nil {
+	//				return err
+	//			}
+	//			if len(entryType) > 0 {
+	//				for _, et := range entryType {
+	//					// s3:[s4 s2 s2] TODO
+	//					if removePointerAsterisk(et.String()) == removePointerAsterisk(rflType.String()) {
+	//						c.servicesGraph.AddEdge(entry.name, vertexId)
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
 	return nil
 }
 
@@ -262,28 +279,6 @@ func (c *Cascade) flattenSimpleGraph() {
 			c.deps[key] = append(c.deps[key], d)
 		}
 	}
-}
-
-func (c *Cascade) topologicalSort() []string {
-	ids := make([]string, 0)
-	for k, _ := range c.servicesGraph.Vertices {
-		ids = append(ids, k)
-	}
-
-	gr := structures.NewDepsGraph(ids)
-
-	for id, dep := range c.deps {
-		for _, v := range dep {
-			if v.D == nil {
-				continue
-			}
-			gr.AddDep(id, v.D.(string))
-		}
-	}
-
-	c.depsGraph = gr.Vertices()
-
-	return gr.Order()
 }
 
 func (c *Cascade) validateSorting(order []string, deps []structures.Dep, vertices []*structures.Vertex) bool {

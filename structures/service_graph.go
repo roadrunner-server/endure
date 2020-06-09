@@ -8,15 +8,16 @@ type Graph struct {
 	// nodes, which can have values
 	// [a, b, c, etc..]5
 	//graph    map[string]*Vertex
-	Vertices map[string]*Vertex
+	Graph map[string]*Vertex
+	// List of all Vertices
+	Vertices []*Vertex
+
 	// rows, connections
 	// [a --> b], [a --> c] etc..
 	// DEPENDENCIES
 	Edges map[string][]string
 
-	//vertices []*Vertex
 	//graph    map[string]*Vertex
-	Vertex Vertex
 
 	// global property of the Graph
 	// if the Graph Has disconnected nodes
@@ -40,7 +41,7 @@ type Meta struct {
 	RawPackage string
 	// values to provide into INIT or Depends methods
 	// key is a String() method invoked on the reflect.Value
-	values     map[string]reflect.Value
+	Values map[string]reflect.Value
 }
 
 // since we can have cyclic dependencies
@@ -88,31 +89,17 @@ type Vertex struct {
 // 1. DIRECTED
 // 2. ACYCLIC
 //
-func NewAL() *Graph {
+func NewGraph() *Graph {
 	return &Graph{
-		Vertices:  make(map[string]*Vertex),
+		Graph:     make(map[string]*Vertex),
 		Edges:     make(map[string][]string),
 		Connected: false,
 	}
 }
 
 func (g *Graph) Has(name string) bool {
-	_, ok := g.Vertices[name]
+	_, ok := g.Graph[name]
 	return ok
-}
-
-func (g *Graph) AddVertex(name string, value interface{}, meta Meta) {
-	// todo temporary do not visited
-	g.Vertices[name] = &Vertex{
-		Id:           "",
-		Value:        value,
-		Meta:         meta,
-		Dependencies: nil,
-		Visited:      false,
-		NumOfDeps:    0,
-	}
-	// initialization
-	g.Edges[name] = []string{}
 }
 
 func (g *Graph) AddEdge(name string, depends ...string) {
@@ -130,31 +117,52 @@ func (g *Graph) BuildRunList() []*DoublyLinkedList {
 }
 
 // []string here all the deps (vertices) S1, S2, S3, S4
-func NewDepsGraph(deps []string) *depsGraph {
-	g := &depsGraph{
-		vertices: make([]*Vertex, 0, 10),
-		graph:    make(map[string]*Vertex),
+//func NewDepsGraph(deps []string) *depsGraph {
+//	g := &depsGraph{
+//		vertices: make([]*Vertex, 0, 10),
+//		graph:    make(map[string]*Vertex),
+//	}
+//	for _, d := range deps {
+//		g.AddVertex(d)
+//	}
+//	return g
+//}
+
+func (g *Graph) AddValue(vertexId, valueKey string, value reflect.Value) {
+	// get the VERTEX
+	if vertex, ok := g.Graph[vertexId]; ok {
+		// add the vertex dep as value
+		vertex.Meta.Values[valueKey] = value
 	}
-	for _, d := range deps {
-		g.AddVertex(d)
-	}
-	return g
 }
 
-func (g *depsGraph) Vertices() []*Vertex {
-	return g.vertices
-}
+//func (g *Graph) Graph() []*Vertex {
+//	return g.vertices
+//}
 
-func (g *depsGraph) AddDep(id, dep string) {
+func (g *Graph) AddDep(vertexId, vertexDepId string) {
 	// get vertex for ID and for the deps
-	idV, depV := g.GetVertex(id), g.GetVertex(dep)
-	// append dep vertex
+	idV, depV := g.GetVertex(vertexId), g.GetVertex(vertexDepId)
+	// append vertexDepId vertex
 	idV.Dependencies = append(idV.Dependencies, depV)
 	depV.NumOfDeps++
 }
 
-func (g *depsGraph) AddVertex(id string) {
-	g.graph[id] = &Vertex{
+func (g *Graph) AddVertex(id string) {
+
+	//// todo temporary do not visited
+	//g.Graph[name] = &Vertex{
+	//	Id:           "",
+	//	Value:        value,
+	//	Meta:         meta,
+	//	Dependencies: nil,
+	//	Visited:      false,
+	//	NumOfDeps:    0,
+	//}
+	//// initialization
+	//g.Edges[name] = []string{}
+
+	g.Graph[id] = &Vertex{
 		// todo fill all the information
 		Id:           id,
 		Value:        nil,
@@ -162,40 +170,62 @@ func (g *depsGraph) AddVertex(id string) {
 		Dependencies: nil,
 		Visited:      false,
 	}
-	g.vertices = append(g.vertices, g.graph[id])
+	g.Vertices = append(g.Vertices, g.Graph[id])
 }
 
-func (g *depsGraph) GetVertex(id string) *Vertex {
-	if _, found := g.graph[id]; !found {
+func (g *Graph) GetVertex(id string) *Vertex {
+	if _, found := g.Graph[id]; !found {
 		g.AddVertex(id)
 	}
 
-	return g.graph[id]
+	return g.Graph[id]
 }
 
-func (g *depsGraph) Order() []string {
+func (g *Graph) Order() []string {
 	var ord []string
-	var verticesWoDeps []*Vertex
+	//var verticesWoDeps []*Vertex
 
-	for _, v := range g.vertices {
-		if v.NumOfDeps == 0 {
-			verticesWoDeps = append(verticesWoDeps, v)
-		}
-	}
-
-	for len(verticesWoDeps) > 0 {
-		v := verticesWoDeps[len(verticesWoDeps)-1]
-		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps)-1]
-
-		ord = append(ord, v.Id)
-		g.removeDep(v, &verticesWoDeps)
-	}
+	//for _, v := range g.vertices {
+	//	if v.NumOfDeps == 0 {
+	//		verticesWoDeps = append(verticesWoDeps, v)
+	//	}
+	//}
+	//
+	//for len(verticesWoDeps) > 0 {
+	//	v := verticesWoDeps[len(verticesWoDeps)-1]
+	//	verticesWoDeps = verticesWoDeps[:len(verticesWoDeps)-1]
+	//
+	//	ord = append(ord, v.Id)
+	//	g.removeDep(v, &verticesWoDeps)
+	//}
 
 	return ord
 
 }
 
-func (g *depsGraph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
+//func (c *Cascade) topologicalSort() []string {
+//	ids := make([]string, 0)
+//	for k, _ := range c.servicesGraph.Graph {
+//		ids = append(ids, k)
+//	}
+//
+//	gr := structures.NewDepsGraph(ids)
+//
+//	for id, dep := range c.deps {
+//		for _, v := range dep {
+//			if v.D == nil {
+//				continue
+//			}
+//			gr.AddDep(id, v.D.(string))
+//		}
+//	}
+//
+//	c.depsGraph = gr.Graph()
+//
+//	return gr.Order()
+//}
+
+func (g *Graph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
 	for len(vertex.Dependencies) > 0 {
 		dep := vertex.Dependencies[len(vertex.Dependencies)-1]
 		vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies)-1]
