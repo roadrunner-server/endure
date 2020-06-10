@@ -19,12 +19,12 @@ type Cascade struct {
 	providers map[string]reflect.Value
 	// old
 
-	deps map[string][]structures.Dep
+	//deps map[string][]structures.Dep
 
 	depsGraph []*structures.Vertex
 
 	//depends       map[reflect.Type][]entry
-	servicesGraph *structures.Graph
+	//servicesGraph *structures.Graph
 }
 
 //type entry struct {
@@ -35,10 +35,10 @@ type Cascade struct {
 func NewContainer() *Cascade {
 	return &Cascade{
 		graph: structures.NewGraph(),
-		deps:  make(map[string][]structures.Dep),
+		//deps:  make(map[string][]structures.Dep),
 		//depends:       make(map[reflect.Type][]entry),
 		providers:     make(map[string]reflect.Value),
-		servicesGraph: structures.NewGraph(),
+		//servicesGraph: structures.NewGraph(),
 	}
 }
 
@@ -55,32 +55,55 @@ func (c *Cascade) Register(vertex interface{}) error {
 		RawPackage: rawTypeStr,
 	}
 
+	/* Register the type
+	Information we know at this step is:
+	1. VertexId
+	2. Vertex structure value (interface)
+	And we fill vertex with this information
+	*/
 	err := c.register(vertexId, vertex, meta)
 	if err != nil {
 		return err
 	}
 
+	/* Add the types, which (if) current vertex provides
+	Information we know at this step is:
+	1. VertexId
+	2. Vertex structure value (interface)
+	3. Provided type
+	4. Provided type String name
+	We add 3 and 4 points to the Vertex
+	*/
 	err = c.addProviders(vertexId, vertex)
 	if err != nil {
 		return err
 	}
 
-	err = c.addDependencies(vertexId, vertex)
-	if err != nil {
-		return err
-	}
+	/* Add the dependencies (if) which this vertex needs to run
+	Information we know at this step is:
+	1. VertexId
+	2. Vertex structure value (interface)
+	3. Provided type
+	4. Provided type String name
+	5. Name of the dependencies
+	We add 3 and 4 points to the Vertex
+	*/
+	//err = c.addDependencies(vertexId, vertex)
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }
 
 func (c *Cascade) register(name string, vertex interface{}, meta structures.Meta) error {
-	if c.servicesGraph.Has(name) {
+	if c.graph.Has(name) {
 		return fmt.Errorf("vertex `%s` already exists", name)
 	}
 
 	// just push the vertex
 	// here we can append in future some meta information
-	c.servicesGraph.AddVertex(name, vertex, meta)
+	c.graph.AddVertex(name, vertex, meta)
 	return nil
 }
 
@@ -92,21 +115,26 @@ func (c *Cascade) addProviders(vertexId string, vertex interface{}) error {
 				// todo: delete vertex
 				return err
 			}
+
+			typeStr := ret.String()
+			// get the vertex
+			vertex := c.graph.GetVertex(vertexId)
+			if vertex.Provides == nil {
+				vertex.Provides = make(map[string]*reflect.Value)
+			}
+			if vertex.Provides[typeStr] == nil {
+				vertex.Provides[typeStr] = &reflect.Value{}
+			}
+
+			tmp := reflect.ValueOf(ret)
+			vertex.Provides[typeStr] = &tmp
 			// save providers
 			// put into the map with deps
 
 			// ret foo2.DB
-			a := ret.String()
-			_ = a
 
-			// DB
-			z := ret.Name()
-			_ = z
 
-			b := reflect.TypeOf(fn).String()
-			_ = b
-
-			c.providers[reflect.ValueOf(ret).String()] = reflect.ValueOf(ret) //entry{name: vertexId, vertex: fn}
+			//c.providers[reflect.ValueOf(ret).String()] = reflect.ValueOf(ret) //entry{name: vertexId, vertex: fn}
 			// c.providers[ret] = entry{name: vertexId, vertex: fn}
 		}
 	}
@@ -158,7 +186,7 @@ func (c *Cascade) Init() error {
 		return err
 	}
 
-	c.flattenSimpleGraph()
+	//c.flattenSimpleGraph()
 	//s := c.topologicalSort()
 	//fmt.Println(s)
 	//
@@ -170,7 +198,7 @@ func (c *Cascade) Init() error {
 // calculateEdges calculates simple graph for the dependencies
 func (c *Cascade) calculateEdges() error {
 	// vertexId for example S2
-	for vertexId, vrtx := range c.servicesGraph.Graph {
+	for vertexId, vrtx := range c.graph.Graph {
 		init, ok := reflect.TypeOf(vrtx.Value).MethodByName(Init)
 		if !ok {
 			continue
@@ -201,7 +229,7 @@ func (c *Cascade) calculateInitEdges(vertexId string, method reflect.Method) err
 
 	// iterate over all function parameters
 	for _, initArg := range initArgs {
-		for id, vertex := range c.servicesGraph.Graph {
+		for id, vertex := range c.graph.Graph {
 			if id == vertexId {
 				continue
 			}
@@ -211,7 +239,7 @@ func (c *Cascade) calculateInitEdges(vertexId string, method reflect.Method) err
 
 			// guess, the types are the same type
 			if initArgTr == vertexTypeTr {
-				c.servicesGraph.AddEdge(vertexId, id)
+				c.graph.AddEdge(vertexId, id)
 			}
 		}
 
@@ -266,50 +294,7 @@ func (c *Cascade) calculateDepEdges(vertexId string, meta structures.Meta) error
 	return nil
 }
 
-// flattenSimpleGraph flattens the graph, making the following structure
-// S1 -> S2 | S2 -> S4 | S3 -> S2 | S4 |
-// S1 -> S4 |          | S3 -> S4 |    |
-//
-func (c *Cascade) flattenSimpleGraph() {
-	for key, edge := range c.servicesGraph.Edges {
-		if len(edge) == 0 {
-			// no dependencies, just add the standalone
-			d := structures.Dep{
-				Id: key,
-				D:  nil,
-			}
 
-			c.deps[key] = append(c.deps[key], d)
-		}
-		for _, e := range edge {
-			d := structures.Dep{
-				Id: key,
-				D:  e,
-			}
-
-			c.deps[key] = append(c.deps[key], d)
-		}
-	}
-}
-
-func (c *Cascade) validateSorting(order []string, deps []structures.Dep, vertices []*structures.Vertex) bool {
-	visited := map[string]bool{}
-	for _, candidate := range order {
-		for _, dep := range vertices {
-			println(dep)
-			//if _, found := visited[dep.Id]; found && candidate == dep.NumOfDeps {
-			//	return false
-			//}
-		}
-		visited[candidate] = true
-	}
-	for _, dep := range deps {
-		if _, found := visited[dep.Id]; !found {
-			return false
-		}
-	}
-	return len(order) == len(deps)
-}
 
 func removePointerAsterisk(s string) string {
 	return strings.Trim(s, "*")

@@ -28,10 +28,10 @@ type Graph struct {
 // it results in "RPC" --> S1, and at the end slice with deps will looks like:
 // []deps{Dep{"RPC", S1}, Dep{"RPC", S2"}..etc}
 // SHOULD BE IN GRAPH
-type Dep struct {
-	Id string      // for example rpc
-	D  interface{} // S1
-}
+//type Dep struct {
+//	Id string      // for example rpc
+//	D  interface{} // S1
+//}
 
 // Meta information included into the Vertex
 // May include:
@@ -59,7 +59,7 @@ type Vertex struct {
 
 	// Vertex foo4.S4 also provides (for example)
 	// foo4.DB
-	Provides map[string][]reflect.Value
+	Provides map[string]*reflect.Value
 
 	// for the toposort
 	NumOfDeps int
@@ -231,6 +231,51 @@ func (g *Graph) Order() []string {
 //	c.depsGraph = gr.Graph()
 //
 //	return gr.Order()
+//}
+
+// flattenSimpleGraph flattens the graph, making the following structure
+// S1 -> S2 | S2 -> S4 | S3 -> S2 | S4 |
+// S1 -> S4 |          | S3 -> S4 |    |
+//
+func (g *Graph) flattenSimpleGraph() {
+	//for key, edge := range c.graph.Edges {
+	//	if len(edge) == 0 {
+	//		// no dependencies, just add the standalone
+	//		d := structures.Dep{
+	//			Id: key,
+	//			D:  nil,
+	//		}
+	//
+	//		c.deps[key] = append(c.deps[key], d)
+	//	}
+	//	for _, e := range edge {
+	//		d := structures.Dep{
+	//			Id: key,
+	//			D:  e,
+	//		}
+	//
+	//		c.deps[key] = append(c.deps[key], d)
+	//	}
+	//}
+}
+
+//func (g *Graph) validateSorting(order []string, deps []structures.Dep, vertices []*structures.Vertex) bool {
+//	visited := map[string]bool{}
+//	for _, candidate := range order {
+//		for _, dep := range vertices {
+//			println(dep)
+//			//if _, found := visited[dep.Id]; found && candidate == dep.NumOfDeps {
+//			//	return false
+//			//}
+//		}
+//		visited[candidate] = true
+//	}
+//	for _, dep := range deps {
+//		if _, found := visited[dep.Id]; !found {
+//			return false
+//		}
+//	}
+//	return len(order) == len(deps)
 //}
 
 func (g *Graph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
