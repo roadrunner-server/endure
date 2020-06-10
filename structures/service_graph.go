@@ -59,7 +59,7 @@ type Vertex struct {
 
 	// Vertex foo4.S4 also provides (for example)
 	// foo4.DB
-	Provides []string
+	Provides map[string][]reflect.Value
 
 	// for the toposort
 	NumOfDeps int

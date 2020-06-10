@@ -47,7 +47,7 @@ func NewContainer() *Cascade {
 // vertex is a value -> pointer to the structure
 func (c *Cascade) Register(vertex interface{}) error {
 
-	name := removePointerAsterisk(reflect.TypeOf(vertex).String())
+	vertexId := removePointerAsterisk(reflect.TypeOf(vertex).String())
 	// Meta information
 	rawTypeStr := reflect.TypeOf(vertex).String()
 
@@ -55,17 +55,17 @@ func (c *Cascade) Register(vertex interface{}) error {
 		RawPackage: rawTypeStr,
 	}
 
-	err := c.register(name, vertex, meta)
+	err := c.register(vertexId, vertex, meta)
 	if err != nil {
 		return err
 	}
 
-	err = c.addProviders(name, vertex)
+	err = c.addProviders(vertexId, vertex)
 	if err != nil {
 		return err
 	}
 
-	err = c.addDependencies(name, vertex)
+	err = c.addDependencies(vertexId, vertex)
 	if err != nil {
 		return err
 	}
