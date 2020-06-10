@@ -21,6 +21,6 @@ func (s *S4) Provides() []interface{} {
 }
 
 // this is the same type but different packages
-func (s *S4) createAnotherDB() DB {
-	return DB{}
+func (s *S4) createAnotherDB() (DB, error) {
+	return DB{}, nil
 }

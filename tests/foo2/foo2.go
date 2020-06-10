@@ -16,6 +16,6 @@ func (s2 *S2) Provides() []interface{} {
 	return []interface{}{s2.createDB}
 }
 
-func (s2 *S2) createDB() DB {
-	return DB{}
+func (s2 *S2) createDB() (DB, error) {
+	return DB{}, nil
 }

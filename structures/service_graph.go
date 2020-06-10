@@ -57,6 +57,10 @@ type Vertex struct {
 	// Visited used for the cyclic graphs to detect cycle
 	Visited bool
 
+	// Vertex foo4.S4 also provides (for example)
+	// foo4.DB
+	Provides []string
+
 	// for the toposort
 	NumOfDeps int
 }
@@ -148,7 +152,7 @@ func (g *Graph) AddDep(vertexId, vertexDepId string) {
 	depV.NumOfDeps++
 }
 
-func (g *Graph) AddVertex(id string) {
+func (g *Graph) AddVertex(vertexId string, vertexValue interface{}, meta Meta) {
 
 	//// todo temporary do not visited
 	//g.Graph[name] = &Vertex{
@@ -162,21 +166,25 @@ func (g *Graph) AddVertex(id string) {
 	//// initialization
 	//g.Edges[name] = []string{}
 
-	g.Graph[id] = &Vertex{
+	g.Graph[vertexId] = &Vertex{
 		// todo fill all the information
-		Id:           id,
-		Value:        nil,
-		Meta:         Meta{},
+		Id:           vertexId,
+		Value:        vertexValue,
+		Meta:         meta,
 		Dependencies: nil,
 		Visited:      false,
 	}
-	g.Vertices = append(g.Vertices, g.Graph[id])
+	g.Vertices = append(g.Vertices, g.Graph[vertexId])
 }
 
 func (g *Graph) GetVertex(id string) *Vertex {
-	if _, found := g.Graph[id]; !found {
-		g.AddVertex(id)
+	if g.Graph[id] == nil {
+		g.Graph[id] = &Vertex{}
+		//g.AddVertex(id)
 	}
+	//if _, found := g.Graph[id]; !found {
+	//	g.AddVertex(id)
+	//}
 
 	return g.Graph[id]
 }

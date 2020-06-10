@@ -13,6 +13,9 @@ const Init = "Init"
 type Cascade struct {
 	// new
 	graph     *structures.Graph
+	// map[string]map[string][]reflect.Value
+	// example Vertex S2, S2.Init() + S2.createDB
+	// vertex S1, dependency S2+S2.createDB
 	providers map[string]reflect.Value
 	// old
 
@@ -42,8 +45,9 @@ func NewContainer() *Cascade {
 // Register depends the dependencies
 // name is a name of the dependency, for example - S2
 // vertex is a value -> pointer to the structure
-func (c *Cascade) Register(name string, vertex interface{}) error {
+func (c *Cascade) Register(vertex interface{}) error {
 
+	name := removePointerAsterisk(reflect.TypeOf(vertex).String())
 	// Meta information
 	rawTypeStr := reflect.TypeOf(vertex).String()
 
@@ -76,14 +80,14 @@ func (c *Cascade) register(name string, vertex interface{}, meta structures.Meta
 
 	// just push the vertex
 	// here we can append in future some meta information
-	//c.servicesGraph.AddVertex(name, vertex, meta)
+	c.servicesGraph.AddVertex(name, vertex, meta)
 	return nil
 }
 
 func (c *Cascade) addProviders(vertexId string, vertex interface{}) error {
 	if provider, ok := vertex.(Provider); ok {
 		for _, fn := range provider.Provides() {
-			ret, err := returnType(fn)
+			ret, err := providersReturnType(fn)
 			if err != nil {
 				// todo: delete vertex
 				return err
@@ -91,8 +95,13 @@ func (c *Cascade) addProviders(vertexId string, vertex interface{}) error {
 			// save providers
 			// put into the map with deps
 
+			// ret foo2.DB
 			a := ret.String()
 			_ = a
+
+			// DB
+			z := ret.Name()
+			_ = z
 
 			b := reflect.TypeOf(fn).String()
 			_ = b
@@ -121,6 +130,8 @@ func (c *Cascade) addDependencies(vertexId string, vertex interface{}) error {
 
 			if len(argsTypes) > 0 {
 				for _, at := range argsTypes {
+					a := at.String()
+					_ = a
 					// if we found, that some structure depends on some type
 					// we also save it in the `depends` section
 					// name s1 (for example)
