@@ -101,7 +101,7 @@ func NewGraph() *Graph {
 	}
 }
 
-func (g *Graph) Has(name string) bool {
+func (g *Graph) HasVertex(name string) bool {
 	_, ok := g.Graph[name]
 	return ok
 }
@@ -144,10 +144,16 @@ func (g *Graph) AddValue(vertexId, valueKey string, value reflect.Value) {
 //	return g.vertices
 //}
 
-func (g *Graph) AddDep(vertexId, vertexDepId string) {
+/*
+AddDep doing the following:
+1. Get a vertexID (foo2.S2 for example)
+2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
+3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
+ */
+func (g *Graph) AddDep(vertexID, depID string) {
 	// get vertex for ID and for the deps
-	idV, depV := g.GetVertex(vertexId), g.GetVertex(vertexDepId)
-	// append vertexDepId vertex
+	idV, depV := g.GetVertex(vertexID), g.GetVertex(depID)
+	// append depID vertex
 	idV.Dependencies = append(idV.Dependencies, depV)
 	depV.NumOfDeps++
 }
