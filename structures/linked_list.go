@@ -25,6 +25,43 @@ func (dll *DoublyLinkedList) SetHead(node *DllNode) {
 	dll.InsertBefore(dll.Head, node)
 }
 
+func (dll *DoublyLinkedList) Push(vertex *Vertex) {
+	
+	node := &DllNode{
+		Value: vertex,
+		Prev:  nil,
+		Next:  dll.Head,
+	}
+
+	if dll.Head != nil {
+		dll.Head.Prev = node
+		//dll.SetHead(node)
+	}
+	//node.Next =
+	node.Prev = dll.Head.Prev
+
+	dll.Head = node
+	//
+	//prevHead := dll.Head
+	//node.Prev = prevHead
+
+	//dll.Head = node
+	//
+	//
+	//dll.Head.Next = &DllNode{
+	//	Value: vertex,
+	//	Prev:  dll.Head.Prev,
+	//	Next:  nil,
+	//}
+	//node := &DllNode{
+	//	Value: vertex,
+	//}
+
+	//node.Prev = head
+	//
+	//dll.Head = node
+}
+
 // constant O(1) time and space
 func (dll *DoublyLinkedList) SetTail(node *DllNode) {
 	if dll.Tail == nil {

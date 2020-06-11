@@ -111,28 +111,30 @@ func (c *Cascade) Init() error {
 	// TODO return cycle error
 	sortedVertices := c.graph.TopologicalSort()
 
-	head := &structures.DllNode{
-		Value: sortedVertices[len(sortedVertices) - 1],
-		Prev:  nil,
-		Next:  nil,
-	}
-	c.runList.SetHead(head)
+	//head := &structures.DllNode{
+	//	Value: sortedVertices[len(sortedVertices)-1],
+	//	Prev:  nil,
+	//	Next:  nil,
+	//}
+	//c.runList.SetHead(head)
 
 	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
-	for i := len(sortedVertices) - 2; i >= 0; i-- {
+	for i := 0; i < len(sortedVertices); i++ {
 		println(sortedVertices[i].Id)
 
-		c.runList.InsertAtPosition(i, &structures.DllNode{
-			Value: sortedVertices[i],
-			Prev:  &structures.DllNode{
+		c.runList.Push(sortedVertices[i])
 
-			},
-			Next:  &structures.DllNode{
-				Value: nil,
-				Prev:  nil,
-				Next:  nil,
-			},
-		})
+		//c.runList.InsertAtPosition(i, &structures.DllNode{
+		//	Value: sortedVertices[i],
+		//	Prev:  &structures.DllNode{
+		//
+		//	},
+		//	Next:  &structures.DllNode{
+		//		Value: nil,
+		//		Prev:  nil,
+		//		Next:  nil,
+		//	},
+		//})
 	}
 
 	fmt.Println(sortedVertices)
