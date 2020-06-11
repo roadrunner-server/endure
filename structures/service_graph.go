@@ -162,12 +162,17 @@ func (g *Graph) AddDep(vertexID, depID string) {
 		depV = g.findVertexId(depID)
 	}
 	// append depID vertex
+	for i := 0; i < len(idV.Dependencies); i++ {
+		tmpId := idV.Dependencies[i].Id
+		if tmpId == depV.Id {
+			return
+		}
+	}
 	idV.Dependencies = append(idV.Dependencies, depV)
 	depV.NumOfDeps++
 }
 
 func (g *Graph) AddVertex(vertexId string, vertexValue interface{}, meta Meta) {
-
 	g.Graph[vertexId] = &Vertex{
 		// todo fill all the information
 		Id:           vertexId,
@@ -180,14 +185,6 @@ func (g *Graph) AddVertex(vertexId string, vertexValue interface{}, meta Meta) {
 }
 
 func (g *Graph) GetVertex(id string) *Vertex {
-	//if g.Graph[id] == nil {
-	//	g.Graph[id] = &Vertex{}
-	//	//g.AddVertex(id)
-	//}
-	////if _, found := g.Graph[id]; !found {
-	////	g.AddVertex(id)
-	////}
-
 	return g.Graph[id]
 }
 
@@ -205,29 +202,29 @@ func (g *Graph) findVertexId(depId string) *Vertex {
 
 func (g *Graph) Order() []string {
 	var ord []string
-	//var verticesWoDeps []*Vertex
+	var verticesWoDeps []*Vertex
 
-	//for _, v := range g.vertices {
-	//	if v.NumOfDeps == 0 {
-	//		verticesWoDeps = append(verticesWoDeps, v)
-	//	}
-	//}
-	//
-	//for len(verticesWoDeps) > 0 {
-	//	v := verticesWoDeps[len(verticesWoDeps)-1]
-	//	verticesWoDeps = verticesWoDeps[:len(verticesWoDeps)-1]
-	//
-	//	ord = append(ord, v.Id)
-	//	g.removeDep(v, &verticesWoDeps)
-	//}
+	for _, v := range g.Vertices {
+		if v.NumOfDeps == 0 {
+			verticesWoDeps = append(verticesWoDeps, v)
+		}
+	}
+
+	for len(verticesWoDeps) > 0 {
+		v := verticesWoDeps[len(verticesWoDeps)-1]
+		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps)-1]
+
+		ord = append(ord, v.Id)
+		g.removeDep(v, &verticesWoDeps)
+	}
 
 	return ord
 
 }
 
-//func (c *Cascade) topologicalSort() []string {
+//func (g *Graph) topologicalSort() []string {
 //	ids := make([]string, 0)
-//	for k, _ := range c.servicesGraph.Graph {
+//	for k, _ := range g.Graph {
 //		ids = append(ids, k)
 //	}
 //
