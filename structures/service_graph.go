@@ -106,12 +106,6 @@ func (g *Graph) HasVertex(name string) bool {
 	return ok
 }
 
-func (g *Graph) AddEdge(name string, depends ...string) {
-	for _, n := range depends {
-		g.Edges[name] = append(g.Edges[name], n)
-	}
-}
-
 // BuildRunList builds run list from the graph after topological sort
 // If Graph is not connected, separate lists could be run in parallel
 func (g *Graph) BuildRunList() []*DoublyLinkedList {
@@ -191,8 +185,8 @@ func (g *Graph) GetVertex(id string) *Vertex {
 func (g *Graph) findVertexId(depId string) *Vertex {
 	for i := 0; i < len(g.Vertices); i++ {
 		//vertexId := g.Vertices[i].Id
-		for k, _ := range g.Vertices[i].Provides {
-			if depId == k {
+		for id := range g.Vertices[i].Provides {
+			if depId == id {
 				return g.Vertices[i]
 			}
 		}
@@ -221,73 +215,6 @@ func (g *Graph) Order() []string {
 	return ord
 
 }
-
-//func (g *Graph) topologicalSort() []string {
-//	ids := make([]string, 0)
-//	for k, _ := range g.Graph {
-//		ids = append(ids, k)
-//	}
-//
-//	gr := structures.NewDepsGraph(ids)
-//
-//	for id, dep := range c.deps {
-//		for _, v := range dep {
-//			if v.D == nil {
-//				continue
-//			}
-//			gr.AddDep(id, v.D.(string))
-//		}
-//	}
-//
-//	c.depsGraph = gr.Graph()
-//
-//	return gr.Order()
-//}
-
-// flattenSimpleGraph flattens the graph, making the following structure
-// S1 -> S2 | S2 -> S4 | S3 -> S2 | S4 |
-// S1 -> S4 |          | S3 -> S4 |    |
-//
-func (g *Graph) flattenSimpleGraph() {
-	//for key, edge := range c.graph.Edges {
-	//	if len(edge) == 0 {
-	//		// no dependencies, just add the standalone
-	//		d := structures.Dep{
-	//			Id: key,
-	//			D:  nil,
-	//		}
-	//
-	//		c.deps[key] = append(c.deps[key], d)
-	//	}
-	//	for _, e := range edge {
-	//		d := structures.Dep{
-	//			Id: key,
-	//			D:  e,
-	//		}
-	//
-	//		c.deps[key] = append(c.deps[key], d)
-	//	}
-	//}
-}
-
-//func (g *Graph) validateSorting(order []string, deps []structures.Dep, vertices []*structures.Vertex) bool {
-//	visited := map[string]bool{}
-//	for _, candidate := range order {
-//		for _, dep := range vertices {
-//			println(dep)
-//			//if _, found := visited[dep.Id]; found && candidate == dep.NumOfDeps {
-//			//	return false
-//			//}
-//		}
-//		visited[candidate] = true
-//	}
-//	for _, dep := range deps {
-//		if _, found := visited[dep.Id]; !found {
-//			return false
-//		}
-//	}
-//	return len(order) == len(deps)
-//}
 
 func (g *Graph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
 	for len(vertex.Dependencies) > 0 {
