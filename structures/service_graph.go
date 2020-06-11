@@ -1,14 +1,23 @@
 package structures
 
+import "reflect"
+
 // manages the set of services and their edges
 // type of the Graph: directed
 type Graph struct {
 	// nodes, which can have values
-	// [a, b, c, etc..]
-	Vertices map[string]Vertex
+	// [a, b, c, etc..]5
+	//graph    map[string]*Vertex
+	Graph map[string]*Vertex
+	// List of all Vertices
+	Vertices []*Vertex
+
 	// rows, connections
 	// [a --> b], [a --> c] etc..
+	// DEPENDENCIES
 	Edges map[string][]string
+
+	//graph    map[string]*Vertex
 
 	// global property of the Graph
 	// if the Graph Has disconnected nodes
@@ -16,23 +25,23 @@ type Graph struct {
 	Connected bool
 }
 
+// it results in "RPC" --> S1, and at the end slice with deps will looks like:
+// []deps{Dep{"RPC", S1}, Dep{"RPC", S2"}..etc}
+// SHOULD BE IN GRAPH
+//type Dep struct {
+//	Id string      // for example rpc
+//	D  interface{} // S1
+//}
+
 // Meta information included into the Vertex
 // May include:
 // 1. Disabled info
 // 2. Relation status
 type Meta struct {
 	RawPackage string
-}
-
-// it results in "RPC" --> S1, and at the end slice with deps will looks like:
-// []deps{Dep{"RPC", S1}, Dep{"RPC", S2"}..etc}
-type Dep struct {
-	Id string      // for example rpc
-	D  interface{} // S1
-}
-
-func NewDeps() Dep {
-	return Dep{}
+	// values to provide into INIT or Depends methods
+	// key is a String() method invoked on the reflect.Value
+	Values map[string]reflect.Value
 }
 
 // since we can have cyclic dependencies
@@ -47,6 +56,10 @@ type Vertex struct {
 	Dependencies []*Vertex
 	// Visited used for the cyclic graphs to detect cycle
 	Visited bool
+
+	// Vertex foo4.S4 also provides (for example)
+	// foo4.DB
+	Provides map[string]*reflect.Value
 
 	// for the toposort
 	NumOfDeps int
@@ -80,48 +93,17 @@ type Vertex struct {
 // 1. DIRECTED
 // 2. ACYCLIC
 //
-func NewAL() *Graph {
+func NewGraph() *Graph {
 	return &Graph{
-		Vertices:  make(map[string]Vertex),
+		Graph:     make(map[string]*Vertex),
 		Edges:     make(map[string][]string),
 		Connected: false,
 	}
 }
 
-func (g *Graph) Has(name string) bool {
-	_, ok := g.Vertices[name]
+func (g *Graph) HasVertex(name string) bool {
+	_, ok := g.Graph[name]
 	return ok
-}
-
-// tests whether there is an edge from the vertex x to the vertex y;
-func (g *Graph) Adjacent() {
-
-}
-
-func (g *Graph) AddVertex(name string, value interface{}, raw string) {
-	// todo temporary do not visited
-	g.Vertices[name] = struct {
-		Id           string
-		Value        interface{}
-		Meta         Meta
-		Dependencies []*Vertex
-		Visited      bool
-		NumOfDeps    int
-	}{
-		Value:   value,
-		Visited: false,
-		Meta: Meta{
-			RawPackage: raw,
-		},
-	}
-	// initialization
-	g.Edges[name] = []string{}
-}
-
-func (g *Graph) AddEdge(name string, depends ...string) {
-	for _, n := range depends {
-		g.Edges[name] = append(g.Edges[name], n)
-	}
 }
 
 // BuildRunList builds run list from the graph after topological sort
@@ -130,4 +112,117 @@ func (g *Graph) BuildRunList() []*DoublyLinkedList {
 	//graph := g.createServicesGraph()
 
 	return nil
+}
+
+// []string here all the deps (vertices) S1, S2, S3, S4
+//func NewDepsGraph(deps []string) *depsGraph {
+//	g := &depsGraph{
+//		vertices: make([]*Vertex, 0, 10),
+//		graph:    make(map[string]*Vertex),
+//	}
+//	for _, d := range deps {
+//		g.AddVertex(d)
+//	}
+//	return g
+//}
+
+func (g *Graph) AddValue(vertexId, valueKey string, value reflect.Value) {
+	// get the VERTEX
+	if vertex, ok := g.Graph[vertexId]; ok {
+		// add the vertex dep as value
+		vertex.Meta.Values[valueKey] = value
+	}
+}
+
+//func (g *Graph) Graph() []*Vertex {
+//	return g.vertices
+//}
+
+/*
+AddDep doing the following:
+1. Get a vertexID (foo2.S2 for example)
+2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
+3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
+*/
+func (g *Graph) AddDep(vertexID, depID string) {
+	// idV should always present
+	idV := g.GetVertex(vertexID)
+	if idV == nil {
+		panic("vertex should be in the graph")
+	}
+	// but depV can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
+	depV := g.GetVertex(depID)
+	if depV == nil {
+		depV = g.findVertexId(depID)
+	}
+	// append depID vertex
+	for i := 0; i < len(idV.Dependencies); i++ {
+		tmpId := idV.Dependencies[i].Id
+		if tmpId == depV.Id {
+			return
+		}
+	}
+	idV.Dependencies = append(idV.Dependencies, depV)
+	depV.NumOfDeps++
+}
+
+func (g *Graph) AddVertex(vertexId string, vertexValue interface{}, meta Meta) {
+	g.Graph[vertexId] = &Vertex{
+		// todo fill all the information
+		Id:           vertexId,
+		Value:        vertexValue,
+		Meta:         meta,
+		Dependencies: nil,
+		Visited:      false,
+	}
+	g.Vertices = append(g.Vertices, g.Graph[vertexId])
+}
+
+func (g *Graph) GetVertex(id string) *Vertex {
+	return g.Graph[id]
+}
+
+func (g *Graph) findVertexId(depId string) *Vertex {
+	for i := 0; i < len(g.Vertices); i++ {
+		//vertexId := g.Vertices[i].Id
+		for id := range g.Vertices[i].Provides {
+			if depId == id {
+				return g.Vertices[i]
+			}
+		}
+	}
+	return nil
+}
+
+func (g *Graph) Order() []string {
+	var ord []string
+	var verticesWoDeps []*Vertex
+
+	for _, v := range g.Vertices {
+		if v.NumOfDeps == 0 {
+			verticesWoDeps = append(verticesWoDeps, v)
+		}
+	}
+
+	for len(verticesWoDeps) > 0 {
+		v := verticesWoDeps[len(verticesWoDeps)-1]
+		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps)-1]
+
+		ord = append(ord, v.Id)
+		g.removeDep(v, &verticesWoDeps)
+	}
+
+	return ord
+
+}
+
+func (g *Graph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
+	for len(vertex.Dependencies) > 0 {
+		dep := vertex.Dependencies[len(vertex.Dependencies)-1]
+		vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies)-1]
+		dep.NumOfDeps--
+		if dep.NumOfDeps == 0 {
+			*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
+		}
+	}
 }

@@ -6,7 +6,7 @@ import (
 )
 
 func TestReturnType(t *testing.T) {
-	log.Print(returnType(func() string {
+	log.Print(providersReturnType(func() string {
 		return "hello"
 	}))
 }
