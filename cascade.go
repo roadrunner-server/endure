@@ -209,10 +209,11 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 				fmt.Printf("%s must accept exactly one argument", fn)
 			}
 
+			// TODO correct
 			if len(argsTypes) > 0 {
+				// at is like foo2.S2
 				for _, at := range argsTypes {
-					a := at.String()
-					_ = a
+
 					// if we found, that some structure depends on some type
 					// we also save it in the `depends` section
 					// name s1 (for example)
@@ -220,7 +221,6 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 
 					// from --> to
 					c.graph.AddDep(vertexID, at.String())
-					//c.depends[at] = append(c.depends[at], entry{name: vertexID, vertex: fn})
 				}
 			} else {
 				// todo temporary

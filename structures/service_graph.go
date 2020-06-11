@@ -149,28 +149,24 @@ AddDep doing the following:
 1. Get a vertexID (foo2.S2 for example)
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
- */
+*/
 func (g *Graph) AddDep(vertexID, depID string) {
-	// get vertex for ID and for the deps
-	idV, depV := g.GetVertex(vertexID), g.GetVertex(depID)
+	// idV should always present
+	idV := g.GetVertex(vertexID)
+	if idV == nil {
+		panic("vertex should be in the graph")
+	}
+	// but depV can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
+	depV := g.GetVertex(depID)
+	if depV == nil {
+		depV = g.findVertexId(depID)
+	}
 	// append depID vertex
 	idV.Dependencies = append(idV.Dependencies, depV)
 	depV.NumOfDeps++
 }
 
 func (g *Graph) AddVertex(vertexId string, vertexValue interface{}, meta Meta) {
-
-	//// todo temporary do not visited
-	//g.Graph[name] = &Vertex{
-	//	Id:           "",
-	//	Value:        value,
-	//	Meta:         meta,
-	//	Dependencies: nil,
-	//	Visited:      false,
-	//	NumOfDeps:    0,
-	//}
-	//// initialization
-	//g.Edges[name] = []string{}
 
 	g.Graph[vertexId] = &Vertex{
 		// todo fill all the information
@@ -184,15 +180,27 @@ func (g *Graph) AddVertex(vertexId string, vertexValue interface{}, meta Meta) {
 }
 
 func (g *Graph) GetVertex(id string) *Vertex {
-	if g.Graph[id] == nil {
-		g.Graph[id] = &Vertex{}
-		//g.AddVertex(id)
-	}
-	//if _, found := g.Graph[id]; !found {
-	//	g.AddVertex(id)
+	//if g.Graph[id] == nil {
+	//	g.Graph[id] = &Vertex{}
+	//	//g.AddVertex(id)
 	//}
+	////if _, found := g.Graph[id]; !found {
+	////	g.AddVertex(id)
+	////}
 
 	return g.Graph[id]
+}
+
+func (g *Graph) findVertexId(depId string) *Vertex {
+	for i := 0; i < len(g.Vertices); i++ {
+		//vertexId := g.Vertices[i].Id
+		for k, _ := range g.Vertices[i].Provides {
+			if depId == k {
+				return g.Vertices[i]
+			}
+		}
+	}
+	return nil
 }
 
 func (g *Graph) Order() []string {
