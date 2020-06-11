@@ -114,17 +114,6 @@ func (g *Graph) BuildRunList() []*DoublyLinkedList {
 	return nil
 }
 
-// []string here all the deps (vertices) S1, S2, S3, S4
-//func NewDepsGraph(deps []string) *depsGraph {
-//	g := &depsGraph{
-//		vertices: make([]*Vertex, 0, 10),
-//		graph:    make(map[string]*Vertex),
-//	}
-//	for _, d := range deps {
-//		g.AddVertex(d)
-//	}
-//	return g
-//}
 
 func (g *Graph) AddValue(vertexId, valueKey string, value reflect.Value) {
 	// get the VERTEX
@@ -134,9 +123,6 @@ func (g *Graph) AddValue(vertexId, valueKey string, value reflect.Value) {
 	}
 }
 
-//func (g *Graph) Graph() []*Vertex {
-//	return g.vertices
-//}
 
 /*
 AddDep doing the following:
@@ -194,7 +180,7 @@ func (g *Graph) findVertexId(depId string) *Vertex {
 	return nil
 }
 
-func (g *Graph) Order() []string {
+func (g *Graph) TopologicalSort() []string {
 	var ord []string
 	var verticesWoDeps []*Vertex
 

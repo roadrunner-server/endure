@@ -2,7 +2,7 @@ package structures
 
 // Vertex of the DoublyLL
 type DllNode struct {
-	Value      int
+	Value      *Vertex
 	Prev, Next *DllNode
 }
 
@@ -82,12 +82,12 @@ func (dll *DoublyLinkedList) InsertAtPosition(position int, nodeToInsert *DllNod
 	}
 }
 
-func (dll *DoublyLinkedList) RemoveNodesWithValue(value int) {
+func (dll *DoublyLinkedList) RemoveNodesWithVertexId(vertexId string) {
 	node := dll.Head
 	for node != nil {
 		nodeToRemove := node
 		node = node.Next
-		if nodeToRemove.Value == value {
+		if nodeToRemove.Value.Id == vertexId {
 			dll.Remove(node)
 		}
 	}
@@ -103,9 +103,9 @@ func (dll *DoublyLinkedList) Remove(node *DllNode) {
 	dll.removeNode(node)
 }
 
-func (dll *DoublyLinkedList) ContainsNodeWithValue(value int) bool {
+func (dll *DoublyLinkedList) ContainsNodeWithVertexId(vertexId string) bool {
 	node := dll.Head
-	for node != nil && node.Value != value {
+	for node != nil && node.Value.Id != vertexId {
 		node = node.Next
 	}
 	return node != nil

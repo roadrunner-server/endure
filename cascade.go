@@ -106,7 +106,7 @@ func (c *Cascade) Init() error {
 		return err
 	}
 
-	o := c.graph.Order()
+	o := c.graph.TopologicalSort()
 	fmt.Println(o)
 
 	return nil
