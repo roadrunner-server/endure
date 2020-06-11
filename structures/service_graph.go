@@ -114,7 +114,6 @@ func (g *Graph) BuildRunList() []*DoublyLinkedList {
 	return nil
 }
 
-
 func (g *Graph) AddValue(vertexId, valueKey string, value reflect.Value) {
 	// get the VERTEX
 	if vertex, ok := g.Graph[vertexId]; ok {
@@ -122,7 +121,6 @@ func (g *Graph) AddValue(vertexId, valueKey string, value reflect.Value) {
 		vertex.Meta.Values[valueKey] = value
 	}
 }
-
 
 /*
 AddDep doing the following:
@@ -180,8 +178,8 @@ func (g *Graph) findVertexId(depId string) *Vertex {
 	return nil
 }
 
-func (g *Graph) TopologicalSort() []string {
-	var ord []string
+func (g *Graph) TopologicalSort() []*Vertex {
+	var ord []*Vertex
 	var verticesWoDeps []*Vertex
 
 	for _, v := range g.Vertices {
@@ -194,7 +192,7 @@ func (g *Graph) TopologicalSort() []string {
 		v := verticesWoDeps[len(verticesWoDeps)-1]
 		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps)-1]
 
-		ord = append(ord, v.Id)
+		ord = append(ord, v)
 		g.removeDep(v, &verticesWoDeps)
 	}
 
@@ -203,12 +201,19 @@ func (g *Graph) TopologicalSort() []string {
 }
 
 func (g *Graph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
-	for len(vertex.Dependencies) > 0 {
-		dep := vertex.Dependencies[len(vertex.Dependencies)-1]
-		vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies)-1]
-		dep.NumOfDeps--
+	for i := 0; i < len(vertex.Dependencies); i++ {
+		dep := vertex.Dependencies[i]
+		dep.NumOfDeps --
 		if dep.NumOfDeps == 0 {
 			*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
 		}
 	}
+	//for len(vertex.Dependencies) > 0 {
+	//	dep := vertex.Dependencies[len(vertex.Dependencies)-1]
+	//	//vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies)-1]
+	//	dep.NumOfDeps--
+	//	if dep.NumOfDeps == 0 {
+	//		*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
+	//	}
+	//}
 }

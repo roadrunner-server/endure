@@ -12,12 +12,14 @@ import (
 const Init = "Init"
 
 type Cascade struct {
-	graph *structures.Graph
+	graph   *structures.Graph
+	runList *structures.DoublyLinkedList
 }
 
 func NewContainer() *Cascade {
 	return &Cascade{
-		graph: structures.NewGraph(),
+		graph:   structures.NewGraph(),
+		runList: structures.NewDoublyLinkedList(),
 	}
 }
 
@@ -98,7 +100,6 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 	return nil
 }
 
-
 // Init container and all service edges.
 func (c *Cascade) Init() error {
 	// traverse the graph
@@ -106,8 +107,35 @@ func (c *Cascade) Init() error {
 		return err
 	}
 
-	o := c.graph.TopologicalSort()
-	fmt.Println(o)
+	// we should buld run list in the reverse order
+	// TODO return cycle error
+	sortedVertices := c.graph.TopologicalSort()
+
+	head := &structures.DllNode{
+		Value: sortedVertices[len(sortedVertices) - 1],
+		Prev:  nil,
+		Next:  nil,
+	}
+	c.runList.SetHead(head)
+
+	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
+	for i := len(sortedVertices) - 2; i >= 0; i-- {
+		println(sortedVertices[i].Id)
+
+		c.runList.InsertAtPosition(i, &structures.DllNode{
+			Value: sortedVertices[i],
+			Prev:  &structures.DllNode{
+
+			},
+			Next:  &structures.DllNode{
+				Value: nil,
+				Prev:  nil,
+				Next:  nil,
+			},
+		})
+	}
+
+	fmt.Println(sortedVertices)
 
 	return nil
 }
@@ -137,11 +165,11 @@ func (c *Cascade) calculateEdges() error {
 		}
 
 		/*
-		At this step we know (and build) all dependencies via the Depends interface and connected all providers
-		to it's dependencies.
-		The next step is to calculate dependencies provided by the Init() method
-		for example S1.Init(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
-		 */
+			At this step we know (and build) all dependencies via the Depends interface and connected all providers
+			to it's dependencies.
+			The next step is to calculate dependencies provided by the Init() method
+			for example S1.Init(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
+		*/
 		err = c.calculateInitDeps(vertexID, init)
 		if err != nil {
 			return err
