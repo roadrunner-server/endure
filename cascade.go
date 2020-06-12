@@ -14,6 +14,11 @@ const Init = "Init"
 type Cascade struct {
 	graph   *structures.Graph
 	runList *structures.DoublyLinkedList
+	// concrete types
+	// for example
+	// foo2.DB with value
+	// foo2.S2 structure
+	provides map[string]*reflect.Value
 	//logger za
 }
 
@@ -118,12 +123,10 @@ func (c *Cascade) Init() error {
 
 	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
 	for i := 1; i < len(sortedVertices); i++ {
-		println(sortedVertices[i].Id)
-
 		c.runList.Push(sortedVertices[i])
 	}
 
-	return c.run()
+	return c.run(c.runList.Head)
 }
 
 // calculateEdges calculates simple graph for the dependencies
@@ -232,7 +235,17 @@ func (c *Cascade) calculateInitDeps(vertexID string, initMethod reflect.Method) 
 	return nil
 }
 
-func (c *Cascade) run() error {
+func (c *Cascade) run(n *structures.DllNode) error {
+	// traverse the dll
+	for n != nil {
+		println(n.Value.Id)
+
+
+
+
+		n = n.Next
+	}
+
 
 	return nil
 }

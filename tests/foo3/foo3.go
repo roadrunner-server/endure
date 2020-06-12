@@ -20,6 +20,6 @@ func (s3 *S3) SomeOtherDep(svc foo4.S4, svc2 foo2.S2) error {
 }
 
 // Depends on S3
-func (s3 *S3) Init(svc foo2.S2) {
-
+func (s3 *S3) Init(svc foo2.S2) error {
+	return nil
 }

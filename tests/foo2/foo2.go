@@ -8,8 +8,8 @@ type DB struct {
 type S2 struct {
 }
 
-func (s2 *S2) Init(db foo4.DB) {
-
+func (s2 *S2) Init(db foo4.DB) error {
+	return nil
 }
 
 func (s2 *S2) Provides() []interface{} {
