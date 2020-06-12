@@ -14,6 +14,7 @@ const Init = "Init"
 type Cascade struct {
 	graph   *structures.Graph
 	runList *structures.DoublyLinkedList
+	//logger za
 }
 
 func NewContainer() *Cascade {
@@ -111,35 +112,18 @@ func (c *Cascade) Init() error {
 	// TODO return cycle error
 	sortedVertices := c.graph.TopologicalSort()
 
-	//head := &structures.DllNode{
-	//	Value: sortedVertices[len(sortedVertices)-1],
-	//	Prev:  nil,
-	//	Next:  nil,
-	//}
-	//c.runList.SetHead(head)
+	// TODO properly handle the len of the sorted vertices
+	c.runList.SetHead(&structures.DllNode{
+		Value: sortedVertices[0]})
 
 	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
-	for i := 0; i < len(sortedVertices); i++ {
+	for i := 1; i < len(sortedVertices); i++ {
 		println(sortedVertices[i].Id)
 
 		c.runList.Push(sortedVertices[i])
-
-		//c.runList.InsertAtPosition(i, &structures.DllNode{
-		//	Value: sortedVertices[i],
-		//	Prev:  &structures.DllNode{
-		//
-		//	},
-		//	Next:  &structures.DllNode{
-		//		Value: nil,
-		//		Prev:  nil,
-		//		Next:  nil,
-		//	},
-		//})
 	}
 
-	fmt.Println(sortedVertices)
-
-	return nil
+	return c.run()
 }
 
 // calculateEdges calculates simple graph for the dependencies
@@ -245,6 +229,11 @@ func (c *Cascade) calculateInitDeps(vertexID string, initMethod reflect.Method) 
 		c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()))
 
 	}
+	return nil
+}
+
+func (c *Cascade) run() error {
+
 	return nil
 }
 
