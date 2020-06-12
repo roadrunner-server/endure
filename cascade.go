@@ -10,6 +10,7 @@ import (
 
 // Init is the function name for the reflection
 const Init = "Init"
+const Provides = "Provides"
 
 type Cascade struct {
 	graph   *structures.Graph
@@ -197,7 +198,7 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 					if isPrimitive(at.String()) {
 						continue
 					}
-						atStr := at.String()
+					atStr := at.String()
 					if vertexID == atStr {
 						continue
 					}
@@ -248,8 +249,6 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 	for n != nil {
 		//println(n.Vertex.Id)
 
-		in := make([]reflect.Value, 0, 1)
-
 		init, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(Init)
 		if !ok {
 			panic("init method should be implemented")
@@ -261,7 +260,10 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 		}
 
 		// only service itself
+		// we should run Init() and Provides() if exists
 		if len(initArgs) == 1 {
+			in := make([]reflect.Value, 0, 1)
+
 			for i := 0; i < init.Type.NumIn(); i++ {
 				v := init.Type.In(i)
 
@@ -277,6 +279,28 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 				e := rErr.(error)
 				panic(e)
 			}
+
+			// type implements Provider interface
+			if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) == true {
+				providesMethod, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(Provides)
+				if !ok {
+					panic("method Provides should be")
+				}
+
+				// we can reuse IN with 1 arg here, since this arg is function receiver
+				// Func.Call here is Provides() []interface
+				// return is []interface
+				ret := providesMethod.Func.Call(in)
+
+				// v here is []interface{}
+				//for _, v := range ret {
+				aa := ret[0].MethodByName("CreateAnotherDb")
+				_ = aa
+				println(ret[0].Index(0).Type().String())
+				//}
+
+				//panic("true")
+			}
 		}
 
 		for i := 1; i < len(initArgs); i++ {
@@ -289,6 +313,7 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 
 	return nil
 }
+
 
 func removePointerAsterisk(s string) string {
 	return strings.Trim(s, "*")

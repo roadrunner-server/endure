@@ -139,7 +139,7 @@ func (g *Graph) AddDep(vertexID, depID string) {
 	// but depV can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
 	depV := g.GetVertex(depID)
 	if depV == nil {
-		depV = g.findVertexId(depID)
+		depV = g.FindVertex(depID)
 	}
 	// append depID vertex
 	for i := 0; i < len(idV.Dependencies); i++ {
@@ -168,11 +168,12 @@ func (g *Graph) GetVertex(id string) *Vertex {
 	return g.Graph[id]
 }
 
-func (g *Graph) findVertexId(depId string) *Vertex {
+func (g *Graph) FindVertex(depId string) *Vertex {
 	for i := 0; i < len(g.Vertices); i++ {
-		//vertexId := g.Vertices[i].Id
-		for id := range g.Vertices[i].Provides {
-			if depId == id {
+		for providerId := range g.Vertices[i].Provides {
+			// if depId is eq to providerId
+			// like foo2.DB == foo2.DB, then return vertexId --> foo2.S2
+			if depId == providerId {
 				return g.Vertices[i]
 			}
 		}
