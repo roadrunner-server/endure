@@ -38,9 +38,11 @@ type Graph struct {
 // 1. Disabled info
 // 2. Relation status
 type Meta struct {
-	RawPackage string
+	RawTypeName string
+	//DepIds contains raw dep ids not like foo2.S2, but foo2.DB
+	DepIds []string
 	// values to provide into INIT or Depends methods
-	// key is a String() method invoked on the reflect.Value
+	// key is a String() method invoked on the reflect.Vertex
 	Values map[string]reflect.Value
 }
 
@@ -48,8 +50,8 @@ type Meta struct {
 // when we traverse the Graph, we should mark nodes as Visited or not to detect cycle
 type Vertex struct {
 	Id string
-	// Value
-	Value interface{}
+	// Vertex
+	Iface interface{}
 	// Meta information about current Vertex
 	Meta Meta
 	// Dependencies of the node
@@ -150,11 +152,11 @@ func (g *Graph) AddDep(vertexID, depID string) {
 	depV.NumOfDeps++
 }
 
-func (g *Graph) AddVertex(vertexId string, vertexValue interface{}, meta Meta) {
+func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
 	g.Graph[vertexId] = &Vertex{
 		// todo fill all the information
 		Id:           vertexId,
-		Value:        vertexValue,
+		Iface:        vertexIface,
 		Meta:         meta,
 		Dependencies: nil,
 		Visited:      false,
@@ -203,11 +205,12 @@ func (g *Graph) TopologicalSort() []*Vertex {
 func (g *Graph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
 	for i := 0; i < len(vertex.Dependencies); i++ {
 		dep := vertex.Dependencies[i]
-		dep.NumOfDeps --
+		dep.NumOfDeps--
 		if dep.NumOfDeps == 0 {
 			*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
 		}
 	}
+	// TODO remove dependencies thus we don't need it in the run list
 	//for len(vertex.Dependencies) > 0 {
 	//	dep := vertex.Dependencies[len(vertex.Dependencies)-1]
 	//	//vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies)-1]

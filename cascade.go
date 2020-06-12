@@ -38,7 +38,7 @@ func (c *Cascade) Register(vertex interface{}) error {
 	rawTypeStr := reflect.TypeOf(vertex).String()
 
 	meta := structures.Meta{
-		RawPackage: rawTypeStr,
+		RawTypeName: rawTypeStr,
 	}
 
 	/* Register the type
@@ -113,33 +113,32 @@ func (c *Cascade) Init() error {
 		return err
 	}
 
-	// we should buld run list in the reverse order
+	// we should buld runForward list in the reverse order
 	// TODO return cycle error
 	sortedVertices := c.graph.TopologicalSort()
 
 	// TODO properly handle the len of the sorted vertices
 	c.runList.SetHead(&structures.DllNode{
-		Value: sortedVertices[0]})
+		Vertex: sortedVertices[0]})
 
 	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
 	for i := 1; i < len(sortedVertices); i++ {
 		c.runList.Push(sortedVertices[i])
 	}
 
-	return c.run(c.runList.Head)
+	return c.runForward(c.runList.Head)
 }
 
 // calculateEdges calculates simple graph for the dependencies
 func (c *Cascade) calculateEdges() error {
 	// vertexID for example S2
 	for vertexID, vrtx := range c.graph.Graph {
-		init, ok := reflect.TypeOf(vrtx.Value).MethodByName(Init)
+		init, ok := reflect.TypeOf(vrtx.Iface).MethodByName(Init)
 		if !ok {
 			panic("init method should be implemented")
 		}
-		_ = init
 
-		/* Add the dependencies (if) which this vertex needs to run
+		/* Add the dependencies (if) which this vertex needs to runForward
 		Information we know at this step is:
 		1. VertexId
 		2. Vertex structure value (interface)
@@ -148,7 +147,7 @@ func (c *Cascade) calculateEdges() error {
 		5. Name of the dependencies which we should found
 		We add 3 and 4 points to the Vertex
 		*/
-		err := c.calculateRegisterDeps(vertexID, vrtx.Value)
+		err := c.calculateRegisterDeps(vertexID, vrtx.Iface)
 		if err != nil {
 			return err
 		}
@@ -193,7 +192,12 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 			if len(argsTypes) > 0 {
 				// at is like foo2.S2
 				for _, at := range argsTypes {
-					atStr := at.String()
+					// check if type is primitive type
+					// TODO show warning, because why to receive primitive type in Init() ??? Any sense?
+					if isPrimitive(at.String()) {
+						continue
+					}
+						atStr := at.String()
 					if vertexID == atStr {
 						continue
 					}
@@ -235,21 +239,66 @@ func (c *Cascade) calculateInitDeps(vertexID string, initMethod reflect.Method) 
 	return nil
 }
 
-func (c *Cascade) run(n *structures.DllNode) error {
+/*
+Traverse the DLL in the forward direction
+
+*/
+func (c *Cascade) runForward(n *structures.DllNode) error {
 	// traverse the dll
 	for n != nil {
-		println(n.Value.Id)
+		//println(n.Vertex.Id)
 
+		in := make([]reflect.Value, 0, 1)
 
+		init, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(Init)
+		if !ok {
+			panic("init method should be implemented")
+		}
 
+		initArgs, err := functionParameters(init)
+		if err != nil {
+			return err
+		}
+
+		// only service itself
+		if len(initArgs) == 1 {
+			for i := 0; i < init.Type.NumIn(); i++ {
+				v := init.Type.In(i)
+
+				if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) == true {
+					in = append(in, reflect.ValueOf(n.Vertex.Iface))
+				}
+
+			}
+
+			ret := init.Func.Call(in)
+			rErr := ret[0].Interface()
+			if rErr != nil {
+				e := rErr.(error)
+				panic(e)
+			}
+		}
+
+		for i := 1; i < len(initArgs); i++ {
+			aaa := initArgs[i].String()
+			_ = aaa
+		}
 
 		n = n.Next
 	}
-
 
 	return nil
 }
 
 func removePointerAsterisk(s string) string {
 	return strings.Trim(s, "*")
+}
+
+func isPrimitive(str string) bool {
+	switch str {
+	case "int":
+		return true
+	default:
+		return false
+	}
 }

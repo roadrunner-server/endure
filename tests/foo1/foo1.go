@@ -14,7 +14,7 @@ func (s1 *S1) Depends() []interface{} {
 	}
 }
 
-func (s1 *S1) AddService(svc foo4.S4) error {
+func (s1 *S1) AddService(svc foo4.S4, a int) error {
 	return nil
 }
 
