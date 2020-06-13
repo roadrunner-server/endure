@@ -1,6 +1,9 @@
 package structures
 
-import "reflect"
+import (
+	"errors"
+	"reflect"
+)
 
 // manages the set of services and their edges
 // type of the Graph: directed
@@ -56,15 +59,27 @@ type Vertex struct {
 	Meta Meta
 	// Dependencies of the node
 	Dependencies []*Vertex
-	// Visited used for the cyclic graphs to detect cycle
-	Visited bool
 
 	// Vertex foo4.S4 also provides (for example)
 	// foo4.DB
-	Provides map[string]*reflect.Value
+	Provides []string
 
 	// for the toposort
 	NumOfDeps int
+}
+
+func (v *Vertex) AddValue(valueKey string, value reflect.Value) error {
+	// get the VERTEX
+	if v.Meta.Values == nil {
+		v.Meta.Values = make(map[string]reflect.Value)
+	}
+
+	if _, ok := v.Meta.Values[valueKey]; ok {
+		return errors.New("key already present in the map")
+	}
+
+	v.Meta.Values[valueKey] = value
+	return nil
 }
 
 // NewAL initializes adjacency list to store the Graph
@@ -116,14 +131,6 @@ func (g *Graph) BuildRunList() []*DoublyLinkedList {
 	return nil
 }
 
-func (g *Graph) AddValue(vertexId, valueKey string, value reflect.Value) {
-	// get the VERTEX
-	if vertex, ok := g.Graph[vertexId]; ok {
-		// add the vertex dep as value
-		vertex.Meta.Values[valueKey] = value
-	}
-}
-
 /*
 AddDep doing the following:
 1. Get a vertexID (foo2.S2 for example)
@@ -159,7 +166,6 @@ func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
 		Iface:        vertexIface,
 		Meta:         meta,
 		Dependencies: nil,
-		Visited:      false,
 	}
 	g.Vertices = append(g.Vertices, g.Graph[vertexId])
 }
@@ -170,7 +176,8 @@ func (g *Graph) GetVertex(id string) *Vertex {
 
 func (g *Graph) FindVertex(depId string) *Vertex {
 	for i := 0; i < len(g.Vertices); i++ {
-		for providerId := range g.Vertices[i].Provides {
+		for j := 0; j < len(g.Vertices[i].Provides); j++ {
+			providerId := g.Vertices[i].Provides[j]
 			// if depId is eq to providerId
 			// like foo2.DB == foo2.DB, then return vertexId --> foo2.S2
 			if depId == providerId {

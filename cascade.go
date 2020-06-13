@@ -94,10 +94,7 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 			// get the Vertex from the graph (gVertex)
 			gVertex := c.graph.GetVertex(vertexID)
 			if gVertex.Provides == nil {
-				gVertex.Provides = make(map[string]*reflect.Value)
-			}
-			if gVertex.Provides[typeStr] == nil {
-				gVertex.Provides[typeStr] = &reflect.Value{}
+				gVertex.Provides = make([]string, 0, 1)
 			}
 
 			if gVertex.Meta.FnsToInvoke == nil {
@@ -106,8 +103,7 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 
 			gVertex.Meta.FnsToInvoke = append(gVertex.Meta.FnsToInvoke, functionName(fn))
 
-			tmp := reflect.ValueOf(ret)
-			gVertex.Provides[typeStr] = &tmp
+			gVertex.Provides = append(gVertex.Provides, typeStr)
 		}
 	}
 	return nil
@@ -303,13 +299,15 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 							e := rErr.(error)
 							panic(e)
 						}
-						
+
+						n.Vertex.AddValue(ret[0].Type().String(), ret[0])
+
+						// here we should connect foo4.DB with it's Value
+						//c.graph.AddValue(n.Vertex.Id, "foo4.DB", ret[0])
+
 						println("fdsf")
 					}
 				}
-
-
-
 
 				//panic("true")
 			}
