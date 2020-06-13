@@ -86,22 +86,28 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 		for _, fn := range provider.Provides() {
 			ret, err := providersReturnType(fn)
 			if err != nil {
-				// todo: delete vertex
+				// todo: delete gVertex
 				return err
 			}
 
 			typeStr := ret.String()
-			// get the vertex
-			vertex := c.graph.GetVertex(vertexID)
-			if vertex.Provides == nil {
-				vertex.Provides = make(map[string]*reflect.Value)
+			// get the Vertex from the graph (gVertex)
+			gVertex := c.graph.GetVertex(vertexID)
+			if gVertex.Provides == nil {
+				gVertex.Provides = make(map[string]*reflect.Value)
 			}
-			if vertex.Provides[typeStr] == nil {
-				vertex.Provides[typeStr] = &reflect.Value{}
+			if gVertex.Provides[typeStr] == nil {
+				gVertex.Provides[typeStr] = &reflect.Value{}
 			}
 
+			if gVertex.Meta.FnsToInvoke == nil {
+				gVertex.Meta.FnsToInvoke = make([]string, 0, 5)
+			}
+
+			gVertex.Meta.FnsToInvoke = append(gVertex.Meta.FnsToInvoke, functionName(fn))
+
 			tmp := reflect.ValueOf(ret)
-			vertex.Provides[typeStr] = &tmp
+			gVertex.Provides[typeStr] = &tmp
 		}
 	}
 	return nil
@@ -282,22 +288,28 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 
 			// type implements Provider interface
 			if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) == true {
-				providesMethod, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(Provides)
-				if !ok {
-					panic("method Provides should be")
+				// if type implements Provider() it should has FnsToInvoke
+				if n.Vertex.Meta.FnsToInvoke != nil {
+					for i := 0; i < len(n.Vertex.Meta.FnsToInvoke); i++ {
+						m, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(n.Vertex.Meta.FnsToInvoke[i])
+						if !ok {
+							panic("method Provides should be")
+						}
+
+						ret := m.Func.Call(in)
+						// handle error
+						rErr := ret[1].Interface()
+						if rErr != nil {
+							e := rErr.(error)
+							panic(e)
+						}
+						
+						println("fdsf")
+					}
 				}
 
-				// we can reuse IN with 1 arg here, since this arg is function receiver
-				// Func.Call here is Provides() []interface
-				// return is []interface
-				ret := providesMethod.Func.Call(in)
 
-				// v here is []interface{}
-				//for _, v := range ret {
-				aa := ret[0].MethodByName("CreateAnotherDb")
-				_ = aa
-				println(ret[0].Index(0).Type().String())
-				//}
+
 
 				//panic("true")
 			}
@@ -313,7 +325,6 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 
 	return nil
 }
-
 
 func removePointerAsterisk(s string) string {
 	return strings.Trim(s, "*")

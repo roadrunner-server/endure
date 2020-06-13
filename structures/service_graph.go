@@ -39,8 +39,8 @@ type Graph struct {
 // 2. Relation status
 type Meta struct {
 	RawTypeName string
-	//DepIds contains raw dep ids not like foo2.S2, but foo2.DB
-	DepIds []string
+	//FnsToInvoke is the function names to invoke if type implements Provides() interface
+	FnsToInvoke []string
 	// values to provide into INIT or Depends methods
 	// key is a String() method invoked on the reflect.Vertex
 	Values map[string]reflect.Value

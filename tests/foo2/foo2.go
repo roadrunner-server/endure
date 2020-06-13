@@ -13,9 +13,9 @@ func (s2 *S2) Init(db foo4.DB) error {
 }
 
 func (s2 *S2) Provides() []interface{} {
-	return []interface{}{s2.createDB}
+	return []interface{}{s2.createDb}
 }
 
-func (s2 *S2) createDB() (DB, error) {
+func (s2 *S2) createDb() (DB, error) {
 	return DB{}, nil
 }
