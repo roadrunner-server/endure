@@ -9,8 +9,8 @@ import (
 	"github.com/spiral/cascade/structures"
 )
 
-// Init is the function name for the reflection
-const Init = "Init"
+// InitMethodName is the function name for the reflection
+const InitMethodName = "Init"
 const Provides = "Provides"
 
 type Cascade struct {
@@ -21,7 +21,7 @@ type Cascade struct {
 	// foo2.DB with value
 	// foo2.S2 structure
 	provides map[string]*reflect.Value
-	//logger za
+	//logger zap
 }
 
 func NewContainer() *Cascade {
@@ -110,7 +110,7 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 	return nil
 }
 
-// Init container and all service edges.
+// InitMethodName container and all service edges.
 func (c *Cascade) Init() error {
 	// traverse the graph
 	if err := c.calculateEdges(); err != nil {
@@ -137,7 +137,7 @@ func (c *Cascade) Init() error {
 func (c *Cascade) calculateEdges() error {
 	// vertexID for example S2
 	for vertexID, vrtx := range c.graph.Graph {
-		init, ok := reflect.TypeOf(vrtx.Iface).MethodByName(Init)
+		init, ok := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
 		if !ok {
 			panic("init method should be implemented")
 		}
@@ -159,8 +159,8 @@ func (c *Cascade) calculateEdges() error {
 		/*
 			At this step we know (and build) all dependencies via the Depends interface and connected all providers
 			to it's dependencies.
-			The next step is to calculate dependencies provided by the Init() method
-			for example S1.Init(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
+			The next step is to calculate dependencies provided by the InitMethodName() method
+			for example S1.InitMethodName(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
 		*/
 		err = c.calculateInitDeps(vertexID, init)
 		if err != nil {
@@ -197,7 +197,7 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 				// at is like foo2.S2
 				for _, at := range argsTypes {
 					// check if type is primitive type
-					// TODO show warning, because why to receive primitive type in Init() ??? Any sense?
+					// TODO show warning, because why to receive primitive type in InitMethodName() ??? Any sense?
 					if isPrimitive(at.String()) {
 						continue
 					}
@@ -211,7 +211,7 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 					// vertex - S4 func
 
 					// from --> to
-					c.graph.AddDep(vertexID, atStr)
+					c.graph.AddDep(vertexID, atStr, structures.Depends)
 				}
 			} else {
 				// todo temporary
@@ -232,13 +232,12 @@ func (c *Cascade) calculateInitDeps(vertexID string, initMethod reflect.Method) 
 
 	// iterate over all function parameters
 	for _, initArg := range initArgs {
-
+		// receiver
 		if vertexID == removePointerAsterisk(initArg.String()) {
 			continue
 		}
 
-		c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()))
-
+		c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init)
 	}
 	return nil
 }
@@ -250,7 +249,7 @@ Traverse the DLL in the forward direction
 func (c *Cascade) runForward(n *structures.DllNode) error {
 	// traverse the dll
 	for n != nil {
-		init, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(Init)
+		init, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(InitMethodName)
 		if !ok {
 			panic("init method should be implemented")
 		}
@@ -260,10 +259,13 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 			return err
 		}
 
-		// If len(initArgs) is eq to 1, than we deal with empty Init() method
+		// If len(initArgs) is eq to 1, than we deal with empty InitMethodName() method
+		//
 		if len(initArgs) == 1 {
 			err = c.noDepsCall(init, n)
 		} else {
+			// else, we deal with variadic len of InitMethodName function parameters InitMethodName(a,b,c, etc)
+			// we should resolve all it all
 			err = c.depsCall(init, n)
 		}
 
@@ -291,6 +293,14 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 	if rErr != nil {
 		e := rErr.(error)
 		panic(e)
+	}
+
+	// just to be safe here
+	if len(in) > 0 {
+		err := n.Vertex.AddValue(in[0].Type().String(), in[0])
+		if err != nil {
+			return err
+		}
 	}
 
 	// type implements Provider interface
@@ -327,6 +337,68 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 }
 
 func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
+	in := make([]reflect.Value, 0, 1)
+
+	for i := 0; i < init.Type.NumIn(); i++ {
+		v := init.Type.In(i)
+
+		// TODO redundant?? we already know, that type is convertibleTO
+		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) == true {
+			in = append(in, reflect.ValueOf(n.Vertex.Iface))
+		}
+	}
+
+	//n.Vertex.
+
+	// Iterate over dependencies
+	// And search in Vertices for the provided types
+
+	ret := init.Func.Call(in)
+	rErr := ret[0].Interface()
+	if rErr != nil {
+		e := rErr.(error)
+		panic(e)
+	}
+
+
+	// just to be safe here
+	if len(in) > 0 {
+		err := n.Vertex.AddValue(in[0].Type().String(), in[0])
+		if err != nil {
+			return err
+		}
+	}
+
+	// type implements Provider interface
+	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) == true {
+		// if type implements Provider() it should has FnsToInvoke
+		if n.Vertex.Meta.FnsToInvoke != nil {
+			for i := 0; i < len(n.Vertex.Meta.FnsToInvoke); i++ {
+				m, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(n.Vertex.Meta.FnsToInvoke[i])
+				if !ok {
+					panic("method Provides should be")
+				}
+
+				ret := m.Func.Call(in)
+				// handle error
+				if len(ret) > 1 {
+					rErr := ret[1].Interface()
+					if rErr != nil {
+						e := rErr.(error)
+						panic(e)
+					}
+
+					err := n.Vertex.AddValue(ret[0].Type().String(), ret[0])
+					if err != nil {
+						return err
+					}
+				} else {
+					return errors.New("provider should return Value and error types")
+				}
+			}
+		}
+	}
+
 	return nil
 }
 

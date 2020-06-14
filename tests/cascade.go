@@ -13,7 +13,7 @@ import (
 //type S8 struct {
 //}
 //
-//func (s8 *S8) Init(s1 S1) {
+//func (s8 *S8) InitMethodName(s1 S1) {
 //
 //}
 //
@@ -28,7 +28,7 @@ import (
 //type S7 struct {
 //}
 //
-//func (s7 *S7) Init(s4 *test_other_package.S4) {
+//func (s7 *S7) InitMethodName(s4 *test_other_package.S4) {
 //
 //}
 //
@@ -64,7 +64,7 @@ import (
 //type S5 struct {
 //}
 //
-//func (s5 *S5) Init(sd S7SomeDep) {
+//func (s5 *S5) InitMethodName(sd S7SomeDep) {
 //
 //}
 

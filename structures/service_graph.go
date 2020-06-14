@@ -5,6 +5,13 @@ import (
 	"reflect"
 )
 
+type Kind int
+
+const (
+	Init Kind = iota
+	Depends
+)
+
 // manages the set of services and their edges
 // type of the Graph: directed
 type Graph struct {
@@ -47,6 +54,14 @@ type Meta struct {
 	// values to provide into INIT or Depends methods
 	// key is a String() method invoked on the reflect.Vertex
 	Values map[string]reflect.Value
+
+	// List of the vertex deps
+	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
+	InitDepsList []string
+
+	// List of the vertex deps
+	// foo4.DB, foo4.S4 etc.. which were found in the Depends() method
+	DepsList []string
 }
 
 // since we can have cyclic dependencies
@@ -123,21 +138,13 @@ func (g *Graph) HasVertex(name string) bool {
 	return ok
 }
 
-// BuildRunList builds run list from the graph after topological sort
-// If Graph is not connected, separate lists could be run in parallel
-func (g *Graph) BuildRunList() []*DoublyLinkedList {
-	//graph := g.createServicesGraph()
-
-	return nil
-}
-
 /*
 AddDep doing the following:
 1. Get a vertexID (foo2.S2 for example)
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
-func (g *Graph) AddDep(vertexID, depID string) {
+func (g *Graph) AddDep(vertexID, depID string, kind Kind) {
 	// idV should always present
 	idV := g.GetVertex(vertexID)
 	if idV == nil {
@@ -148,6 +155,20 @@ func (g *Graph) AddDep(vertexID, depID string) {
 	if depV == nil {
 		depV = g.FindVertex(depID)
 	}
+
+	switch kind {
+	case Init:
+		if idV.Meta.InitDepsList == nil {
+			idV.Meta.InitDepsList = make([]string, 0, 1)
+		}
+		idV.Meta.InitDepsList = append(idV.Meta.InitDepsList, depID)
+	case Depends:
+		if idV.Meta.DepsList == nil {
+			idV.Meta.DepsList = make([]string, 0, 1)
+		}
+		idV.Meta.DepsList = append(idV.Meta.DepsList, depID)
+	}
+
 	// append depID vertex
 	for i := 0; i < len(idV.Dependencies); i++ {
 		tmpId := idV.Dependencies[i].Id
@@ -157,6 +178,7 @@ func (g *Graph) AddDep(vertexID, depID string) {
 	}
 	idV.Dependencies = append(idV.Dependencies, depV)
 	depV.NumOfDeps++
+
 }
 
 func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
