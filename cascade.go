@@ -1,6 +1,7 @@
 package cascade
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -249,8 +250,6 @@ Traverse the DLL in the forward direction
 func (c *Cascade) runForward(n *structures.DllNode) error {
 	// traverse the dll
 	for n != nil {
-		//println(n.Vertex.Id)
-
 		init, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(Init)
 		if !ok {
 			panic("init method should be implemented")
@@ -261,66 +260,73 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 			return err
 		}
 
-		// only service itself
-		// we should run Init() and Provides() if exists
+		// If len(initArgs) is eq to 1, than we deal with empty Init() method
 		if len(initArgs) == 1 {
-			in := make([]reflect.Value, 0, 1)
-
-			for i := 0; i < init.Type.NumIn(); i++ {
-				v := init.Type.In(i)
-
-				if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) == true {
-					in = append(in, reflect.ValueOf(n.Vertex.Iface))
-				}
-
-			}
-
-			ret := init.Func.Call(in)
-			rErr := ret[0].Interface()
-			if rErr != nil {
-				e := rErr.(error)
-				panic(e)
-			}
-
-			// type implements Provider interface
-			if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) == true {
-				// if type implements Provider() it should has FnsToInvoke
-				if n.Vertex.Meta.FnsToInvoke != nil {
-					for i := 0; i < len(n.Vertex.Meta.FnsToInvoke); i++ {
-						m, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(n.Vertex.Meta.FnsToInvoke[i])
-						if !ok {
-							panic("method Provides should be")
-						}
-
-						ret := m.Func.Call(in)
-						// handle error
-						rErr := ret[1].Interface()
-						if rErr != nil {
-							e := rErr.(error)
-							panic(e)
-						}
-
-						n.Vertex.AddValue(ret[0].Type().String(), ret[0])
-
-						// here we should connect foo4.DB with it's Value
-						//c.graph.AddValue(n.Vertex.Id, "foo4.DB", ret[0])
-
-						println("fdsf")
-					}
-				}
-
-				//panic("true")
-			}
+			err = c.noDepsCall(init, n)
+		} else {
+			err = c.depsCall(init, n)
 		}
 
-		for i := 1; i < len(initArgs); i++ {
-			aaa := initArgs[i].String()
-			_ = aaa
-		}
-
+		// next DLL node
 		n = n.Next
 	}
 
+	return nil
+}
+
+func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
+	in := make([]reflect.Value, 0, 1)
+
+	for i := 0; i < init.Type.NumIn(); i++ {
+		v := init.Type.In(i)
+
+		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) == true {
+			in = append(in, reflect.ValueOf(n.Vertex.Iface))
+		}
+
+	}
+
+	ret := init.Func.Call(in)
+	rErr := ret[0].Interface()
+	if rErr != nil {
+		e := rErr.(error)
+		panic(e)
+	}
+
+	// type implements Provider interface
+	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) == true {
+		// if type implements Provider() it should has FnsToInvoke
+		if n.Vertex.Meta.FnsToInvoke != nil {
+			for i := 0; i < len(n.Vertex.Meta.FnsToInvoke); i++ {
+				m, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(n.Vertex.Meta.FnsToInvoke[i])
+				if !ok {
+					panic("method Provides should be")
+				}
+
+				ret := m.Func.Call(in)
+				// handle error
+				if len(ret) > 1 {
+					rErr := ret[1].Interface()
+					if rErr != nil {
+						e := rErr.(error)
+						panic(e)
+					}
+
+					err := n.Vertex.AddValue(ret[0].Type().String(), ret[0])
+					if err != nil {
+						return err
+					}
+				} else {
+					return errors.New("provider should return Value and error types")
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 	return nil
 }
 
