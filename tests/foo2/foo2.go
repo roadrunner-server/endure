@@ -19,5 +19,6 @@ func (s2 *S2) Provides() []interface{} {
 }
 
 func (s2 *S2) CreateDB() (DB, error) {
+	println("hello from S2 --> CreateDB")
 	return DB{}, nil
 }
