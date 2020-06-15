@@ -11,7 +11,7 @@ type DB struct {
 
 // No deps
 func (s *S4) Init() error {
-	println("hello from S4 -> Init()")
+	println("hello from S4 -> Init")
 	return nil
 }
 
