@@ -15,7 +15,7 @@ const Provides = "Provides"
 
 type Cascade struct {
 	// Dependency graph
-	graph   *structures.Graph
+	graph *structures.Graph
 	// DLL used as run list to run in order
 	runList *structures.DoublyLinkedList
 }
@@ -87,11 +87,11 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 				return err
 			}
 
-			typeStr := ret.String()
+			typeStr := removePointerAsterisk(ret.String())
 			// get the Vertex from the graph (gVertex)
 			gVertex := c.graph.GetVertex(vertexID)
 			if gVertex.Provides == nil {
-				gVertex.Provides = make([]string, 0, 1)
+				gVertex.Provides = make(map[string]structures.ProvidedEntry)
 			}
 
 			if gVertex.Meta.FnsToInvoke == nil {
@@ -100,13 +100,16 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 
 			gVertex.Meta.FnsToInvoke = append(gVertex.Meta.FnsToInvoke, functionName(fn))
 
-			gVertex.Provides = append(gVertex.Provides, typeStr)
+			gVertex.Provides[typeStr] = structures.ProvidedEntry{
+				IsReference: nil,
+				Value:       nil,
+			}
 		}
 	}
 	return nil
 }
 
-// InitMethodName container and all service edges.
+// Init container and all service edges.
 func (c *Cascade) Init() error {
 	// traverse the graph
 	if err := c.calculateEdges(); err != nil {
@@ -155,8 +158,8 @@ func (c *Cascade) calculateEdges() error {
 		/*
 			At this step we know (and build) all dependencies via the Depends interface and connected all providers
 			to it's dependencies.
-			The next step is to calculate dependencies provided by the InitMethodName() method
-			for example S1.InitMethodName(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
+			The next step is to calculate dependencies provided by the Init() method
+			for example S1.Init(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
 		*/
 		err = c.calculateInitDeps(vertexID, init)
 		if err != nil {
@@ -193,7 +196,7 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 				// at is like foo2.S2
 				for _, at := range argsTypes {
 					// check if type is primitive type
-					// TODO show warning, because why to receive primitive type in InitMethodName() ??? Any sense?
+					// TODO show warning, because why to receive primitive type in Init() ??? Any sense?
 					if isPrimitive(at.String()) {
 						continue
 					}
@@ -206,8 +209,8 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 					// name s1 (for example)
 					// vertex - S4 func
 
-					// from --> to
-					c.graph.AddDep(vertexID, atStr, structures.Depends)
+					// we store pointer in the Deps structure in the isRef field
+					c.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at))
 				}
 			} else {
 				// todo temporary
@@ -233,7 +236,7 @@ func (c *Cascade) calculateInitDeps(vertexID string, initMethod reflect.Method) 
 			continue
 		}
 
-		c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init)
+		c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg))
 	}
 	return nil
 }
@@ -255,7 +258,7 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 			return err
 		}
 
-		// If len(initArgs) is eq to 1, than we deal with empty InitMethodName() method
+		// If len(initArgs) is eq to 1, than we deal with empty Init() method
 		//
 		if len(initArgs) == 1 {
 			err = c.noDepsCall(init, n)
@@ -263,7 +266,7 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 				return err
 			}
 		} else {
-			// else, we deal with variadic len of InitMethodName function parameters InitMethodName(a,b,c, etc)
+			// else, we deal with variadic len of Init function parameters Init(a,b,c, etc)
 			// we should resolve all it all
 			err = c.depsCall(init, n)
 			if err != nil {
@@ -281,14 +284,8 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 	in := make([]reflect.Value, 0, 1)
 
-	for i := 0; i < init.Type.NumIn(); i++ {
-		v := init.Type.In(i)
-
-		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type())  {
-			in = append(in, reflect.ValueOf(n.Vertex.Iface))
-		}
-
-	}
+	// add service itself
+	in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
 	ret := init.Func.Call(in)
 	rErr := ret[0].Interface()
@@ -299,7 +296,7 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 
 	// just to be safe here
 	if len(in) > 0 {
-		err := n.Vertex.AddValue(in[0].Type().String(), in[0])
+		err := n.Vertex.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
 		if err != nil {
 			return err
 		}
@@ -324,7 +321,7 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 						panic(e)
 					}
 
-					err := n.Vertex.AddValue(ret[0].Type().String(), ret[0])
+					err := n.Vertex.AddValue(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()))
 					if err != nil {
 						return err
 					}
@@ -341,23 +338,34 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 	in := make([]reflect.Value, 0, 1)
 
-	for i := 0; i < init.Type.NumIn(); i++ {
-		v := init.Type.In(i)
+	// add service itself
+	in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-		// TODO redundant?? we already know, that type is convertibleTO
-		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) {
-			in = append(in, reflect.ValueOf(n.Vertex.Iface))
-		}
-	}
-
+	// add dependencies
 	if len(n.Vertex.Meta.InitDepsList) > 0 {
 		for i := 0; i < len(n.Vertex.Meta.InitDepsList); i++ {
-			depId := n.Vertex.Meta.InitDepsList[i]
+			depId := n.Vertex.Meta.InitDepsList[i].Name
 			v := c.graph.FindProvider(depId)
 
-			for k, val := range v.Meta.Values {
+			for k, val := range v.Provides {
 				if k == depId {
-					in = append(in, val)
+					// value - reference and init dep also reference
+					if *val.IsReference == *n.Vertex.Meta.InitDepsList[i].IsReference {
+						in = append(in, *val.Value)
+					} else if *val.IsReference {
+						// same type, but difference in the refs
+						// Init needs to be a value
+						// But Vertex provided reference
+
+						in = append(in, val.Value.Elem())
+						//panic("choo choooooo")
+					} else if !*val.IsReference {
+						// vice versa
+						// Vertex provided value
+						// but Init needs to be a reference
+						//in = append(in, *val.Value)
+						panic("choo chooooooo 2")
+					}
 				}
 			}
 		}
@@ -375,10 +383,16 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 
 	// just to be safe here
 	if len(in) > 0 {
-		err := n.Vertex.AddValue(in[0].Type().String(), in[0])
+		/*
+		n.Vertex.AddValue
+		1. removePointerAsterisk to have uniform way of adding and searching the function args
+		 */
+		err := n.Vertex.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
 		if err != nil {
 			return err
 		}
+	} else {
+		panic("len in less than 2")
 	}
 
 	// type implements Provider interface
@@ -400,7 +414,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 						panic(e)
 					}
 
-					err := n.Vertex.AddValue(ret[0].Type().String(), ret[0])
+					err := n.Vertex.AddValue(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()))
 					if err != nil {
 						return err
 					}
@@ -416,6 +430,10 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 
 func removePointerAsterisk(s string) string {
 	return strings.Trim(s, "*")
+}
+
+func isReference(t reflect.Type) bool {
+	return t.Kind() == reflect.Ptr
 }
 
 func isPrimitive(str string) bool {

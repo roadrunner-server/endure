@@ -9,7 +9,7 @@ type S2 struct {
 }
 
 func (s2 *S2) Init(db foo4.DB) error {
-	println("hello from S2 init")
+	println("hello from S2 --> Init")
 	return nil
 }
 
@@ -18,5 +18,6 @@ func (s2 *S2) Provides() []interface{} {
 }
 
 func (s2 *S2) CreateDB() (DB, error) {
+	println("hello from S2 --> CreateDB")
 	return DB{}, nil
 }

@@ -53,15 +53,20 @@ type Meta struct {
 	FnsToInvoke []string
 	// values to provide into INIT or Depends methods
 	// key is a String() method invoked on the reflect.Vertex
-	Values map[string]reflect.Value
+	//Values map[string]
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
-	InitDepsList []string
+	InitDepsList []DepsEntry
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Depends() method
-	DepsList []string
+	DepsList []DepsEntry
+}
+
+type DepsEntry struct {
+	Name        string
+	IsReference *bool
 }
 
 // since we can have cyclic dependencies
@@ -77,31 +82,32 @@ type Vertex struct {
 
 	// Vertex foo4.S4 also provides (for example)
 	// foo4.DB
-	Provides []string
+	Provides map[string]ProvidedEntry
 
 	// for the toposort
 	NumOfDeps int
 }
 
-func (v *Vertex) AddValue(valueKey string, value reflect.Value) error {
+type ProvidedEntry struct {
+	// we need to distinguish false (default bool value) and nil --> we don't know information about reference
+	IsReference *bool
+	Value       *reflect.Value
+}
+
+func (v *Vertex) AddValue(valueKey string, value reflect.Value, isRef bool) error {
 	// get the VERTEX
-	if v.Meta.Values == nil {
-		v.Meta.Values = make(map[string]reflect.Value)
+	if v.Provides == nil {
+		v.Provides = make(map[string]ProvidedEntry)
 	}
 
-	if _, ok := v.Meta.Values[valueKey]; ok {
+	if val, ok := v.Provides[valueKey]; ok && val.Value != nil {
 		return errors.New("key already present in the map")
 	}
 
-	v.Meta.Values[valueKey] = value
-	return nil
-}
-
-func (v *Vertex) FindCallValue(valueId string) *reflect.Value {
-	for i := 0; i < len(v.Dependencies); i++ {
-
+	v.Provides[valueKey] = ProvidedEntry{
+		IsReference: &isRef,
+		Value:       &value,
 	}
-
 	return nil
 }
 
@@ -152,7 +158,7 @@ AddDep doing the following:
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
-func (g *Graph) AddDep(vertexID, depID string, kind Kind) {
+func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) {
 	// idV should always present
 	idV := g.GetVertex(vertexID)
 	if idV == nil {
@@ -170,14 +176,20 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind) {
 	switch kind {
 	case Init:
 		if idV.Meta.InitDepsList == nil {
-			idV.Meta.InitDepsList = make([]string, 0, 1)
+			idV.Meta.InitDepsList = make([]DepsEntry, 0, 1)
 		}
-		idV.Meta.InitDepsList = append(idV.Meta.InitDepsList, depID)
+		idV.Meta.InitDepsList = append(idV.Meta.InitDepsList, DepsEntry{
+			Name:        depID,
+			IsReference: &isRef,
+		})
 	case Depends:
 		if idV.Meta.DepsList == nil {
-			idV.Meta.DepsList = make([]string, 0, 1)
+			idV.Meta.DepsList = make([]DepsEntry, 0, 1)
 		}
-		idV.Meta.DepsList = append(idV.Meta.DepsList, depID)
+		idV.Meta.DepsList = append(idV.Meta.DepsList, DepsEntry{
+			Name:        depID,
+			IsReference: &isRef,
+		})
 	}
 
 	// append depID vertex
@@ -209,10 +221,7 @@ func (g *Graph) GetVertex(id string) *Vertex {
 
 func (g *Graph) FindProvider(depId string) *Vertex {
 	for i := 0; i < len(g.Vertices); i++ {
-		for j := 0; j < len(g.Vertices[i].Provides); j++ {
-			providerId := g.Vertices[i].Provides[j]
-			// if depId is eq to providerId
-			// like foo2.DB == foo2.DB, then return vertexId --> foo2.S2
+		for providerId := range g.Vertices[i].Provides {
 			if depId == providerId {
 				return g.Vertices[i]
 			}

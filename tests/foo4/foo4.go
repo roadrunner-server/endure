@@ -11,7 +11,7 @@ type DB struct {
 
 // No deps
 func (s *S4) Init() error {
-	println("hello from S4 -> Init()")
+	println("hello from S4 --> Init")
 	return nil
 }
 
@@ -24,6 +24,6 @@ func (s *S4) Provides() []interface{} {
 
 // this is the same type but different packages
 func (s *S4) CreateAnotherDb() (DB, error) {
-	println("hello from S4 -> CreateAnotherDb")
+	println("hello from S4 --> CreateAnotherDb")
 	return DB{}, nil
 }
