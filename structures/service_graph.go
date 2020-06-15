@@ -49,11 +49,10 @@ type Graph struct {
 // 2. Relation status
 type Meta struct {
 	RawTypeName string
-	//FnsToInvoke is the function names to invoke if type implements Provides() interface
-	FnsToInvoke []string
-	// values to provide into INIT or Depends methods
-	// key is a String() method invoked on the reflect.Vertex
-	//Values map[string]
+	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
+	FnsProviderToInvoke []string
+	// FnsRegisterToInvoke is the function names to invoke if type implements Register() interface
+	FnsRegisterToInvoke []string
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
