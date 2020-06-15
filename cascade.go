@@ -14,14 +14,10 @@ const InitMethodName = "Init"
 const Provides = "Provides"
 
 type Cascade struct {
+	// Dependency graph
 	graph   *structures.Graph
+	// DLL used as run list to run in order
 	runList *structures.DoublyLinkedList
-	// concrete types
-	// for example
-	// foo2.DB with value
-	// foo2.S2 structure
-	provides map[string]*reflect.Value
-	//logger zap
 }
 
 func NewContainer() *Cascade {
@@ -263,10 +259,16 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 		//
 		if len(initArgs) == 1 {
 			err = c.noDepsCall(init, n)
+			if err != nil {
+				return err
+			}
 		} else {
 			// else, we deal with variadic len of InitMethodName function parameters InitMethodName(a,b,c, etc)
 			// we should resolve all it all
 			err = c.depsCall(init, n)
+			if err != nil {
+				return err
+			}
 		}
 
 		// next DLL node
@@ -282,7 +284,7 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 	for i := 0; i < init.Type.NumIn(); i++ {
 		v := init.Type.In(i)
 
-		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) == true {
+		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type())  {
 			in = append(in, reflect.ValueOf(n.Vertex.Iface))
 		}
 
@@ -304,7 +306,7 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 	}
 
 	// type implements Provider interface
-	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) == true {
+	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
 		// if type implements Provider() it should has FnsToInvoke
 		if n.Vertex.Meta.FnsToInvoke != nil {
 			for i := 0; i < len(n.Vertex.Meta.FnsToInvoke); i++ {
@@ -343,7 +345,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 		v := init.Type.In(i)
 
 		// TODO redundant?? we already know, that type is convertibleTO
-		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) == true {
+		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) {
 			in = append(in, reflect.ValueOf(n.Vertex.Iface))
 		}
 	}
@@ -380,7 +382,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 	}
 
 	// type implements Provider interface
-	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) == true {
+	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
 		// if type implements Provider() it should has FnsToInvoke
 		if n.Vertex.Meta.FnsToInvoke != nil {
 			for i := 0; i < len(n.Vertex.Meta.FnsToInvoke); i++ {
