@@ -1,13 +1,11 @@
 package foo4
 
 type S4 struct {
-
 }
 
 type DB struct {
-
+	Name string
 }
-
 
 // No deps
 func (s *S4) Init() error {
@@ -25,5 +23,7 @@ func (s *S4) Provides() []interface{} {
 // this is the same type but different packages
 func (s *S4) CreateAnotherDb() (DB, error) {
 	println("hello from S4 --> CreateAnotherDb")
-	return DB{}, nil
+	return DB{
+		Name: "S4 greeting you, padavan",
+	}, nil
 }
