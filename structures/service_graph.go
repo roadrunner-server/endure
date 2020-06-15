@@ -221,7 +221,7 @@ func (g *Graph) GetVertex(id string) *Vertex {
 
 func (g *Graph) FindProvider(depId string) *Vertex {
 	for i := 0; i < len(g.Vertices); i++ {
-		for providerId, _ := range g.Vertices[i].Provides {
+		for providerId := range g.Vertices[i].Provides {
 			if depId == providerId {
 				return g.Vertices[i]
 			}

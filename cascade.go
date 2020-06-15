@@ -352,18 +352,18 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 					// value - reference and init dep also reference
 					if *val.IsReference == *n.Vertex.Meta.InitDepsList[i].IsReference {
 						in = append(in, *val.Value)
-					} else if *val.IsReference == true && *n.Vertex.Meta.InitDepsList[i].IsReference == false {
+					} else if *val.IsReference {
 						// same type, but difference in the refs
 						// Init needs to be a value
 						// But Vertex provided reference
 
 						in = append(in, val.Value.Elem())
 						//panic("choo choooooo")
-					} else if *val.IsReference == false && *n.Vertex.Meta.InitDepsList[i].IsReference == true {
+					} else if !*val.IsReference {
 						// vice versa
 						// Vertex provided value
 						// but Init needs to be a reference
-						in = append(in, *val.Value)
+						//in = append(in, *val.Value)
 						panic("choo chooooooo 2")
 					}
 				}
