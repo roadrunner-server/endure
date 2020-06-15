@@ -351,7 +351,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 	if len(n.Vertex.Meta.InitDepsList) > 0 {
 		for i := 0; i < len(n.Vertex.Meta.InitDepsList); i++ {
 			depId := n.Vertex.Meta.InitDepsList[i]
-			v := c.graph.FindVertex(depId)
+			v := c.graph.FindProvider(depId)
 
 			for k, val := range v.Meta.Values {
 				if k == depId {

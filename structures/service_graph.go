@@ -161,7 +161,7 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind) {
 	// but depV can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
 	depV := g.GetVertex(depID)
 	if depV == nil {
-		depV = g.FindVertex(depID)
+		depV = g.FindProvider(depID)
 	}
 
 	// add Dependency into the List
@@ -207,7 +207,7 @@ func (g *Graph) GetVertex(id string) *Vertex {
 	return g.Graph[id]
 }
 
-func (g *Graph) FindVertex(depId string) *Vertex {
+func (g *Graph) FindProvider(depId string) *Vertex {
 	for i := 0; i < len(g.Vertices); i++ {
 		for j := 0; j < len(g.Vertices[i].Provides); j++ {
 			providerId := g.Vertices[i].Provides[j]
