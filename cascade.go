@@ -284,14 +284,8 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 	in := make([]reflect.Value, 0, 1)
 
-	for i := 0; i < init.Type.NumIn(); i++ {
-		v := init.Type.In(i)
-
-		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) {
-			in = append(in, reflect.ValueOf(n.Vertex.Iface))
-		}
-
-	}
+	// add service itself
+	in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
 	ret := init.Func.Call(in)
 	rErr := ret[0].Interface()
@@ -344,15 +338,10 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 	in := make([]reflect.Value, 0, 1)
 
-	for i := 0; i < init.Type.NumIn(); i++ {
-		v := init.Type.In(i)
+	// add service itself
+	in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-		// TODO redundant?? we already know, that type is convertibleTO
-		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) {
-			in = append(in, reflect.ValueOf(n.Vertex.Iface))
-		}
-	}
-
+	// add dependencies
 	if len(n.Vertex.Meta.InitDepsList) > 0 {
 		for i := 0; i < len(n.Vertex.Meta.InitDepsList); i++ {
 			depId := n.Vertex.Meta.InitDepsList[i].Name
