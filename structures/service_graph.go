@@ -77,23 +77,32 @@ type Vertex struct {
 
 	// Vertex foo4.S4 also provides (for example)
 	// foo4.DB
-	Provides map[string]*reflect.Value
+	Provides map[string]ProvidedEntry
 
 	// for the toposort
 	NumOfDeps int
 }
 
-func (v *Vertex) AddValue(valueKey string, value reflect.Value) error {
+type ProvidedEntry struct {
+	// we need to distinguish false (default bool value) and nil --> we don't know information about reference
+	IsReference *bool
+	Value       *reflect.Value
+}
+
+func (v *Vertex) AddValue(valueKey string, value reflect.Value, isRef bool) error {
 	// get the VERTEX
 	if v.Provides == nil {
-		v.Provides = make(map[string]*reflect.Value)
+		v.Provides = make(map[string]ProvidedEntry)
 	}
 
-	if val, ok := v.Provides[valueKey]; ok && val != nil {
+	if val, ok := v.Provides[valueKey]; ok && val.Value != nil {
 		return errors.New("key already present in the map")
 	}
 
-	v.Provides[valueKey] = &value
+	v.Provides[valueKey] = ProvidedEntry{
+		IsReference: &isRef,
+		Value:       &value,
+	}
 	return nil
 }
 

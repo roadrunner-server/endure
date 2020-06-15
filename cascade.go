@@ -15,7 +15,7 @@ const Provides = "Provides"
 
 type Cascade struct {
 	// Dependency graph
-	graph   *structures.Graph
+	graph *structures.Graph
 	// DLL used as run list to run in order
 	runList *structures.DoublyLinkedList
 }
@@ -91,7 +91,7 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 			// get the Vertex from the graph (gVertex)
 			gVertex := c.graph.GetVertex(vertexID)
 			if gVertex.Provides == nil {
-				gVertex.Provides = make(map[string]*reflect.Value)
+				gVertex.Provides = make(map[string]structures.ProvidedEntry)
 			}
 
 			if gVertex.Meta.FnsToInvoke == nil {
@@ -100,7 +100,10 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 
 			gVertex.Meta.FnsToInvoke = append(gVertex.Meta.FnsToInvoke, functionName(fn))
 
-			gVertex.Provides[typeStr] = nil
+			gVertex.Provides[typeStr] = structures.ProvidedEntry{
+				IsReference: nil,
+				Value:       nil,
+			}
 		}
 	}
 	return nil
@@ -284,7 +287,7 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 	for i := 0; i < init.Type.NumIn(); i++ {
 		v := init.Type.In(i)
 
-		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type())  {
+		if v.ConvertibleTo(reflect.ValueOf(n.Vertex.Iface).Type()) {
 			in = append(in, reflect.ValueOf(n.Vertex.Iface))
 		}
 
@@ -299,7 +302,7 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 
 	// just to be safe here
 	if len(in) > 0 {
-		err := n.Vertex.AddValue(in[0].Type().String(), in[0])
+		err := n.Vertex.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
 		if err != nil {
 			return err
 		}
@@ -324,7 +327,7 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 						panic(e)
 					}
 
-					err := n.Vertex.AddValue(ret[0].Type().String(), ret[0])
+					err := n.Vertex.AddValue(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()))
 					if err != nil {
 						return err
 					}
@@ -357,7 +360,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 
 			for k, val := range v.Provides {
 				if k == depId {
-					in = append(in, *val)
+					in = append(in, *val.Value)
 				}
 			}
 		}
@@ -375,7 +378,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 
 	// just to be safe here
 	if len(in) > 0 {
-		err := n.Vertex.AddValue(in[0].Type().String(), in[0])
+		err := n.Vertex.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
 		if err != nil {
 			return err
 		}
@@ -402,7 +405,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 						panic(e)
 					}
 
-					err := n.Vertex.AddValue(ret[0].Type().String(), ret[0])
+					err := n.Vertex.AddValue(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()))
 					if err != nil {
 						return err
 					}
@@ -418,6 +421,10 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 
 func removePointerAsterisk(s string) string {
 	return strings.Trim(s, "*")
+}
+
+func isReference(t reflect.Type) bool {
+	return t.Kind() == reflect.Ptr
 }
 
 func isPrimitive(str string) bool {
