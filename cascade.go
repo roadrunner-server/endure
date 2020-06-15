@@ -11,7 +11,6 @@ import (
 
 // InitMethodName is the function name for the reflection
 const InitMethodName = "Init"
-const Provides = "Provides"
 
 type Cascade struct {
 	// Dependency graph
@@ -19,6 +18,10 @@ type Cascade struct {
 	// DLL used as run list to run in order
 	runList *structures.DoublyLinkedList
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////// PUBLIC ////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func NewContainer() *Cascade {
 	return &Cascade{
@@ -66,6 +69,51 @@ func (c *Cascade) Register(vertex interface{}) error {
 	return nil
 }
 
+// Init container and all service edges.
+func (c *Cascade) Init() error {
+	// traverse the graph
+	if err := c.calculateEdges(); err != nil {
+		return err
+	}
+
+	// we should buld init list in the reverse order
+	// TODO return cycle error
+	sortedVertices := c.graph.TopologicalSort()
+
+	// TODO properly handle the len of the sorted vertices
+	c.runList.SetHead(&structures.DllNode{
+		Vertex: sortedVertices[0]})
+
+	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
+	for i := 1; i < len(sortedVertices); i++ {
+		c.runList.Push(sortedVertices[i])
+	}
+
+	return c.init(c.runList.Head)
+}
+
+func (c *Cascade) Serve(upstream chan interface{}) error {
+	return nil
+}
+func (c *Cascade) Stop() error {
+	return nil
+}
+
+func (c *Cascade) Get(name string) interface{} {
+	return nil
+}
+func (c *Cascade) Has(name string) bool {
+	return false
+}
+
+func (c *Cascade) List() []string {
+	return nil
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////// PRIVATE ///////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 func (c *Cascade) register(name string, vertex interface{}, meta structures.Meta) error {
 	// check the vertex
 	if c.graph.HasVertex(name) {
@@ -109,29 +157,6 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 	return nil
 }
 
-// Init container and all service edges.
-func (c *Cascade) Init() error {
-	// traverse the graph
-	if err := c.calculateEdges(); err != nil {
-		return err
-	}
-
-	// we should buld runForward list in the reverse order
-	// TODO return cycle error
-	sortedVertices := c.graph.TopologicalSort()
-
-	// TODO properly handle the len of the sorted vertices
-	c.runList.SetHead(&structures.DllNode{
-		Vertex: sortedVertices[0]})
-
-	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
-	for i := 1; i < len(sortedVertices); i++ {
-		c.runList.Push(sortedVertices[i])
-	}
-
-	return c.runForward(c.runList.Head)
-}
-
 // calculateEdges calculates simple graph for the dependencies
 func (c *Cascade) calculateEdges() error {
 	// vertexID for example S2
@@ -141,7 +166,7 @@ func (c *Cascade) calculateEdges() error {
 			panic("init method should be implemented")
 		}
 
-		/* Add the dependencies (if) which this vertex needs to runForward
+		/* Add the dependencies (if) which this vertex needs to init
 		Information we know at this step is:
 		1. VertexId
 		2. Vertex structure value (interface)
@@ -170,10 +195,6 @@ func (c *Cascade) calculateEdges() error {
 	return nil
 }
 
-/*
-
-
- */
 func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) error {
 	if register, ok := vertex.(Register); ok {
 		for _, fn := range register.Depends() {
@@ -257,7 +278,7 @@ func (c *Cascade) calculateInitDeps(vertexID string, initMethod reflect.Method) 
 Traverse the DLL in the forward direction
 
 */
-func (c *Cascade) runForward(n *structures.DllNode) error {
+func (c *Cascade) init(n *structures.DllNode) error {
 	// traverse the dll
 	for n != nil {
 		init, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(InitMethodName)
@@ -290,6 +311,10 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 		n = n.Next
 	}
 
+	return nil
+}
+
+func (c *Cascade) runBackward(n *structures.DllNode) error {
 	return nil
 }
 
@@ -518,6 +543,7 @@ func isReference(t reflect.Type) bool {
 	return t.Kind() == reflect.Ptr
 }
 
+// TODO add all primitive types
 func isPrimitive(str string) bool {
 	switch str {
 	case "int":
