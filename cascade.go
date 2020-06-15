@@ -32,13 +32,11 @@ func NewContainer() (*Cascade, error) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	debug := flag.Bool("debug", false, "sets log level to debug")
-
 	flag.Parse()
 
-	// Default level for this example is info, unless debug flag is present
-	zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 	if *debug {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	}
 
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
@@ -405,12 +403,11 @@ func (c *Cascade) traverseRegisters(n *structures.DllNode) error {
 						if val.Value.CanAddr() {
 							inReg = append(inReg, val.Value.Addr())
 						} else {
-							// TODO print warning, value is not addressible via reflection
-							c.logger.Warn().Str("a", "b").Msgf("value is not addressible, consider to return a pointer %s", val.Value.String())
+							c.logger.Warn().Str("type", val.Value.Type().String()).Msg("value is not addressible, consider to return a pointer")
 							c.logger.Warn().Msgf("making a fresh pointer")
 
-							n := reflect.New(val.Value.Type())
-							inReg = append(inReg, n)
+							nt := reflect.New(val.Value.Type())
+							inReg = append(inReg, nt)
 						}
 					}
 				}
@@ -547,12 +544,10 @@ func (c *Cascade) getInitValues(n *structures.DllNode) []reflect.Value {
 						if val.Value.CanAddr() {
 							in = append(in, val.Value.Addr())
 						} else {
-							// TODO print warning, value is not addressible via reflection
-							// TODO print warning, value is not addressible via reflection
-							c.logger.Warn().Str("a", "b").Msgf("value is not addressible, consider to return a pointer %s", val.Value.String())
+							c.logger.Warn().Str("type", val.Value.Type().String()).Msg("value is not addressible, consider to return a pointer")
 							c.logger.Warn().Msgf("making a fresh pointer")
-							n := reflect.New(val.Value.Type())
-							in = append(in, n)
+							nt := reflect.New(val.Value.Type())
+							in = append(in, nt)
 						}
 					}
 				}
