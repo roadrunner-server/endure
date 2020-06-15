@@ -53,7 +53,7 @@ type Meta struct {
 	FnsToInvoke []string
 	// values to provide into INIT or Depends methods
 	// key is a String() method invoked on the reflect.Vertex
-	Values map[string]reflect.Value
+	//Values map[string]
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
@@ -77,7 +77,7 @@ type Vertex struct {
 
 	// Vertex foo4.S4 also provides (for example)
 	// foo4.DB
-	Provides []string
+	Provides map[string]*reflect.Value
 
 	// for the toposort
 	NumOfDeps int
@@ -85,23 +85,15 @@ type Vertex struct {
 
 func (v *Vertex) AddValue(valueKey string, value reflect.Value) error {
 	// get the VERTEX
-	if v.Meta.Values == nil {
-		v.Meta.Values = make(map[string]reflect.Value)
+	if v.Provides == nil {
+		v.Provides = make(map[string]*reflect.Value)
 	}
 
-	if _, ok := v.Meta.Values[valueKey]; ok {
+	if val, ok := v.Provides[valueKey]; ok && val != nil {
 		return errors.New("key already present in the map")
 	}
 
-	v.Meta.Values[valueKey] = value
-	return nil
-}
-
-func (v *Vertex) FindCallValue(valueId string) *reflect.Value {
-	for i := 0; i < len(v.Dependencies); i++ {
-
-	}
-
+	v.Provides[valueKey] = &value
 	return nil
 }
 
@@ -209,10 +201,7 @@ func (g *Graph) GetVertex(id string) *Vertex {
 
 func (g *Graph) FindProvider(depId string) *Vertex {
 	for i := 0; i < len(g.Vertices); i++ {
-		for j := 0; j < len(g.Vertices[i].Provides); j++ {
-			providerId := g.Vertices[i].Provides[j]
-			// if depId is eq to providerId
-			// like foo2.DB == foo2.DB, then return vertexId --> foo2.S2
+		for providerId, _ := range g.Vertices[i].Provides {
 			if depId == providerId {
 				return g.Vertices[i]
 			}

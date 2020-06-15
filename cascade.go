@@ -91,7 +91,7 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 			// get the Vertex from the graph (gVertex)
 			gVertex := c.graph.GetVertex(vertexID)
 			if gVertex.Provides == nil {
-				gVertex.Provides = make([]string, 0, 1)
+				gVertex.Provides = make(map[string]*reflect.Value)
 			}
 
 			if gVertex.Meta.FnsToInvoke == nil {
@@ -100,13 +100,13 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 
 			gVertex.Meta.FnsToInvoke = append(gVertex.Meta.FnsToInvoke, functionName(fn))
 
-			gVertex.Provides = append(gVertex.Provides, typeStr)
+			gVertex.Provides[typeStr] = nil
 		}
 	}
 	return nil
 }
 
-// InitMethodName container and all service edges.
+// Init container and all service edges.
 func (c *Cascade) Init() error {
 	// traverse the graph
 	if err := c.calculateEdges(); err != nil {
@@ -155,8 +155,8 @@ func (c *Cascade) calculateEdges() error {
 		/*
 			At this step we know (and build) all dependencies via the Depends interface and connected all providers
 			to it's dependencies.
-			The next step is to calculate dependencies provided by the InitMethodName() method
-			for example S1.InitMethodName(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
+			The next step is to calculate dependencies provided by the Init() method
+			for example S1.Init(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
 		*/
 		err = c.calculateInitDeps(vertexID, init)
 		if err != nil {
@@ -193,7 +193,7 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 				// at is like foo2.S2
 				for _, at := range argsTypes {
 					// check if type is primitive type
-					// TODO show warning, because why to receive primitive type in InitMethodName() ??? Any sense?
+					// TODO show warning, because why to receive primitive type in Init() ??? Any sense?
 					if isPrimitive(at.String()) {
 						continue
 					}
@@ -233,7 +233,7 @@ func (c *Cascade) calculateInitDeps(vertexID string, initMethod reflect.Method) 
 			continue
 		}
 
-		c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init)
+		c.graph.AddDep(vertexID, initArg.String(), structures.Init)
 	}
 	return nil
 }
@@ -255,7 +255,7 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 			return err
 		}
 
-		// If len(initArgs) is eq to 1, than we deal with empty InitMethodName() method
+		// If len(initArgs) is eq to 1, than we deal with empty Init() method
 		//
 		if len(initArgs) == 1 {
 			err = c.noDepsCall(init, n)
@@ -263,7 +263,7 @@ func (c *Cascade) runForward(n *structures.DllNode) error {
 				return err
 			}
 		} else {
-			// else, we deal with variadic len of InitMethodName function parameters InitMethodName(a,b,c, etc)
+			// else, we deal with variadic len of Init function parameters Init(a,b,c, etc)
 			// we should resolve all it all
 			err = c.depsCall(init, n)
 			if err != nil {
@@ -355,9 +355,9 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 			depId := n.Vertex.Meta.InitDepsList[i]
 			v := c.graph.FindProvider(depId)
 
-			for k, val := range v.Meta.Values {
+			for k, val := range v.Provides {
 				if k == depId {
-					in = append(in, val)
+					in = append(in, *val)
 				}
 			}
 		}
@@ -379,6 +379,8 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		panic("len in less than 2")
 	}
 
 	// type implements Provider interface
