@@ -57,11 +57,16 @@ type Meta struct {
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
-	InitDepsList []string
+	InitDepsList []DepsEntry
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Depends() method
-	DepsList []string
+	DepsList []DepsEntry
+}
+
+type DepsEntry struct {
+	Name        string
+	IsReference *bool
 }
 
 // since we can have cyclic dependencies
@@ -153,7 +158,7 @@ AddDep doing the following:
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
-func (g *Graph) AddDep(vertexID, depID string, kind Kind) {
+func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) {
 	// idV should always present
 	idV := g.GetVertex(vertexID)
 	if idV == nil {
@@ -171,14 +176,20 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind) {
 	switch kind {
 	case Init:
 		if idV.Meta.InitDepsList == nil {
-			idV.Meta.InitDepsList = make([]string, 0, 1)
+			idV.Meta.InitDepsList = make([]DepsEntry, 0, 1)
 		}
-		idV.Meta.InitDepsList = append(idV.Meta.InitDepsList, depID)
+		idV.Meta.InitDepsList = append(idV.Meta.InitDepsList, DepsEntry{
+			Name:        depID,
+			IsReference: &isRef,
+		})
 	case Depends:
 		if idV.Meta.DepsList == nil {
-			idV.Meta.DepsList = make([]string, 0, 1)
+			idV.Meta.DepsList = make([]DepsEntry, 0, 1)
 		}
-		idV.Meta.DepsList = append(idV.Meta.DepsList, depID)
+		idV.Meta.DepsList = append(idV.Meta.DepsList, DepsEntry{
+			Name:        depID,
+			IsReference: &isRef,
+		})
 	}
 
 	// append depID vertex

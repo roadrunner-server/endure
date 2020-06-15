@@ -210,7 +210,7 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 					// vertex - S4 func
 
 					// from --> to
-					c.graph.AddDep(vertexID, atStr, structures.Depends)
+					c.graph.AddDep(vertexID, atStr, structures.Depends, isReference(at))
 				}
 			} else {
 				// todo temporary
@@ -236,7 +236,7 @@ func (c *Cascade) calculateInitDeps(vertexID string, initMethod reflect.Method) 
 			continue
 		}
 
-		c.graph.AddDep(vertexID, initArg.String(), structures.Init)
+		c.graph.AddDep(vertexID, initArg.String(), structures.Init, isReference(initArg))
 	}
 	return nil
 }
@@ -355,7 +355,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 
 	if len(n.Vertex.Meta.InitDepsList) > 0 {
 		for i := 0; i < len(n.Vertex.Meta.InitDepsList); i++ {
-			depId := n.Vertex.Meta.InitDepsList[i]
+			depId := n.Vertex.Meta.InitDepsList[i].Name
 			v := c.graph.FindProvider(depId)
 
 			for k, val := range v.Provides {
@@ -378,6 +378,10 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 
 	// just to be safe here
 	if len(in) > 0 {
+		/*
+		n.Vertex.AddValue
+		1. removePointerAsterisk to have uniform way of adding and searching the function args
+		 */
 		err := n.Vertex.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
 		if err != nil {
 			return err
