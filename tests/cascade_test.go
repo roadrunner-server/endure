@@ -11,10 +11,13 @@ import (
 )
 
 func TestCascade_Init(t *testing.T) {
-	c := cascade.NewContainer()
+	c, err := cascade.NewContainer()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// foo4.S4 provides foo4.DB dependency, similar to the foo2.DB
-	err := c.Register(&foo4.S4{})
+	err = c.Register(&foo4.S4{})
 	if err != nil {
 		t.Fatal(err)
 	}

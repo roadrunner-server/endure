@@ -2,10 +2,13 @@ package cascade
 
 import (
 	"errors"
+	"flag"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
+	"github.com/rs/zerolog"
 	"github.com/spiral/cascade/structures"
 )
 
@@ -17,17 +20,34 @@ type Cascade struct {
 	graph *structures.Graph
 	// DLL used as run list to run in order
 	runList *structures.DoublyLinkedList
+	// logger
+	logger zerolog.Logger
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////// PUBLIC ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func NewContainer() *Cascade {
+func NewContainer() (*Cascade, error) {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	debug := flag.Bool("debug", false, "sets log level to debug")
+
+	flag.Parse()
+
+	// Default level for this example is info, unless debug flag is present
+	zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	if *debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+
+	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
+
 	return &Cascade{
 		graph:   structures.NewGraph(),
 		runList: structures.NewDoublyLinkedList(),
-	}
+		logger:  logger,
+	}, nil
 }
 
 // Register depends the dependencies
@@ -37,11 +57,9 @@ func (c *Cascade) Register(vertex interface{}) error {
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
 
-
-
 	ok := t.Implements(reflect.TypeOf((*Service)(nil)).Elem())
 	if !ok {
-		return errors.New("type should implement Service interface")
+		return typeNotImplementError
 	}
 
 	/* Register the type
@@ -67,6 +85,9 @@ func (c *Cascade) Register(vertex interface{}) error {
 	if err != nil {
 		return err
 	}
+
+
+	c.logger.Info().Msgf("registered type: %s", t.String())
 
 	return nil
 }
@@ -385,7 +406,9 @@ func (c *Cascade) traverseRegisters(n *structures.DllNode) error {
 							inReg = append(inReg, val.Value.Addr())
 						} else {
 							// TODO print warning, value is not addressible via reflection
-							println("value is not addressible, consider to return a pointer")
+							c.logger.Warn().Str("a", "b").Msgf("value is not addressible, consider to return a pointer %s", val.Value.String())
+							c.logger.Warn().Msgf("making a fresh pointer")
+
 							n := reflect.New(val.Value.Type())
 							inReg = append(inReg, n)
 						}
@@ -525,7 +548,9 @@ func (c *Cascade) getInitValues(n *structures.DllNode) []reflect.Value {
 							in = append(in, val.Value.Addr())
 						} else {
 							// TODO print warning, value is not addressible via reflection
-							println("value is not addressible, consider to return a pointer")
+							// TODO print warning, value is not addressible via reflection
+							c.logger.Warn().Str("a", "b").Msgf("value is not addressible, consider to return a pointer %s", val.Value.String())
+							c.logger.Warn().Msgf("making a fresh pointer")
 							n := reflect.New(val.Value.Type())
 							in = append(in, n)
 						}
