@@ -48,7 +48,6 @@ type Graph struct {
 // 1. Disabled info
 // 2. Relation status
 type Meta struct {
-	RawTypeName string
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
 	FnsProviderToInvoke []string
 	// FnsRegisterToInvoke is the function names to invoke if type implements Register() interface

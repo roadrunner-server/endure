@@ -34,12 +34,14 @@ func NewContainer() *Cascade {
 // name is a name of the dependency, for example - S2
 // vertex is a value -> pointer to the structure
 func (c *Cascade) Register(vertex interface{}) error {
-	vertexID := removePointerAsterisk(reflect.TypeOf(vertex).String())
-	// Meta information
-	rawTypeStr := reflect.TypeOf(vertex).String()
+	t := reflect.TypeOf(vertex)
+	vertexID := removePointerAsterisk(t.String())
 
-	meta := structures.Meta{
-		RawTypeName: rawTypeStr,
+
+
+	ok := t.Implements(reflect.TypeOf((*Service)(nil)).Elem())
+	if !ok {
+		return errors.New("type should implement Service interface")
 	}
 
 	/* Register the type
@@ -48,7 +50,7 @@ func (c *Cascade) Register(vertex interface{}) error {
 	2. Vertex structure value (interface)
 	And we fill vertex with this information
 	*/
-	err := c.register(vertexID, vertex, meta)
+	err := c.register(vertexID, vertex)
 	if err != nil {
 		return err
 	}
@@ -114,7 +116,7 @@ func (c *Cascade) List() []string {
 //////////////////////////////////////////// PRIVATE ///////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func (c *Cascade) register(name string, vertex interface{}, meta structures.Meta) error {
+func (c *Cascade) register(name string, vertex interface{}) error {
 	// check the vertex
 	if c.graph.HasVertex(name) {
 		return fmt.Errorf("vertex `%s` already exists", name)
@@ -122,7 +124,7 @@ func (c *Cascade) register(name string, vertex interface{}, meta structures.Meta
 
 	// just push the vertex
 	// here we can append in future some meta information
-	c.graph.AddVertex(name, vertex, meta)
+	c.graph.AddVertex(name, vertex, structures.Meta{})
 	return nil
 }
 

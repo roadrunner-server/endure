@@ -23,3 +23,11 @@ func (s2 *S2) CreateDB() (DB, error) {
 	println("hello from S2 --> CreateDB")
 	return DB{}, nil
 }
+
+func (s2 *S2) Serve(upstream chan interface{}) error {
+	return nil
+}
+
+func (s2 *S2) Stop() error {
+	return nil
+}
