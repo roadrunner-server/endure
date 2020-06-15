@@ -87,7 +87,7 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 				return err
 			}
 
-			typeStr := ret.String()
+			typeStr := removePointerAsterisk(ret.String())
 			// get the Vertex from the graph (gVertex)
 			gVertex := c.graph.GetVertex(vertexID)
 			if gVertex.Provides == nil {
@@ -209,8 +209,8 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 					// name s1 (for example)
 					// vertex - S4 func
 
-					// from --> to
-					c.graph.AddDep(vertexID, atStr, structures.Depends, isReference(at))
+					// we store pointer in the Deps structure in the isRef field
+					c.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at))
 				}
 			} else {
 				// todo temporary
@@ -236,7 +236,7 @@ func (c *Cascade) calculateInitDeps(vertexID string, initMethod reflect.Method) 
 			continue
 		}
 
-		c.graph.AddDep(vertexID, initArg.String(), structures.Init, isReference(initArg))
+		c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg))
 	}
 	return nil
 }
@@ -360,7 +360,23 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 
 			for k, val := range v.Provides {
 				if k == depId {
-					in = append(in, *val.Value)
+					// value - reference and init dep also reference
+					if *val.IsReference == *n.Vertex.Meta.InitDepsList[i].IsReference {
+						in = append(in, *val.Value)
+					} else if *val.IsReference == true && *n.Vertex.Meta.InitDepsList[i].IsReference == false {
+						// same type, but difference in the refs
+						// Init needs to be a value
+						// But Vertex provided reference
+
+						in = append(in, val.Value.Elem())
+						//panic("choo choooooo")
+					} else if *val.IsReference == false && *n.Vertex.Meta.InitDepsList[i].IsReference == true {
+						// vice versa
+						// Vertex provided value
+						// but Init needs to be a reference
+						in = append(in, *val.Value)
+						panic("choo chooooooo 2")
+					}
 				}
 			}
 		}
