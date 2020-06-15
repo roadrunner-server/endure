@@ -348,7 +348,18 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 		}
 	}
 
-	//n.Vertex.
+	if len(n.Vertex.Meta.InitDepsList) > 0 {
+		for i := 0; i < len(n.Vertex.Meta.InitDepsList); i++ {
+			depId := n.Vertex.Meta.InitDepsList[i]
+			v := c.graph.FindVertex(depId)
+
+			for k, val := range v.Meta.Values {
+				if k == depId {
+					in = append(in, val)
+				}
+			}
+		}
+	}
 
 	// Iterate over dependencies
 	// And search in Vertices for the provided types
@@ -359,7 +370,6 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 		e := rErr.(error)
 		panic(e)
 	}
-
 
 	// just to be safe here
 	if len(in) > 0 {
@@ -379,7 +389,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 					panic("method Provides should be")
 				}
 
-				ret := m.Func.Call(in)
+				ret := m.Func.Call([]reflect.Value{reflect.ValueOf(n.Vertex.Iface)})
 				// handle error
 				if len(ret) > 1 {
 					rErr := ret[1].Interface()

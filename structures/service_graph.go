@@ -97,6 +97,14 @@ func (v *Vertex) AddValue(valueKey string, value reflect.Value) error {
 	return nil
 }
 
+func (v *Vertex) FindCallValue(valueId string) *reflect.Value {
+	for i := 0; i < len(v.Dependencies); i++ {
+
+	}
+
+	return nil
+}
+
 // NewAL initializes adjacency list to store the Graph
 // example
 // 1 -> 2 -> 4
@@ -156,6 +164,9 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind) {
 		depV = g.FindVertex(depID)
 	}
 
+	// add Dependency into the List
+	// to call later
+	// because we should know Init method parameters for every Vertex
 	switch kind {
 	case Init:
 		if idV.Meta.InitDepsList == nil {
