@@ -363,8 +363,14 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 						// vice versa
 						// Vertex provided value
 						// but Init needs to be a reference
-						//in = append(in, *val.Value)
-						panic("choo chooooooo 2")
+						if val.Value.CanAddr() {
+							in = append(in, val.Value.Addr())
+						} else {
+							// TODO print warning, value is not addressible via reflection
+							println("value is not addressible, consider to return a pointer")
+							n := reflect.New(val.Value.Type())
+							in = append(in, n)
+						}
 					}
 				}
 			}
