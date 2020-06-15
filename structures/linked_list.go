@@ -2,7 +2,7 @@ package structures
 
 // Vertex of the DoublyLL
 type DllNode struct {
-	Value      int
+	Vertex     *Vertex
 	Prev, Next *DllNode
 }
 
@@ -23,6 +23,18 @@ func (dll *DoublyLinkedList) SetHead(node *DllNode) {
 		return
 	}
 	dll.InsertBefore(dll.Head, node)
+}
+
+func (dll *DoublyLinkedList) Push(vertex *Vertex) {
+	node := &DllNode{
+		Vertex: vertex,
+	}
+	node.Next = dll.Head
+	dll.Head.Prev = node
+
+	node.Prev = nil
+
+	dll.Head = node
 }
 
 // constant O(1) time and space
@@ -82,12 +94,12 @@ func (dll *DoublyLinkedList) InsertAtPosition(position int, nodeToInsert *DllNod
 	}
 }
 
-func (dll *DoublyLinkedList) RemoveNodesWithValue(value int) {
+func (dll *DoublyLinkedList) RemoveNodesWithVertexId(vertexId string) {
 	node := dll.Head
 	for node != nil {
 		nodeToRemove := node
 		node = node.Next
-		if nodeToRemove.Value == value {
+		if nodeToRemove.Vertex.Id == vertexId {
 			dll.Remove(node)
 		}
 	}
@@ -103,9 +115,9 @@ func (dll *DoublyLinkedList) Remove(node *DllNode) {
 	dll.removeNode(node)
 }
 
-func (dll *DoublyLinkedList) ContainsNodeWithValue(value int) bool {
+func (dll *DoublyLinkedList) ContainsNodeWithVertexId(vertexId string) bool {
 	node := dll.Head
-	for node != nil && node.Value != value {
+	for node != nil && node.Vertex.Id != vertexId {
 		node = node.Next
 	}
 	return node != nil

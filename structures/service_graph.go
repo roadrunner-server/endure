@@ -1,6 +1,16 @@
 package structures
 
-import "reflect"
+import (
+	"errors"
+	"reflect"
+)
+
+type Kind int
+
+const (
+	Init Kind = iota
+	Depends
+)
 
 // manages the set of services and their edges
 // type of the Graph: directed
@@ -38,31 +48,61 @@ type Graph struct {
 // 1. Disabled info
 // 2. Relation status
 type Meta struct {
-	RawPackage string
+	RawTypeName string
+	//FnsToInvoke is the function names to invoke if type implements Provides() interface
+	FnsToInvoke []string
 	// values to provide into INIT or Depends methods
-	// key is a String() method invoked on the reflect.Value
+	// key is a String() method invoked on the reflect.Vertex
 	Values map[string]reflect.Value
+
+	// List of the vertex deps
+	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
+	InitDepsList []string
+
+	// List of the vertex deps
+	// foo4.DB, foo4.S4 etc.. which were found in the Depends() method
+	DepsList []string
 }
 
 // since we can have cyclic dependencies
 // when we traverse the Graph, we should mark nodes as Visited or not to detect cycle
 type Vertex struct {
 	Id string
-	// Value
-	Value interface{}
+	// Vertex
+	Iface interface{}
 	// Meta information about current Vertex
 	Meta Meta
 	// Dependencies of the node
 	Dependencies []*Vertex
-	// Visited used for the cyclic graphs to detect cycle
-	Visited bool
 
 	// Vertex foo4.S4 also provides (for example)
 	// foo4.DB
-	Provides map[string]*reflect.Value
+	Provides []string
 
 	// for the toposort
 	NumOfDeps int
+}
+
+func (v *Vertex) AddValue(valueKey string, value reflect.Value) error {
+	// get the VERTEX
+	if v.Meta.Values == nil {
+		v.Meta.Values = make(map[string]reflect.Value)
+	}
+
+	if _, ok := v.Meta.Values[valueKey]; ok {
+		return errors.New("key already present in the map")
+	}
+
+	v.Meta.Values[valueKey] = value
+	return nil
+}
+
+func (v *Vertex) FindCallValue(valueId string) *reflect.Value {
+	for i := 0; i < len(v.Dependencies); i++ {
+
+	}
+
+	return nil
 }
 
 // NewAL initializes adjacency list to store the Graph
@@ -106,45 +146,13 @@ func (g *Graph) HasVertex(name string) bool {
 	return ok
 }
 
-// BuildRunList builds run list from the graph after topological sort
-// If Graph is not connected, separate lists could be run in parallel
-func (g *Graph) BuildRunList() []*DoublyLinkedList {
-	//graph := g.createServicesGraph()
-
-	return nil
-}
-
-// []string here all the deps (vertices) S1, S2, S3, S4
-//func NewDepsGraph(deps []string) *depsGraph {
-//	g := &depsGraph{
-//		vertices: make([]*Vertex, 0, 10),
-//		graph:    make(map[string]*Vertex),
-//	}
-//	for _, d := range deps {
-//		g.AddVertex(d)
-//	}
-//	return g
-//}
-
-func (g *Graph) AddValue(vertexId, valueKey string, value reflect.Value) {
-	// get the VERTEX
-	if vertex, ok := g.Graph[vertexId]; ok {
-		// add the vertex dep as value
-		vertex.Meta.Values[valueKey] = value
-	}
-}
-
-//func (g *Graph) Graph() []*Vertex {
-//	return g.vertices
-//}
-
 /*
 AddDep doing the following:
 1. Get a vertexID (foo2.S2 for example)
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
-func (g *Graph) AddDep(vertexID, depID string) {
+func (g *Graph) AddDep(vertexID, depID string, kind Kind) {
 	// idV should always present
 	idV := g.GetVertex(vertexID)
 	if idV == nil {
@@ -153,8 +161,25 @@ func (g *Graph) AddDep(vertexID, depID string) {
 	// but depV can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
 	depV := g.GetVertex(depID)
 	if depV == nil {
-		depV = g.findVertexId(depID)
+		depV = g.FindProvider(depID)
 	}
+
+	// add Dependency into the List
+	// to call later
+	// because we should know Init method parameters for every Vertex
+	switch kind {
+	case Init:
+		if idV.Meta.InitDepsList == nil {
+			idV.Meta.InitDepsList = make([]string, 0, 1)
+		}
+		idV.Meta.InitDepsList = append(idV.Meta.InitDepsList, depID)
+	case Depends:
+		if idV.Meta.DepsList == nil {
+			idV.Meta.DepsList = make([]string, 0, 1)
+		}
+		idV.Meta.DepsList = append(idV.Meta.DepsList, depID)
+	}
+
 	// append depID vertex
 	for i := 0; i < len(idV.Dependencies); i++ {
 		tmpId := idV.Dependencies[i].Id
@@ -164,16 +189,16 @@ func (g *Graph) AddDep(vertexID, depID string) {
 	}
 	idV.Dependencies = append(idV.Dependencies, depV)
 	depV.NumOfDeps++
+
 }
 
-func (g *Graph) AddVertex(vertexId string, vertexValue interface{}, meta Meta) {
+func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
 	g.Graph[vertexId] = &Vertex{
 		// todo fill all the information
 		Id:           vertexId,
-		Value:        vertexValue,
+		Iface:        vertexIface,
 		Meta:         meta,
 		Dependencies: nil,
-		Visited:      false,
 	}
 	g.Vertices = append(g.Vertices, g.Graph[vertexId])
 }
@@ -182,11 +207,13 @@ func (g *Graph) GetVertex(id string) *Vertex {
 	return g.Graph[id]
 }
 
-func (g *Graph) findVertexId(depId string) *Vertex {
+func (g *Graph) FindProvider(depId string) *Vertex {
 	for i := 0; i < len(g.Vertices); i++ {
-		//vertexId := g.Vertices[i].Id
-		for id := range g.Vertices[i].Provides {
-			if depId == id {
+		for j := 0; j < len(g.Vertices[i].Provides); j++ {
+			providerId := g.Vertices[i].Provides[j]
+			// if depId is eq to providerId
+			// like foo2.DB == foo2.DB, then return vertexId --> foo2.S2
+			if depId == providerId {
 				return g.Vertices[i]
 			}
 		}
@@ -194,8 +221,8 @@ func (g *Graph) findVertexId(depId string) *Vertex {
 	return nil
 }
 
-func (g *Graph) Order() []string {
-	var ord []string
+func (g *Graph) TopologicalSort() []*Vertex {
+	var ord []*Vertex
 	var verticesWoDeps []*Vertex
 
 	for _, v := range g.Vertices {
@@ -208,7 +235,7 @@ func (g *Graph) Order() []string {
 		v := verticesWoDeps[len(verticesWoDeps)-1]
 		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps)-1]
 
-		ord = append(ord, v.Id)
+		ord = append(ord, v)
 		g.removeDep(v, &verticesWoDeps)
 	}
 
@@ -217,12 +244,20 @@ func (g *Graph) Order() []string {
 }
 
 func (g *Graph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
-	for len(vertex.Dependencies) > 0 {
-		dep := vertex.Dependencies[len(vertex.Dependencies)-1]
-		vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies)-1]
+	for i := 0; i < len(vertex.Dependencies); i++ {
+		dep := vertex.Dependencies[i]
 		dep.NumOfDeps--
 		if dep.NumOfDeps == 0 {
 			*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
 		}
 	}
+	// TODO remove dependencies thus we don't need it in the run list
+	//for len(vertex.Dependencies) > 0 {
+	//	dep := vertex.Dependencies[len(vertex.Dependencies)-1]
+	//	//vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies)-1]
+	//	dep.NumOfDeps--
+	//	if dep.NumOfDeps == 0 {
+	//		*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
+	//	}
+	//}
 }
