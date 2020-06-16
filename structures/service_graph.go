@@ -21,18 +21,6 @@ type Graph struct {
 	Graph map[string]*Vertex
 	// List of all Vertices
 	Vertices []*Vertex
-
-	// rows, connections
-	// [a --> b], [a --> c] etc..
-	// DEPENDENCIES
-	Edges map[string][]string
-
-	//graph    map[string]*Vertex
-
-	// global property of the Graph
-	// if the Graph Has disconnected nodes
-	// this field will be set to true
-	Connected bool
 }
 
 // it results in "RPC" --> S1, and at the end slice with deps will looks like:
@@ -140,8 +128,6 @@ func (v *Vertex) AddValue(valueKey string, value reflect.Value, isRef bool) erro
 func NewGraph() *Graph {
 	return &Graph{
 		Graph:     make(map[string]*Vertex),
-		Edges:     make(map[string][]string),
-		Connected: false,
 	}
 }
 

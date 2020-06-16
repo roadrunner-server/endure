@@ -2,7 +2,6 @@ package cascade
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"reflect"
@@ -24,19 +23,71 @@ type Cascade struct {
 	logger zerolog.Logger
 }
 
+// Level defines log levels.
+type Level int8
+
+const (
+	// DebugLevel defines debug log level.
+	DebugLevel Level = iota
+	// InfoLevel defines info log level.
+	InfoLevel
+	// WarnLevel defines warn log level.
+	WarnLevel
+	// ErrorLevel defines error log level.
+	ErrorLevel
+	// FatalLevel defines fatal log level.
+	FatalLevel
+	// PanicLevel defines panic log level.
+	PanicLevel
+	// NoLevel defines an absent log level.
+	NoLevel
+	// Disabled disables the logger.
+	Disabled
+
+	// TraceLevel defines trace log level.
+	TraceLevel Level = -1
+)
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////// PUBLIC ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func NewContainer() (*Cascade, error) {
+/* Input parameters: logLevel
+-1 is the most informative level - TraceLevel
+0 - DebugLevel defines debug log level
+1 - InfoLevel defines info log level.
+2 - WarnLevel defines warn log level.
+3 - ErrorLevel defines error log level.
+4 - FatalLevel defines fatal log level.
+5 - PanicLevel defines panic log level.
+6 - NoLevel defines an absent log level.
+7 - Disabled disables the logger.
+see the cascade.Level
+*/
+func NewContainer(logLevel Level) (*Cascade, error) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	debug := flag.Bool("debug", false, "sets log level to debug")
-	flag.Parse()
-
-	zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	if *debug {
+	switch logLevel {
+	case DebugLevel:
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	case InfoLevel:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case WarnLevel:
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case ErrorLevel:
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	case FatalLevel:
+		zerolog.SetGlobalLevel(zerolog.FatalLevel)
+	case PanicLevel:
+		zerolog.SetGlobalLevel(zerolog.PanicLevel)
+	case NoLevel:
+		zerolog.SetGlobalLevel(zerolog.NoLevel)
+	case Disabled:
+		zerolog.SetGlobalLevel(zerolog.Disabled)
+	case -1: // TraceLevel
 		zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.Disabled)
 	}
 
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
@@ -84,7 +135,6 @@ func (c *Cascade) Register(vertex interface{}) error {
 		return err
 	}
 
-
 	c.logger.Info().Msgf("registered type: %s", t.String())
 
 	return nil
@@ -114,20 +164,25 @@ func (c *Cascade) Init() error {
 }
 
 func (c *Cascade) Serve(upstream chan interface{}) error {
+	panic("unimplemented!")
 	return nil
 }
 func (c *Cascade) Stop() error {
+	panic("unimplemented!")
 	return nil
 }
 
 func (c *Cascade) Get(name string) interface{} {
+	panic("unimplemented!")
 	return nil
 }
 func (c *Cascade) Has(name string) bool {
+	panic("unimplemented!")
 	return false
 }
 
 func (c *Cascade) List() []string {
+	panic("unimplemented!")
 	return nil
 }
 

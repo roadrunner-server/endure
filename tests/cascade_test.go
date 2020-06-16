@@ -11,7 +11,7 @@ import (
 )
 
 func TestCascade_Init(t *testing.T) {
-	c, err := cascade.NewContainer()
+	c, err := cascade.NewContainer(cascade.TraceLevel)
 	if err != nil {
 		t.Fatal(err)
 	}
