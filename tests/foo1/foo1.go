@@ -1,8 +1,6 @@
 package foo1
 
 import (
-	"errors"
-
 	"github.com/spiral/cascade/tests/foo2"
 	"github.com/spiral/cascade/tests/foo4"
 )
@@ -18,7 +16,6 @@ func (s1 *S1) Depends() []interface{} {
 
 func (s1 *S1) AddService(svc *foo4.S4) error {
 	println("hello from S1 --> AddService")
-	return errors.New("test")
 	return nil
 }
 
