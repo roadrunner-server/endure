@@ -165,20 +165,16 @@ func (c *Cascade) Init() error {
 
 func (c *Cascade) Serve(upstream chan interface{}) error {
 	panic("unimplemented!")
-	return nil
 }
 func (c *Cascade) Stop() error {
 	panic("unimplemented!")
-	return nil
 }
 
 func (c *Cascade) Get(name string) interface{} {
 	panic("unimplemented!")
-	return nil
 }
 func (c *Cascade) Has(name string) bool {
 	panic("unimplemented!")
-	return false
 }
 
 func (c *Cascade) List() []string {
