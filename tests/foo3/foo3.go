@@ -24,3 +24,12 @@ func (s3 *S3) Init(svc foo2.S2) error {
 	println("hello from S3 --> Init")
 	return nil
 }
+
+func (s3 *S3) Serve(upstream chan interface{}) error {
+	return nil
+}
+
+func (s3 *S3) Stop() error {
+	println("S3: error occurred, stopping")
+	return nil
+}

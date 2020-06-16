@@ -53,7 +53,7 @@ func functionParameters(r reflect.Method) ([]reflect.Type, error) {
 	return args, nil
 }
 
-func functionName(i interface{}) string {
+func getFunctionName(i interface{}) string {
 	rawName := runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 	name := strings.TrimPrefix(filepath.Ext(rawName), ".")
 

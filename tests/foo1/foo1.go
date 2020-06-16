@@ -25,3 +25,12 @@ func (s1 *S1) Init(s2 *foo2.S2, db *foo4.DB) error {
 	println("S4 in S1: " + db.Name)
 	return nil
 }
+
+func (s1 *S1) Serve(upstream chan interface{}) error {
+	return nil
+}
+
+func (s1 *S1) Stop() error {
+	println("S1: error occurred, stopping")
+	return nil
+}

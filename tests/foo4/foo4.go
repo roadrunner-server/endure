@@ -27,3 +27,12 @@ func (s *S4) CreateAnotherDb() (*DB, error) {
 		Name: "S4 greeting you, padavan",
 	}, nil
 }
+
+func (s *S4) Serve(upstream chan interface{}) error {
+	return nil
+}
+
+func (s *S4) Stop() error {
+	println("S4: error occurred, stopping")
+	return nil
+}

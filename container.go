@@ -3,12 +3,12 @@ package cascade
 type (
 	Service interface {
 		Serve(upstream chan interface{}) error
-		Stop()
+		Stop() error
 	}
 
 	Container interface {
 		Service
-		Register(name string, service interface{})
+		Register(service interface{}) error
 		Get(name string) interface{}
 		Has(name string) bool
 		Init() error
