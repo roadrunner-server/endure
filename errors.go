@@ -1,5 +1,10 @@
 package cascade
 
-import "github.com/pkg/errors"
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+)
 
 var typeNotImplementError = errors.New("type should implement Service interface")
+var vertexAlreadyExists = func(name string) error { return fmt.Errorf("vertex `%s` already exists", name) }

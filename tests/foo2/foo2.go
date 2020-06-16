@@ -29,5 +29,6 @@ func (s2 *S2) Serve(upstream chan interface{}) error {
 }
 
 func (s2 *S2) Stop() error {
+	println("S2: error occurred, stopping")
 	return nil
 }

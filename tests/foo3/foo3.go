@@ -30,5 +30,6 @@ func (s3 *S3) Serve(upstream chan interface{}) error {
 }
 
 func (s3 *S3) Stop() error {
+	println("S3: error occurred, stopping")
 	return nil
 }

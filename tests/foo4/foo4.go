@@ -21,9 +21,9 @@ func (s *S4) Provides() []interface{} {
 }
 
 // this is the same type but different packages
-func (s *S4) CreateAnotherDb() (DB, error) {
+func (s *S4) CreateAnotherDb() (*DB, error) {
 	println("hello from S4 --> CreateAnotherDb")
-	return DB{
+	return &DB{
 		Name: "S4 greeting you, padavan",
 	}, nil
 }
@@ -33,5 +33,6 @@ func (s *S4) Serve(upstream chan interface{}) error {
 }
 
 func (s *S4) Stop() error {
+	println("S4: error occurred, stopping")
 	return nil
 }

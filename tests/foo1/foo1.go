@@ -1,6 +1,8 @@
 package foo1
 
 import (
+	"errors"
+
 	"github.com/spiral/cascade/tests/foo2"
 	"github.com/spiral/cascade/tests/foo4"
 )
@@ -31,5 +33,6 @@ func (s1 *S1) Serve(upstream chan interface{}) error {
 }
 
 func (s1 *S1) Stop() error {
+	println("S1: error occurred, stopping")
 	return nil
 }

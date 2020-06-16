@@ -13,6 +13,8 @@ import (
 
 // InitMethodName is the function name for the reflection
 const InitMethodName = "Init"
+// Stop is the function name for the reflection to Stop the service
+const StopMethodName = "Stop"
 
 type Cascade struct {
 	// Dependency graph
@@ -193,7 +195,7 @@ func (c *Cascade) List() []string {
 func (c *Cascade) register(name string, vertex interface{}) error {
 	// check the vertex
 	if c.graph.HasVertex(name) {
-		return fmt.Errorf("vertex `%s` already exists", name)
+		return vertexAlreadyExists(name)
 	}
 
 	// just push the vertex
@@ -308,6 +310,10 @@ func (c *Cascade) calculateRegisterDeps(vertexID string, vertex interface{}) err
 
 					// we store pointer in the Deps structure in the isRef field
 					c.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at))
+					c.logger.Info().
+						Str("vertexID", vertexID).
+						Str("depends", atStr).
+						Msg("adding dependency via Depends()")
 				}
 			} else {
 				// todo temporary
@@ -346,6 +352,10 @@ func (c *Cascade) calculateInitDeps(vertexID string, initMethod reflect.Method) 
 		}
 
 		c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg))
+		c.logger.Info().
+			Str("vertexID", vertexID).
+			Str("depends", initArg.String()).
+			Msg("adding dependency via Init()")
 	}
 	return nil
 }
@@ -357,10 +367,9 @@ Traverse the DLL in the forward direction
 func (c *Cascade) init(n *structures.DllNode) error {
 	// traverse the dll
 	for n != nil {
-		init, ok := reflect.TypeOf(n.Vertex.Iface).MethodByName(InitMethodName)
-		if !ok {
-			panic("init method should be implemented")
-		}
+		// we already checked the Interface satisfaction
+		// at this step absence of Init() is impossible
+		init, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(InitMethodName)
 
 		initArgs, err := functionParameters(init)
 		if err != nil {
@@ -372,6 +381,10 @@ func (c *Cascade) init(n *structures.DllNode) error {
 		if len(initArgs) == 1 {
 			err = c.noDepsCall(init, n)
 			if err != nil {
+				err2 := c.runBackward(n.Prev)
+				if err2 != nil {
+					panic(err2)
+				}
 				return err
 			}
 		} else {
@@ -379,6 +392,10 @@ func (c *Cascade) init(n *structures.DllNode) error {
 			// we should resolve all it all
 			err = c.depsCall(init, n)
 			if err != nil {
+				err2 := c.runBackward(n.Prev)
+				if err2 != nil {
+					panic(err2)
+				}
 				return err
 			}
 		}
@@ -391,6 +408,29 @@ func (c *Cascade) init(n *structures.DllNode) error {
 }
 
 func (c *Cascade) runBackward(n *structures.DllNode) error {
+	c.logger.Info().Msg("running backward")
+	// traverse the dll
+	for n != nil {
+		// we already checked the Interface satisfaction
+		// at this step absence of Stop() is impossible
+		stop, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(StopMethodName)
+
+		in := make([]reflect.Value, 0, 1)
+
+		// add service itself, this is only 1 dependency for the Stop
+		in = append(in, reflect.ValueOf(n.Vertex.Iface))
+
+		ret := stop.Func.Call(in)
+		rErr := ret[0].Interface()
+		if rErr != nil {
+			e := rErr.(error)
+			panic(e)
+		}
+
+		// prev DLL node
+		n = n.Prev
+	}
+
 	return nil
 }
 
@@ -403,12 +443,20 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 	ret := init.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		e := rErr.(error)
-		panic(e)
+		if e, ok := rErr.(error); ok {
+			c.logger.Err(e)
+			return e
+		} else {
+			return errors.New("unknown error occurred during the function call")
+		}
 	}
 	// just to be safe here
 	if len(in) > 0 {
 		// `in` type here is initialized function receiver
+		c.logger.Info().
+			Str("vertexID", n.Vertex.Id).
+			Str("in parameter", in[0].Type().String()).
+			Msg("calling with no deps")
 		err := n.Vertex.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
 		if err != nil {
 			return err
@@ -417,11 +465,13 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 
 	err := c.traverseProvider(n, in)
 	if err != nil {
+		c.logger.Err(err)
 		return err
 	}
 
 	err = c.traverseRegisters(n)
 	if err != nil {
+		c.logger.Err(err)
 		return err
 	}
 
@@ -458,7 +508,7 @@ func (c *Cascade) traverseRegisters(n *structures.DllNode) error {
 						if val.Value.CanAddr() {
 							inReg = append(inReg, val.Value.Addr())
 						} else {
-							c.logger.Warn().Str("type", val.Value.Type().String()).Msg("value is not addressible, consider to return a pointer")
+							c.logger.Warn().Str("type", val.Value.Type().String()).Msgf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type())
 							c.logger.Warn().Msgf("making a fresh pointer")
 
 							nt := reflect.New(val.Value.Type())
@@ -485,8 +535,12 @@ func (c *Cascade) traverseRegisters(n *structures.DllNode) error {
 				if len(ret) > 0 {
 					rErr := ret[0].Interface()
 					if rErr != nil {
-						e := rErr.(error)
-						panic(e)
+						if e, ok := rErr.(error); ok {
+							c.logger.Err(e)
+							return e
+						} else {
+							return errors.New("unknown error occurred during the function call")
+						}
 					}
 				} else {
 					return errors.New("register should return Value and error types")
@@ -513,8 +567,12 @@ func (c *Cascade) traverseProvider(n *structures.DllNode, in []reflect.Value) er
 				if len(ret) > 1 {
 					rErr := ret[1].Interface()
 					if rErr != nil {
-						e := rErr.(error)
-						panic(e)
+						if e, ok := rErr.(error); ok {
+							c.logger.Err(e)
+							return e
+						} else {
+							return errors.New("unknown error occurred during the function call")
+						}
 					}
 
 					err := n.Vertex.AddValue(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()))
@@ -538,8 +596,11 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 	ret := init.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		e := rErr.(error)
-		panic(e)
+		if e, ok := rErr.(error); ok {
+			return e
+		} else {
+			return errors.New("unknown error occured during the function call")
+		}
 	}
 
 	// just to be safe here
@@ -599,7 +660,7 @@ func (c *Cascade) getInitValues(n *structures.DllNode) []reflect.Value {
 						if val.Value.CanAddr() {
 							in = append(in, val.Value.Addr())
 						} else {
-							c.logger.Warn().Str("type", val.Value.Type().String()).Msg("value is not addressible, consider to return a pointer")
+							c.logger.Warn().Str("type", val.Value.Type().String()).Msgf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type())
 							c.logger.Warn().Msgf("making a fresh pointer")
 							nt := reflect.New(val.Value.Type())
 							in = append(in, nt)
