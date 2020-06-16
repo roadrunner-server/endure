@@ -3,9 +3,16 @@ package cascade
 import (
 	"reflect"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spiral/cascade/structures"
 )
-
+/*
+addProviders:
+Adds a provided type via the Provider interface. And adding:
+1. Key to the `Vertex Provides` map with empty ProvidedEntry, because we use key at the Init stage and fill the map with
+actual type after FnsProviderToInvoke will be invoked
+2. FnsProviderToInvoke --> is the list of the Provided function to invoke via the reflection
+ */
 func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 	if provider, ok := vertex.(Provider); ok {
 		for _, fn := range provider.Provides() {
@@ -41,10 +48,9 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 func (c *Cascade) addEdges() error {
 	// vertexID for example S2
 	for vertexID, vrtx := range c.graph.Graph {
-		init, ok := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
-		if !ok {
-			panic("init method should be implemented")
-		}
+		// we already checked the interface satisfaction
+		// and we can safely skip the OK parameter here
+		init, _ := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
 
 		/* Add the dependencies (if) which this vertex needs to init
 		Information we know at this step is:
@@ -89,9 +95,11 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 			// we already checked argsTypes len
 			for _, at := range argsTypes {
 				// check if type is primitive type
-				// TODO show warning, because why to receive primitive type in Init() ??? Any sense?
 				if isPrimitive(at.String()) {
-					continue
+					log.Fatal().
+						Str("vertexID", vertexID).
+						Str("type", at.String()).
+						Msg("primitive type in the function parameters")
 				}
 				atStr := at.String()
 				if vertexID == atStr {
@@ -120,6 +128,11 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 				gVertex.Meta.FnsRegisterToInvoke = make([]string, 0, 5)
 			}
 
+			c.logger.Info().
+				Str("vertexID", vertexID).
+				Str("function name", getFunctionName(fn)).
+				Msg("appending register function to invoke later")
+
 			gVertex.Meta.FnsRegisterToInvoke = append(gVertex.Meta.FnsRegisterToInvoke, getFunctionName(fn))
 		}
 	}
@@ -136,10 +149,18 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 
 	// iterate over all function parameters
 	for _, initArg := range initArgs {
+		if isPrimitive(initArg.String()) {
+			log.Fatal().
+				Str("vertexID", vertexID).
+				Str("type", initArg.String()).
+				Msg("primitive type in the function parameters")
+			continue
+		}
 		// receiver
 		if vertexID == removePointerAsterisk(initArg.String()) {
 			continue
 		}
+
 
 		c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg))
 		c.logger.Info().
