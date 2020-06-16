@@ -8,7 +8,7 @@ type DB struct {
 type S2 struct {
 }
 
-func (s2 *S2) Init(db *foo4.DB, a int) error {
+func (s2 *S2) Init(db *foo4.DB) error {
 	println("hello from S2 --> Init")
 	println("S4 in S2: " + db.Name + ", and changing the name to the --> S4 greeting you, teacher")
 	db.Name = "S4 greeting you, teacher"
