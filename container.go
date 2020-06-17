@@ -1,17 +1,18 @@
 package cascade
 
+import "context"
+
 type (
 	// TODO namings
 	Graceful interface {
-		// Start is used when we need to make preparation and wait for all services till Serve
-		Start() error
-		// PreStop stops processing in the service before big Stop
-		PreStop() error
+		// Configure is used when we need to make preparation and wait for all services till Serve
+		Configure() error
+		// Close frees resources allocated by the service
+		Close() error
 	}
 	Service interface {
-		//
-		Serve(upstream chan interface{}) error
-		Stop() error
+		// Serve
+		Serve(ctx context.Context) error
 	}
 
 	Container interface {
