@@ -15,7 +15,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 	ret := init.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		if e, ok := rErr.(error); ok {
+		if e, ok := rErr.(error); ok && e != nil {
 			c.logger.Err(e)
 			return e
 		} else {
@@ -60,7 +60,7 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 	ret := init.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		if e, ok := rErr.(error); ok {
+		if e, ok := rErr.(error); ok && e != nil {
 			c.logger.Err(e).Stack().Msg("error occurred during the call of Init()")
 			return e
 		} else {
@@ -152,7 +152,7 @@ func (c *Cascade) traverseCallRegisters(n *structures.DllNode) error {
 				if len(ret) > 0 {
 					rErr := ret[0].Interface()
 					if rErr != nil {
-						if e, ok := rErr.(error); ok {
+						if e, ok := rErr.(error); ok && e != nil {
 							c.logger.Err(e).Msg("error occurred during the Registers invocation")
 							return e
 						} else {
@@ -184,7 +184,7 @@ func (c *Cascade) traverseCallProvider(n *structures.DllNode, in []reflect.Value
 				if len(ret) > 1 {
 					rErr := ret[1].Interface()
 					if rErr != nil {
-						if e, ok := rErr.(error); ok {
+						if e, ok := rErr.(error); ok && e != nil {
 							c.logger.Err(e).Msg("error occurred in the traverseCallProvider")
 							return e
 						} else {
@@ -282,7 +282,7 @@ func (c *Cascade) configure(n *structures.DllNode) error {
 	ret := m.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		if e, ok := rErr.(error); ok {
+		if e, ok := rErr.(error); ok && e != nil {
 			c.logger.Err(e).Msg("error occurred in the configure()")
 			return e
 		} else {
@@ -293,22 +293,25 @@ func (c *Cascade) configure(n *structures.DllNode) error {
 }
 
 func (c *Cascade) stop(n *structures.DllNode) error {
-	for n != nil {
-		// stop
+	in := make([]reflect.Value, 0, 1)
 
-		err := c.close(n)
-		if err != nil {
-			// TODO do not return until finished
-			// just log the errors
-			// stack it in slice and if slice is not empty, print it ??
-			return err
+	// add service itself
+	in = append(in, reflect.ValueOf(n.Vertex.Iface))
+
+	// Call Stop() method, which returns only error (or nil)
+	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(StopMethodName)
+	ret := m.Func.Call(in)
+	rErr := ret[0].Interface()
+	if rErr != nil {
+		if e, ok := rErr.(error); ok && e != nil {
+			c.logger.Err(e).Stack().Msg("error occurred during the stopping")
+			return e
+		} else {
+			return unknownErrorOccurred
 		}
-		n = n.Next
 	}
-
 	return nil
 }
-
 
 // TODO add stack to the all of the log events
 func (c *Cascade) close(n *structures.DllNode) error {
@@ -322,7 +325,7 @@ func (c *Cascade) close(n *structures.DllNode) error {
 	ret := m.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		if e, ok := rErr.(error); ok {
+		if e, ok := rErr.(error); ok && e != nil {
 			c.logger.Err(e).Stack().Msg("error occurred during the closing")
 			return e
 		} else {
@@ -331,4 +334,3 @@ func (c *Cascade) close(n *structures.DllNode) error {
 	}
 	return nil
 }
-

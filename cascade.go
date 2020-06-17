@@ -277,20 +277,12 @@ func (c *Cascade) stopServices(n *structures.DllNode) error {
 	c.logger.Info().Msg("running backward")
 	// traverse the dll
 	for n != nil {
-		// we already checked the Interface satisfaction
-		// at this step absence of Stop() is impossible
-		stop, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(StopMethodName)
-
-		in := make([]reflect.Value, 0, 1)
-
-		// add service itself, this is only 1 dependency for the Stop
-		in = append(in, reflect.ValueOf(n.Vertex.Iface))
-
-		ret := stop.Func.Call(in)
-		rErr := ret[0].Interface()
-		if rErr != nil {
-			e := rErr.(error)
-			panic(e)
+		err := c.stop(n)
+		if err != nil {
+			// TODO do not return until finished
+			// just log the errors
+			// stack it in slice and if slice is not empty, print it ??
+			c.logger.Err(err).Stack().Msg("error occurred during the services stopping")
 		}
 
 		// prev DLL node
