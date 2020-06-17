@@ -174,10 +174,10 @@ func (c *Cascade) Close() error {
 }
 
 func (c *Cascade) Serve() error {
-
+	n := c.runList.Head
+	err := c.internalServe(n)
 	c.waitDone()
-
-	return nil
+	return err
 }
 
 // waitDone is wrapper on ctx.Done channel
@@ -192,7 +192,20 @@ func (c *Cascade) waitDone() {
 }
 
 func (c *Cascade) Stop() error {
-	c.stop()
+	n := c.runList.Head
+
+	for n != nil {
+		err := c.internalStop(n)
+		if err != nil {
+			// TODO do not return until finished
+			// just log the errors
+			// stack it in slice and if slice is not empty, print it ??
+			c.logger.Err(err).Stack().Msg("error occurred during the services stopping")
+		}
+
+		// prev DLL node
+		n = n.Next
+	}
 	return nil
 }
 
@@ -245,7 +258,7 @@ func (c *Cascade) init(n *structures.DllNode) error {
 		if len(initArgs) == 1 {
 			err = c.noDepsCall(init, n)
 			if err != nil {
-				err2 := c.stopServices(n.Prev)
+				err2 := c.stopReverse(n.Prev)
 				if err2 != nil {
 					panic(err2)
 				}
@@ -257,7 +270,7 @@ func (c *Cascade) init(n *structures.DllNode) error {
 			err = c.depsCall(init, n)
 			if err != nil {
 				c.logger.Err(err)
-				err2 := c.stopServices(n.Prev)
+				err2 := c.stopReverse(n.Prev)
 				if err2 != nil {
 					panic(err2)
 				}
@@ -272,12 +285,19 @@ func (c *Cascade) init(n *structures.DllNode) error {
 	return nil
 }
 
-// stopServices will call Stop on every node in node.Prev in DLL
-func (c *Cascade) stopServices(n *structures.DllNode) error {
-	c.logger.Info().Msg("running backward")
+// stopReverse will call Stop on every node in node.Prev in DLL
+func (c *Cascade) stopReverse(n *structures.DllNode) error {
 	// traverse the dll
 	for n != nil {
-		err := c.stop(n)
+		in := make([]reflect.Value, 0, 1)
+		// add service itself
+		in = append(in, reflect.ValueOf(n.Vertex.Iface))
+
+		err := c.close(n, in)
+		if err != nil {
+			c.logger.Err(err).Stack().Msg("error occurred during the services closing")
+		}
+		err = c.internalStop(n)
 		if err != nil {
 			// TODO do not return until finished
 			// just log the errors
