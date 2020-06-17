@@ -25,7 +25,7 @@ func (s3 *S3) Init(svc foo2.S2) error {
 	return nil
 }
 
-func (s3 *S3) Serve(upstream chan interface{}) error {
+func (s3 *S3) Serve() error {
 	return nil
 }
 

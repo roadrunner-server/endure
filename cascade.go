@@ -1,6 +1,7 @@
 package cascade
 
 import (
+	"context"
 	"os"
 	"reflect"
 	"strings"
@@ -9,11 +10,6 @@ import (
 	"github.com/spiral/cascade/structures"
 )
 
-// InitMethodName is the function name for the reflection
-const InitMethodName = "Init"
-// Stop is the function name for the reflection to Stop the service
-const StopMethodName = "Stop"
-
 type Cascade struct {
 	// Dependency graph
 	graph *structures.Graph
@@ -21,6 +17,9 @@ type Cascade struct {
 	runList *structures.DoublyLinkedList
 	// logger
 	logger zerolog.Logger
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // Level defines log levels.
@@ -91,11 +90,14 @@ func NewContainer(logLevel Level) (*Cascade, error) {
 	}
 
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
+	ctx, stop := context.WithCancel(context.Background())
 
 	return &Cascade{
 		graph:   structures.NewGraph(),
 		runList: structures.NewDoublyLinkedList(),
 		logger:  logger,
+		cancel:  stop,
+		ctx:     ctx,
 	}, nil
 }
 
@@ -163,11 +165,35 @@ func (c *Cascade) Init() error {
 	return c.init(c.runList.Head)
 }
 
-func (c *Cascade) Serve(upstream chan interface{}) error {
-	panic("unimplemented!")
+func (c *Cascade) Configure() error {
+	return nil
 }
+
+func (c *Cascade) Close() error {
+	return nil
+}
+
+func (c *Cascade) Serve() error {
+
+	c.waitDone()
+
+	return nil
+}
+
+// waitDone is wrapper on ctx.Done channel
+// which will wait until cancel() will be invoked
+func (c *Cascade) waitDone() {
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		}
+	}
+}
+
 func (c *Cascade) Stop() error {
-	panic("unimplemented!")
+	c.stop()
+	return nil
 }
 
 func (c *Cascade) Get(name string) interface{} {

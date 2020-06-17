@@ -26,7 +26,7 @@ func (s1 *S1) Init(s2 *foo2.S2, db *foo4.DB) error {
 	return nil
 }
 
-func (s1 *S1) Serve(upstream chan interface{}) error {
+func (s1 *S1) Serve() error {
 	return nil
 }
 

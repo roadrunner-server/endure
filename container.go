@@ -1,6 +1,16 @@
 package cascade
 
-import "context"
+// InitMethodName is the function name for the reflection
+const InitMethodName = "Init"
+
+// ConfigureMethodName
+const ConfigureMethodName = "Configure"
+// CloseMethodName
+const CloseMethodName = "Close"
+// ServeMethodName
+const ServeMethodName = "Serve"
+// Stop is the function name for the reflection to Stop the service
+const StopMethodName = "Stop"
 
 type (
 	// TODO namings
@@ -12,7 +22,9 @@ type (
 	}
 	Service interface {
 		// Serve
-		Serve(ctx context.Context) error
+		Serve() error
+		// Stop
+		Stop() error
 	}
 
 	Container interface {

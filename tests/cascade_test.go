@@ -1,6 +1,7 @@
 package cascade_test
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,6 +22,16 @@ func TestCascade_Init_OK(t *testing.T) {
 	assert.NoError(t, c.Register(&foo3.S3{}))
 	assert.NoError(t, c.Register(&foo1.S1{}))
 	assert.NoError(t, c.Init())
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func(group *sync.WaitGroup) {
+		assert.NoError(t, c.Serve())
+		group.Done()
+	}(wg)
+
+	assert.NoError(t, c.Stop())
+	wg.Wait()
 }
 
 func TestCascade_Init_Err(t *testing.T) {

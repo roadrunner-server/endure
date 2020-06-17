@@ -28,7 +28,7 @@ func (s *S4) CreateAnotherDb() (*DB, error) {
 	}, nil
 }
 
-func (s *S4) Serve(upstream chan interface{}) error {
+func (s *S4) Serve() error {
 	return nil
 }
 

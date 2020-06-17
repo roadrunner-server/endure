@@ -15,7 +15,7 @@ func (s *S1Err) Init() error {
 	return errors.New("test error")
 }
 
-func (s *S1Err) Serve(upstream chan interface{}) error {
+func (s *S1Err) Serve() error {
 	return nil
 }
 

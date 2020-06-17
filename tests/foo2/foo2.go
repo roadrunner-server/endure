@@ -1,6 +1,8 @@
 package foo2
 
-import "github.com/spiral/cascade/tests/foo4"
+import (
+	"github.com/spiral/cascade/tests/foo4"
+)
 
 type DB struct {
 }
@@ -24,7 +26,7 @@ func (s2 *S2) CreateDB() (DB, error) {
 	return DB{}, nil
 }
 
-func (s2 *S2) Serve(upstream chan interface{}) error {
+func (s2 *S2) Serve() error {
 	return nil
 }
 
