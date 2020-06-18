@@ -7,7 +7,7 @@ import (
 	"github.com/spiral/cascade/structures"
 )
 
-func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
+func (c *Cascade) funcCall(init reflect.Method, n *structures.DllNode) error {
 	in := c.getInitValues(n)
 
 	// Iterate over dependencies
@@ -261,9 +261,9 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-func (c *Cascade) internalServe(n *structures.DllNode) []*Result {
+func (c *Cascade) startServing(n *structures.DllNode) []*result {
 	// TODO len of DDLNodes
-	out := make([]*Result, 0, 5)
+	out := make([]*result, 0, 5)
 	// handle all configure
 	for n != nil {
 		in := make([]reflect.Value, 0, 1)
@@ -288,40 +288,36 @@ func (c *Cascade) internalServe(n *structures.DllNode) []*Result {
 
 		// add service itself
 		in = append(in, reflect.ValueOf(n.Vertex.Iface))
-		//var res Result
-		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-			out = append(out, c.serve(n, in))
-		}
 
-		// internalServe
-		// handle next node
+		out = append(out, c.serve(n, in))
+
 		n = n.Next
 	}
 	return out
 }
 
-func (c *Cascade) serve(n *structures.DllNode, in []reflect.Value) *Result {
+func (c *Cascade) serve(n *structures.DllNode, in []reflect.Value) *result {
 	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
 	if res != nil {
 		if e, ok := res.(chan error); ok && e != nil {
 			// return the result
-			return &Result{
-				ErrCh:    e,
-				VertexID: n.Vertex.Id,
+			return &result{
+				errCh:    e,
+				vertexId: n.Vertex.Id,
 			}
 		}
 	}
-	r := &Result{
-		ErrCh:    make(chan error, 1),
-		VertexID: n.Vertex.Id,
+	r := &result{
+		errCh:    make(chan error, 1),
+		vertexId: n.Vertex.Id,
 	}
-	r.ErrCh <- unknownErrorOccurred
+	r.errCh <- unknownErrorOccurred
 	return r
 }
 
-func (c *Cascade) configure(n *structures.DllNode, in []reflect.Value) *Result {
+func (c *Cascade) configure(n *structures.DllNode, in []reflect.Value) *result {
 	// Call Configure() method, which returns only error (or nil)
 	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ConfigureMethodName)
 	ret := m.Func.Call(in)
@@ -329,17 +325,17 @@ func (c *Cascade) configure(n *structures.DllNode, in []reflect.Value) *Result {
 	if res != nil {
 		if e, ok := res.(chan error); ok && e != nil {
 			// return the result
-			return &Result{
-				ErrCh:    e,
-				VertexID: n.Vertex.Id,
+			return &result{
+				errCh:    e,
+				vertexId: n.Vertex.Id,
 			}
 		}
 	}
-	r := &Result{
-		ErrCh:    make(chan error, 1),
-		VertexID: n.Vertex.Id,
+	r := &result{
+		errCh:    make(chan error, 1),
+		vertexId: n.Vertex.Id,
 	}
-	r.ErrCh <- unknownErrorOccurred
+	r.errCh <- unknownErrorOccurred
 	return r
 }
 

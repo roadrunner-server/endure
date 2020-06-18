@@ -1,8 +1,6 @@
 package foo3
 
 import (
-	"time"
-
 	"github.com/spiral/cascade/tests/foo2"
 	"github.com/spiral/cascade/tests/foo4"
 )
@@ -29,8 +27,8 @@ func (s3 *S3) Init(svc foo2.S2) error {
 
 func (s3 *S3) Serve() chan error {
 	errCh := make(chan error, 1)
+	println("S3: serving")
 	go func() {
-		time.Sleep(time.Second * 4)
 		errCh <- nil
 	}()
 	return errCh

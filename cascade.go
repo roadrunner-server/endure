@@ -167,8 +167,9 @@ func (c *Cascade) Init() error {
 			Err(err).
 			Stack().
 			Msg("error during the init")
+		return err
 	}
-	return c.init(c.runList.Head)
+	return nil
 }
 
 func (c *Cascade) Configure() error {
@@ -180,29 +181,8 @@ func (c *Cascade) Close() error {
 }
 
 func (c *Cascade) Serve() <-chan *Result {
-	//ch := make(chan error, 1)
 	n := c.runList.Head
-	//go func() {
-	//
-	//	ch
-	//}()
-	//r := Result{
-	//	ErrCh:    make(chan error, len(c.graph.Vertices)),
-	//	VertexID: "",
-	//}
-	//go func() {
-	//	for k := range  {
-	//		if k != nil {
-	//
-	//		}
-	//	}
-	//}()
-
-	// restart vertices on fail
-
-
-
-	return merge(c.internalServe(n))
+	return merge(c.startServing(n))
 }
 
 func (c *Cascade) Stop() error {
@@ -262,34 +242,15 @@ func (c *Cascade) init(n *structures.DllNode) error {
 		// at this step absence of Init() is impossible
 		init, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(InitMethodName)
 
-		initArgs, err := functionParameters(init)
+		err := c.funcCall(init, n)
 		if err != nil {
+			c.logger.
+				Err(err).
+				Stack().Str("vertexID", n.Vertex.Id).
+				Msg("error occurred while calling a function")
 			return err
 		}
 
-		// If len(initArgs) is eq to 1, than we deal with empty Init() method
-		//
-		if len(initArgs) == 1 {
-			err = c.noDepsCall(init, n)
-			if err != nil {
-				c.logger.
-					Err(err).
-					Stack().Str("vertexID", n.Vertex.Id).
-					Msg("error in noDepsCall")
-				return err
-			}
-		} else {
-			// else, we deal with variadic len of Init function parameters Init(a,b,c, etc)
-			// we should resolve all it all
-			err = c.depsCall(init, n)
-			if err != nil {
-				c.logger.
-					Err(err).
-					Stack().Str("vertexID", n.Vertex.Id).
-					Msg("error in depsCall")
-				return err
-			}
-		}
 
 		// next DLL node
 		n = n.Next

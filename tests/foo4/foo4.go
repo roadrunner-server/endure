@@ -1,7 +1,5 @@
 package foo4
 
-import "time"
-
 type S4 struct {
 }
 
@@ -31,13 +29,18 @@ func (s *S4) CreateAnotherDb() (*DB, error) {
 }
 
 func (s *S4) Configure() chan error {
-	return nil
+	errCh := make(chan error, 1)
+	println("S4: configuring")
+	go func() {
+		errCh <- nil
+	}()
+	return errCh
 }
 
 func (s *S4) Serve() chan error {
 	errCh := make(chan error, 1)
+	println("S4: serving")
 	go func() {
-		time.Sleep(time.Second * 4)
 		errCh <- nil
 	}()
 	return errCh

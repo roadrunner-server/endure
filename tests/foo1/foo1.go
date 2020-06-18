@@ -1,8 +1,6 @@
 package foo1
 
 import (
-	"time"
-
 	"github.com/spiral/cascade/tests/foo2"
 	"github.com/spiral/cascade/tests/foo4"
 )
@@ -30,8 +28,8 @@ func (s1 *S1) Init(s2 *foo2.S2, db *foo4.DB) error {
 
 func (s1 *S1) Serve() chan error {
 	errCh := make(chan error, 1)
+	println("S1: serving")
 	go func() {
-		time.Sleep(time.Second * 4)
 		errCh <- nil
 	}()
 	return errCh

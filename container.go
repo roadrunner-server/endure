@@ -17,8 +17,13 @@ const StopMethodName = "Stop"
 
 // TODO interface?
 type Result struct {
-	ErrCh    chan error
+	Err      error
 	VertexID string
+}
+
+type result struct {
+	errCh    chan error
+	vertexId string
 }
 
 type (

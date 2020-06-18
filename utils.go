@@ -35,13 +35,19 @@ func (c *Cascade) waitDone() {
 	}
 }
 
-func merge(in []*Result) <-chan *Result {
+func merge(in []*result) <-chan *Result {
 	var wg sync.WaitGroup
 	out := make(chan *Result)
 
-	output := func(r *Result) {
-		for range r.ErrCh {
-			out <- r
+	output := func(r *result) {
+		for k := range r.errCh {
+			if k == nil {
+				continue
+			}
+			out <- &Result{
+				Err:      k,
+				VertexID: r.vertexId,
+			}
 		}
 		wg.Done()
 	}
