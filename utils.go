@@ -24,17 +24,6 @@ func isPrimitive(str string) bool {
 	}
 }
 
-// waitDone is wrapper on ctx.Done channel
-// which will wait until cancel() will be invoked
-func (c *Cascade) waitDone() {
-	for {
-		select {
-		case <-c.ctx.Done():
-			return
-		}
-	}
-}
-
 func merge(in []*result) <-chan *Result {
 	var wg sync.WaitGroup
 	out := make(chan *Result)

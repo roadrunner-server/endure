@@ -203,18 +203,6 @@ func (c *Cascade) Stop() error {
 	return nil
 }
 
-func (c *Cascade) Get(name string) interface{} {
-	panic("unimplemented!")
-}
-func (c *Cascade) Has(name string) bool {
-	panic("unimplemented!")
-}
-
-func (c *Cascade) List() []string {
-	panic("unimplemented!")
-	return nil
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////// PRIVATE ///////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -254,33 +242,6 @@ func (c *Cascade) init(n *structures.DllNode) error {
 
 		// next DLL node
 		n = n.Next
-	}
-
-	return nil
-}
-
-// stopReverse will call Stop on every node in node.Prev in DLL
-func (c *Cascade) stopReverse(n *structures.DllNode) error {
-	// traverse the dll
-	for n != nil {
-		in := make([]reflect.Value, 0, 1)
-		// add service itself
-		in = append(in, reflect.ValueOf(n.Vertex.Iface))
-
-		err := c.close(n, in)
-		if err != nil {
-			c.logger.Err(err).Stack().Msg("error occurred during the services closing")
-		}
-		err = c.internalStop(n)
-		if err != nil {
-			// TODO do not return until finished
-			// just log the errors
-			// stack it in slice and if slice is not empty, print it ??
-			c.logger.Err(err).Stack().Msg("error occurred during the services stopping")
-		}
-
-		// prev DLL node
-		n = n.Prev
 	}
 
 	return nil

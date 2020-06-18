@@ -45,10 +45,7 @@ type (
 		Serve() <-chan *Result
 		Close() error
 		Register(service interface{}) error
-		Get(name string) interface{}
-		Has(name string) bool
 		Init() error
-		List() []string
 	}
 
 	// Provider declares the ability to provide service edges of declared types.

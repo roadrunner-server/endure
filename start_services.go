@@ -54,51 +54,6 @@ func (c *Cascade) funcCall(init reflect.Method, n *structures.DllNode) error {
 	return nil
 }
 
-func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
-	in := make([]reflect.Value, 0, 1)
-
-	// add service itself
-	in = append(in, reflect.ValueOf(n.Vertex.Iface))
-
-	// Call Init() method, which returns only error (or nil)
-	ret := init.Func.Call(in)
-	rErr := ret[0].Interface()
-	if rErr != nil {
-		if e, ok := rErr.(error); ok && e != nil {
-			c.logger.Err(e).Stack().Msg("error occurred during the call of Init()")
-			return e
-		} else {
-			return unknownErrorOccurred
-		}
-	}
-	// just to be safe here
-	if len(in) > 0 {
-		// `in` type here is initialized function receiver
-		err := n.Vertex.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
-		if err != nil {
-			return err
-		}
-		c.logger.Info().
-			Str("vertexID", n.Vertex.Id).
-			Str("IN parameter", in[0].Type().String()).
-			Msg("value added successfully")
-	}
-
-	err := c.traverseCallProvider(n, in)
-	if err != nil {
-		c.logger.Err(err)
-		return err
-	}
-
-	err = c.traverseCallRegisters(n)
-	if err != nil {
-		c.logger.Err(err)
-		return err
-	}
-
-	return nil
-}
-
 func (c *Cascade) traverseCallRegisters(n *structures.DllNode) error {
 	inReg := make([]reflect.Value, 0, 1)
 

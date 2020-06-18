@@ -27,13 +27,10 @@ func TestCascade_Init_OK(t *testing.T) {
 	res := c.Serve()
 
 	go func() {
-		for {
-			select {
-			case r := <-res:
-				if r.Err != nil {
-					t.Fatal(r.Err)
-					return
-				}
+		for r := range res {
+			if r.Err != nil {
+				assert.NoError(t, r.Err)
+				return
 			}
 		}
 	}()
@@ -58,15 +55,12 @@ func TestCascade_Init_Err(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		for {
-			select {
-			case r := <-res:
-				println(r.Err.Error())
-				assert.Error(t, r.Err)
-				assert.NoError(t, c.Stop())
-				wg.Done()
-				return
-			}
+		for r := range res {
+			println(r.Err.Error())
+			assert.Error(t, r.Err)
+			assert.NoError(t, c.Stop())
+			wg.Done()
+			return
 		}
 	}()
 
