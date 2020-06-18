@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"reflect"
-	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/spiral/cascade/structures"
@@ -162,6 +161,13 @@ func (c *Cascade) Init() error {
 		c.runList.Push(sortedVertices[i])
 	}
 
+	err := c.init(c.runList.Head)
+	if err != nil {
+		c.logger.
+			Err(err).
+			Stack().
+			Msg("error during the init")
+	}
 	return c.init(c.runList.Head)
 }
 
@@ -173,22 +179,30 @@ func (c *Cascade) Close() error {
 	return nil
 }
 
-func (c *Cascade) Serve() error {
+func (c *Cascade) Serve() <-chan *Result {
+	//ch := make(chan error, 1)
 	n := c.runList.Head
-	err := c.internalServe(n)
-	c.waitDone()
-	return err
-}
+	//go func() {
+	//
+	//	ch
+	//}()
+	//r := Result{
+	//	ErrCh:    make(chan error, len(c.graph.Vertices)),
+	//	VertexID: "",
+	//}
+	//go func() {
+	//	for k := range  {
+	//		if k != nil {
+	//
+	//		}
+	//	}
+	//}()
 
-// waitDone is wrapper on ctx.Done channel
-// which will wait until cancel() will be invoked
-func (c *Cascade) waitDone() {
-	for {
-		select {
-		case <-c.ctx.Done():
-			return
-		}
-	}
+	// restart vertices on fail
+
+
+
+	return merge(c.internalServe(n))
 }
 
 func (c *Cascade) Stop() error {
@@ -258,10 +272,10 @@ func (c *Cascade) init(n *structures.DllNode) error {
 		if len(initArgs) == 1 {
 			err = c.noDepsCall(init, n)
 			if err != nil {
-				err2 := c.stopReverse(n.Prev)
-				if err2 != nil {
-					panic(err2)
-				}
+				c.logger.
+					Err(err).
+					Stack().Str("vertexID", n.Vertex.Id).
+					Msg("error in noDepsCall")
 				return err
 			}
 		} else {
@@ -269,11 +283,10 @@ func (c *Cascade) init(n *structures.DllNode) error {
 			// we should resolve all it all
 			err = c.depsCall(init, n)
 			if err != nil {
-				c.logger.Err(err)
-				err2 := c.stopReverse(n.Prev)
-				if err2 != nil {
-					panic(err2)
-				}
+				c.logger.
+					Err(err).
+					Stack().Str("vertexID", n.Vertex.Id).
+					Msg("error in depsCall")
 				return err
 			}
 		}
@@ -310,22 +323,4 @@ func (c *Cascade) stopReverse(n *structures.DllNode) error {
 	}
 
 	return nil
-}
-
-func removePointerAsterisk(s string) string {
-	return strings.Trim(s, "*")
-}
-
-func isReference(t reflect.Type) bool {
-	return t.Kind() == reflect.Ptr
-}
-
-// TODO add all primitive types
-func isPrimitive(str string) bool {
-	switch str {
-	case "int":
-		return true
-	default:
-		return false
-	}
 }

@@ -33,6 +33,10 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 		if err != nil {
 			return err
 		}
+		c.logger.Info().
+			Str("vertexID", n.Vertex.Id).
+			Str("IN parameter", in[0].Type().String()).
+			Msg("value added successfully")
 	} else {
 		panic("len in less than 2")
 	}
@@ -70,14 +74,14 @@ func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
 	// just to be safe here
 	if len(in) > 0 {
 		// `in` type here is initialized function receiver
-		c.logger.Info().
-			Str("vertexID", n.Vertex.Id).
-			Str("in parameter", in[0].Type().String()).
-			Msg("calling with no deps")
 		err := n.Vertex.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
 		if err != nil {
 			return err
 		}
+		c.logger.Info().
+			Str("vertexID", n.Vertex.Id).
+			Str("IN parameter", in[0].Type().String()).
+			Msg("value added successfully")
 	}
 
 	err := c.traverseCallProvider(n, in)
@@ -257,62 +261,86 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-func (c *Cascade) internalServe(n *structures.DllNode) error {
-	in := make([]reflect.Value, 0, 1)
-
-	// add service itself
-	in = append(in, reflect.ValueOf(n.Vertex.Iface))
-
+func (c *Cascade) internalServe(n *structures.DllNode) []*Result {
+	// TODO len of DDLNodes
+	out := make([]*Result, 0, 5)
+	// handle all configure
 	for n != nil {
-		var err error
+		in := make([]reflect.Value, 0, 1)
+
+		// add service itself
+		in = append(in, reflect.ValueOf(n.Vertex.Iface))
+		//var res Result
 		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-			err = c.configure(n, in)
-			if err != nil {
-				return err
-			}
+			out = append(out, c.configure(n, in))
 		}
 
-		err = c.serve(n, in)
-		if err != nil {
-			return err
+		n = n.Next
+	}
+
+	// handle errors&
+
+	// reset the list
+	n = c.runList.Head
+	// and handle all serve
+	for n != nil {
+		in := make([]reflect.Value, 0, 1)
+
+		// add service itself
+		in = append(in, reflect.ValueOf(n.Vertex.Iface))
+		//var res Result
+		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+			out = append(out, c.serve(n, in))
 		}
 
 		// internalServe
 		// handle next node
 		n = n.Next
 	}
-	return nil
+	return out
 }
 
-func (c *Cascade) serve(n *structures.DllNode, in []reflect.Value) error {
+func (c *Cascade) serve(n *structures.DllNode, in []reflect.Value) *Result {
 	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
-	rErr := ret[0].Interface()
-	if rErr != nil {
-		if e, ok := rErr.(error); ok && e != nil {
-			c.logger.Err(e).Msg("error occurred in the internalServe()")
-			return e
-		} else {
-			return unknownErrorOccurred
+	res := ret[0].Interface()
+	if res != nil {
+		if e, ok := res.(chan error); ok && e != nil {
+			// return the result
+			return &Result{
+				ErrCh:    e,
+				VertexID: n.Vertex.Id,
+			}
 		}
 	}
-	return nil
+	r := &Result{
+		ErrCh:    make(chan error, 1),
+		VertexID: n.Vertex.Id,
+	}
+	r.ErrCh <- unknownErrorOccurred
+	return r
 }
 
-func (c *Cascade) configure(n *structures.DllNode, in []reflect.Value) error {
+func (c *Cascade) configure(n *structures.DllNode, in []reflect.Value) *Result {
 	// Call Configure() method, which returns only error (or nil)
 	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ConfigureMethodName)
 	ret := m.Func.Call(in)
-	rErr := ret[0].Interface()
-	if rErr != nil {
-		if e, ok := rErr.(error); ok && e != nil {
-			c.logger.Err(e).Msg("error occurred in the configure()")
-			return e
-		} else {
-			return unknownErrorOccurred
+	res := ret[0].Interface()
+	if res != nil {
+		if e, ok := res.(chan error); ok && e != nil {
+			// return the result
+			return &Result{
+				ErrCh:    e,
+				VertexID: n.Vertex.Id,
+			}
 		}
 	}
-	return nil
+	r := &Result{
+		ErrCh:    make(chan error, 1),
+		VertexID: n.Vertex.Id,
+	}
+	r.ErrCh <- unknownErrorOccurred
+	return r
 }
 
 func (c *Cascade) internalStop(n *structures.DllNode) error {

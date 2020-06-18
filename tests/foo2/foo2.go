@@ -1,6 +1,8 @@
 package foo2
 
 import (
+	"time"
+
 	"github.com/spiral/cascade/tests/foo4"
 )
 
@@ -26,11 +28,24 @@ func (s2 *S2) CreateDB() (DB, error) {
 	return DB{}, nil
 }
 
-func (s2 *S2) Serve() error {
+func (s2 *S2) Close() error {
 	return nil
 }
 
+func (s2 *S2) Configure() chan error {
+	return nil
+}
+
+func (s2 *S2) Serve() chan error {
+	errCh := make(chan error, 1)
+	go func() {
+		time.Sleep(time.Second * 4)
+		errCh <- nil
+	}()
+	return errCh
+}
+
 func (s2 *S2) Stop() error {
-	println("S2: error occurred, stopping")
+	println("S2: stopping")
 	return nil
 }

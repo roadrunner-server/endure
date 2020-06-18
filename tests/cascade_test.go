@@ -1,7 +1,6 @@
 package cascade_test
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,15 +22,22 @@ func TestCascade_Init_OK(t *testing.T) {
 	assert.NoError(t, c.Register(&foo1.S1{}))
 	assert.NoError(t, c.Init())
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func(group *sync.WaitGroup) {
-		assert.NoError(t, c.Serve())
-		group.Done()
-	}(wg)
+	res := c.Serve()
 
-	assert.NoError(t, c.Stop())
-	wg.Wait()
+	for {
+		select {
+		case r := <-res:
+			if r.ErrCh != nil {
+				err := c.Stop()
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			} else {
+				c.Stop()
+			}
+		}
+	}
 }
 
 func TestCascade_Init_Err(t *testing.T) {
@@ -42,5 +48,25 @@ func TestCascade_Init_Err(t *testing.T) {
 	assert.NoError(t, c.Register(&foo2.S2{}))
 	assert.NoError(t, c.Register(&foo3.S3{}))
 	assert.NoError(t, c.Register(&foo1.S1Err{})) // should produce an error during the Init
-	assert.Error(t, c.Init())                    // <-- HERE
+	assert.NoError(t, c.Init())                    // <-- HERE
+
+	res := c.Serve()
+
+	for {
+		select {
+		case r := <-res:
+			if r.ErrCh != nil {
+				err := c.Stop()
+				if err != nil {
+					assert.Error(t, <-r.ErrCh)
+				}
+				return
+			} else {
+				err := c.Stop()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
 }

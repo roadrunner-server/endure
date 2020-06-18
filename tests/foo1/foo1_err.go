@@ -1,6 +1,9 @@
 package foo1
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 type S1Err struct {
 }
@@ -12,11 +15,16 @@ type DB struct {
 // No deps
 func (s *S1Err) Init() error {
 	println("hello from S1 --> Init")
-	return errors.New("test error")
+	return nil
 }
 
-func (s *S1Err) Serve() error {
-	return nil
+func (s *S1Err) Serve() chan error {
+	errCh := make(chan error, 1)
+	go func() {
+		time.Sleep(time.Second * 4)
+		errCh <- errors.New("test error")
+	}()
+	return errCh
 }
 
 func (s *S1Err) Stop() error {
