@@ -1,5 +1,6 @@
 package foo4
 
+
 type S4 struct {
 }
 

@@ -1,7 +1,6 @@
 package structures
 
 import (
-	"errors"
 	"reflect"
 )
 
@@ -86,9 +85,9 @@ func (v *Vertex) AddValue(valueKey string, value reflect.Value, isRef bool) erro
 		v.Provides = make(map[string]ProvidedEntry)
 	}
 
-	if val, ok := v.Provides[valueKey]; ok && val.Value != nil {
-		return errors.New("key already present in the map")
-	}
+	//if val, ok := v.Provides[valueKey]; ok && val.Value != nil {
+	//	return errors.New("key already present in the map")
+	//}
 
 	v.Provides[valueKey] = ProvidedEntry{
 		IsReference: &isRef,
@@ -127,7 +126,7 @@ func (v *Vertex) AddValue(valueKey string, value reflect.Value, isRef bool) erro
 //
 func NewGraph() *Graph {
 	return &Graph{
-		Graph:     make(map[string]*Vertex),
+		Graph: make(map[string]*Vertex),
 	}
 }
 
@@ -183,9 +182,9 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) {
 			return
 		}
 	}
-	idV.Dependencies = append(idV.Dependencies, depV)
 	depV.NumOfDeps++
 
+	idV.Dependencies = append(idV.Dependencies, depV)
 }
 
 func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
@@ -214,11 +213,11 @@ func (g *Graph) FindProvider(depId string) *Vertex {
 	return nil
 }
 
-func (g *Graph) TopologicalSort() []*Vertex {
+func TopologicalSort(vertices []*Vertex) []*Vertex {
 	var ord []*Vertex
 	var verticesWoDeps []*Vertex
 
-	for _, v := range g.Vertices {
+	for _, v := range vertices {
 		if v.NumOfDeps == 0 {
 			verticesWoDeps = append(verticesWoDeps, v)
 		}
@@ -229,14 +228,14 @@ func (g *Graph) TopologicalSort() []*Vertex {
 		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps)-1]
 
 		ord = append(ord, v)
-		g.removeDep(v, &verticesWoDeps)
+		removeDep(v, &verticesWoDeps)
 	}
 
 	return ord
 
 }
 
-func (g *Graph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
+func removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
 	for i := 0; i < len(vertex.Dependencies); i++ {
 		dep := vertex.Dependencies[i]
 		dep.NumOfDeps--

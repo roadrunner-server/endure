@@ -24,7 +24,7 @@ func isPrimitive(str string) bool {
 	}
 }
 
-func merge(in []*result) <-chan *Result {
+func merge(in []*result) chan *Result {
 	var wg sync.WaitGroup
 	out := make(chan *Result)
 

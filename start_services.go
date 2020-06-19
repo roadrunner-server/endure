@@ -219,34 +219,35 @@ Algorithm is the following (all steps executing in the topological order):
 func (c *Cascade) startServing(n *structures.DllNode) []*result {
 	// TODO len of DDLNodes
 	out := make([]*result, 0, 5)
+	nCopy := n
 	// handle all configure
-	for n != nil {
+	for nCopy != nil {
 		in := make([]reflect.Value, 0, 1)
 
 		// add service itself
-		in = append(in, reflect.ValueOf(n.Vertex.Iface))
+		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
 		//var res Result
-		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-			out = append(out, c.configure(n, in))
+		if reflect.TypeOf(nCopy.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+			out = append(out, c.configure(nCopy, in))
 		}
 
-		n = n.Next
+		nCopy = nCopy.Next
 	}
 
 	// handle errors&
 
 	// reset the list
-	n = c.runList.Head
+	nCopy = n
 	// and handle all serve
-	for n != nil {
+	for nCopy != nil {
 		in := make([]reflect.Value, 0, 1)
 
 		// add service itself
-		in = append(in, reflect.ValueOf(n.Vertex.Iface))
+		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
 
-		out = append(out, c.serve(n, in))
+		out = append(out, c.serve(nCopy, in))
 
-		n = n.Next
+		nCopy = nCopy.Next
 	}
 	return out
 }
@@ -322,7 +323,6 @@ func (c *Cascade) stop(n *structures.DllNode, in []reflect.Value) error {
 	rErr := ret[0].Interface()
 	if rErr != nil {
 		if e, ok := rErr.(error); ok && e != nil {
-			//c.logger.Err(e).Stack().Msg("error occurred during the stopping")
 			return e
 		} else {
 			return unknownErrorOccurred
@@ -339,7 +339,6 @@ func (c *Cascade) close(n *structures.DllNode, in []reflect.Value) error {
 	rErr := ret[0].Interface()
 	if rErr != nil {
 		if e, ok := rErr.(error); ok && e != nil {
-			//c.logger.Err(e).Stack().Msg("error occurred during the closing")
 			return e
 		} else {
 			return unknownErrorOccurred
