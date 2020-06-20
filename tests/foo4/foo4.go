@@ -1,5 +1,6 @@
 package foo4
 
+import "github.com/spiral/cascade/tests/foo5"
 
 type S4 struct {
 }
@@ -9,7 +10,8 @@ type DB struct {
 }
 
 // No deps
-func (s *S4) Init() error {
+func (s *S4) Init(wr foo5.Reader) error {
+	wr.WRead()
 	println("hello from S4 --> Init")
 	return nil
 }

@@ -18,6 +18,7 @@ const StopMethodName = "Stop"
 // TODO interface?
 type Result struct {
 	Err      error
+	Code     int
 	VertexID string
 }
 

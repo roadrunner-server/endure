@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spiral/cascade/tests/foo5"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/spiral/cascade"
@@ -22,6 +23,7 @@ func TestCascade_Init_OK(t *testing.T) {
 	assert.NoError(t, c.Register(&foo2.S2{}))
 	assert.NoError(t, c.Register(&foo3.S3{}))
 	assert.NoError(t, c.Register(&foo1.S1{}))
+	assert.NoError(t, c.Register(&foo5.S5{}))
 	assert.NoError(t, c.Init())
 
 	res := c.Serve()

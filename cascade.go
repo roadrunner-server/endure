@@ -3,6 +3,7 @@ package cascade
 import (
 	"os"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -19,6 +20,10 @@ type Cascade struct {
 	// OPTIONS
 	retryOnFail  bool
 	numOfRetries int
+
+	rwMutex *sync.RWMutex
+
+	failProcessor func(k *Result) chan *Result
 }
 
 // Level defines log levels.
@@ -65,7 +70,9 @@ type Options func(cascade *Cascade)
 see the cascade.Level
 */
 func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
-	c := &Cascade{}
+	c := &Cascade{
+		rwMutex: &sync.RWMutex{},
+	}
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	switch logLevel {
@@ -100,6 +107,19 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	c.graph = structures.NewGraph()
 	c.runList = structures.NewDoublyLinkedList()
 	c.logger = logger
+	//c.failProcessor =
+
+	//c := make(chan Time, 1)
+	//t := &Timer{
+	//	C: c,
+	//	r: runtimeTimer{
+	//		when: when(d),
+	//		f:    sendTime,
+	//		arg:  c,
+	//	},
+	//}
+	//startTimer(&t.r)
+	//return t
 
 	return c, nil
 }
@@ -206,77 +226,7 @@ func (c *Cascade) Serve() <-chan *Result {
 			// read the message
 			for k := range res {
 				if k.Err != nil {
-					// get the vertex
-					// calculate dependencies
-					// close/stop affected vertices
-					// build new topologically sorted graph and new run-list
-					// re-serve and connect messages to the clonedRes channel
-					vId := k.VertexID
-
-					vertex := c.graph.GetVertex(vId)
-					// restore number of dependencies
-					vertex.NumOfDeps = len(vertex.Dependencies)
-					vertices := make([]*structures.Vertex, 0, 5)
-					vertices = append(vertices, vertex)
-
-					for i := 0; i < len(vertex.Dependencies); i++ {
-						vertex.Dependencies[i].NumOfDeps = len(vertex.Dependencies[i].Dependencies)
-
-						vertices = append(vertices, vertex.Dependencies[i])
-					}
-
-					sorted := structures.TopologicalSort(vertices)
-
-					affectedRunList := structures.NewDoublyLinkedList()
-					// TODO properly handle the len of the sorted vertices
-					affectedRunList.SetHead(&structures.DllNode{
-						Vertex: sorted[0]})
-
-					// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
-					for i := 1; i < len(sorted); i++ {
-						affectedRunList.Push(sorted[i])
-					}
-
-					nodes := affectedRunList.Head
-
-					in := make([]reflect.Value, 0, 1)
-					// add service itself
-					in = append(in, reflect.ValueOf(nodes.Vertex.Iface))
-					cNodes := nodes
-					for cNodes != nil {
-						err := c.internalStop(cNodes)
-						if err != nil {
-							// TODO do not return until finished
-							// just log the errors
-							// stack it in slice and if slice is not empty, print it ??
-							c.logger.Err(err).Stack().Msg("error occurred during the services stopping")
-						}
-
-						// prev DLL node
-						cNodes = cNodes.Next
-					}
-
-					//err := c.stop(nodes, in)
-					//if err != nil {
-					//	c.logger.
-					//		Err(err).
-					//		Stack().
-					//		Msg("error during the retry stop")
-					//	return
-					//}
-
-					nn := nodes
-					err := c.init(nn)
-					if err != nil {
-						c.logger.
-							Err(err).
-							Stack().
-							Msg("error during the retry init")
-						return
-					}
-
-					// serve only failed nodes
-					cRes := merge(c.startServing(nodes))
+					cRes := c.defaultFailProcessor(k)
 
 					go func() {
 						// resend message to the clonedRes channel
@@ -303,6 +253,81 @@ func (c *Cascade) Serve() <-chan *Result {
 	// clone the message and re-send it to the receiver
 
 	return res
+}
+
+func (c *Cascade) defaultFailProcessor(k *Result) chan *Result {
+	// get the vertex
+	// calculate dependencies
+	// close/stop affected vertices
+	// build new topologically sorted graph and new run-list
+	// re-serve and connect messages to the clonedRes channel
+	vId := k.VertexID
+
+	vertex := c.graph.GetVertex(vId)
+	// restore number of dependencies
+	vertex.NumOfDeps = len(vertex.Dependencies)
+	vertices := make([]*structures.Vertex, 0, 5)
+	vertices = append(vertices, vertex)
+
+	for i := 0; i < len(vertex.Dependencies); i++ {
+		vertex.Dependencies[i].NumOfDeps = len(vertex.Dependencies[i].Dependencies)
+
+		vertices = append(vertices, vertex.Dependencies[i])
+	}
+
+	sorted := structures.TopologicalSort(vertices)
+
+	affectedRunList := structures.NewDoublyLinkedList()
+	// TODO properly handle the len of the sorted vertices
+	affectedRunList.SetHead(&structures.DllNode{
+		Vertex: sorted[0]})
+
+	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
+	for i := 1; i < len(sorted); i++ {
+		affectedRunList.Push(sorted[i])
+	}
+
+	nodes := affectedRunList.Head
+
+	in := make([]reflect.Value, 0, 1)
+	// add service itself
+	in = append(in, reflect.ValueOf(nodes.Vertex.Iface))
+	cNodes := nodes
+	for cNodes != nil {
+		err := c.internalStop(cNodes)
+		if err != nil {
+			// TODO do not return until finished
+			// just log the errors
+			// stack it in slice and if slice is not empty, print it ??
+			c.logger.Err(err).Stack().Msg("error occurred during the services stopping")
+		}
+
+		// prev DLL node
+		cNodes = cNodes.Next
+	}
+
+	//err := c.stop(nodes, in)
+	//if err != nil {
+	//	c.logger.
+	//		Err(err).
+	//		Stack().
+	//		Msg("error during the retry stop")
+	//	return
+	//}
+
+	nn := nodes
+	err := c.init(nn)
+	if err != nil {
+		c.logger.
+			Err(err).
+			Stack().
+			Msg("error during the retry init")
+		return nil
+	}
+
+	// serve only failed nodes
+	cRes := merge(c.startServing(nodes))
+	return cRes
 }
 
 func (c *Cascade) Stop() error {

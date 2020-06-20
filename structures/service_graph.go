@@ -1,6 +1,8 @@
 package structures
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 )
 
@@ -141,7 +143,7 @@ AddDep doing the following:
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
-func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) {
+func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) error {
 	// idV should always present
 	idV := g.GetVertex(vertexID)
 	if idV == nil {
@@ -151,6 +153,9 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) {
 	depV := g.GetVertex(depID)
 	if depV == nil {
 		depV = g.FindProvider(depID)
+	}
+	if depV == nil {
+		return errors.New(fmt.Sprintf("can't find dep: %s for the vertex: %s", depID, vertexID))
 	}
 
 	// add Dependency into the List
@@ -179,12 +184,12 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) {
 	for i := 0; i < len(idV.Dependencies); i++ {
 		tmpId := idV.Dependencies[i].Id
 		if tmpId == depV.Id {
-			return
+			return nil
 		}
 	}
 	depV.NumOfDeps++
-
 	idV.Dependencies = append(idV.Dependencies, depV)
+	return nil
 }
 
 func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
