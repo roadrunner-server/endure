@@ -10,7 +10,7 @@ type DB struct {
 }
 
 // No deps
-func (s *S4) Init(wr foo5.Reader) error {
+func (s *S4) Init(wr foo5.S5) error {
 	wr.WRead()
 	println("hello from S4 --> Init")
 	return nil

@@ -23,6 +23,8 @@ type Cascade struct {
 
 	rwMutex *sync.RWMutex
 
+	results map[string]chan *Result
+
 	failProcessor func(k *Result) chan *Result
 }
 
@@ -219,6 +221,7 @@ func (c *Cascade) Serve() <-chan *Result {
 
 	res := merge(c.startServing(n))
 
+	// clonedRes in channel in the middle
 	clonedRes := make(chan *Result)
 
 	if c.retryOnFail {
