@@ -184,7 +184,7 @@ func (c *Cascade) Init() error {
 
 	// we should buld init list in the reverse order
 	// TODO return cycle error
-	sortedVertices := structures.TopologicalSort(c.graph.Vertices)
+	sortedVertices := structures.OldTopologicalSort(c.graph.Vertices)
 
 	// TODO properly handle the len of the sorted vertices
 	c.runList.SetHead(&structures.DllNode{
@@ -230,11 +230,12 @@ func (c *Cascade) Serve() <-chan *Result {
 				if k.Err != nil {
 					cRes := c.defaultFailProcessor(k)
 
+					_ = cRes
 					go func() {
 						// resend message to the clonedRes channel
 						for k := range cRes {
-							time.Sleep(time.Second * 2)
 							if k.Err != nil {
+								time.Sleep(time.Second * 2)
 								// if issue occurred send error to the res channel, which listen only retry
 								res <- k
 								// re-send issue to the user
@@ -266,26 +267,18 @@ func (c *Cascade) defaultFailProcessor(k *Result) chan *Result {
 	vId := k.VertexID
 
 	vertex := c.graph.GetVertex(vId)
-	// restore number of dependencies
-	vertex.NumOfDeps = len(vertex.Dependencies)
-	vertices := make([]*structures.Vertex, 0, 5)
-	vertices = append(vertices, vertex)
 
-	for i := 0; i < len(vertex.Dependencies); i++ {
-		vertex.Dependencies[i].NumOfDeps = len(vertex.Dependencies[i].Dependencies)
-
-		vertices = append(vertices, vertex.Dependencies[i])
-	}
+	vertices := c.resetVertices(vertex)
 
 	sorted := structures.TopologicalSort(vertices)
 
 	affectedRunList := structures.NewDoublyLinkedList()
 	// TODO properly handle the len of the sorted vertices
 	affectedRunList.SetHead(&structures.DllNode{
-		Vertex: sorted[0]})
+		Vertex: sorted[len(sorted)-1]})
 
 	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
-	for i := 1; i < len(sorted); i++ {
+	for i := len(sorted) - 2; i >= 0; i-- {
 		affectedRunList.Push(sorted[i])
 	}
 
@@ -348,6 +341,35 @@ func (c *Cascade) Stop() error {
 		n = n.Next
 	}
 	return nil
+}
+
+func (c *Cascade) resetVertices(vertex *structures.Vertex) []*structures.Vertex {
+	// restore number of dependencies for the root
+	vertex.NumOfDeps = len(vertex.Dependencies)
+	vertex.Visiting = false
+	vertex.Visited = false
+	vertices := make([]*structures.Vertex, 0, 5)
+	vertices = append(vertices, vertex)
+
+	tmp := make(map[string]*structures.Vertex)
+
+	c.dfs(vertex.Dependencies, tmp)
+
+	for _, v := range tmp {
+		vertices = append(vertices, v)
+	}
+	return vertices
+}
+
+func (c *Cascade) dfs(deps []*structures.Vertex, tmp map[string]*structures.Vertex) {
+	for i := 0; i < len(deps); i++ {
+		deps[i].Visited = false
+		deps[i].Visiting = false
+		deps[i].NumOfDeps = len(deps)
+		tmp[deps[i].Id] = deps[i]
+		c.dfs(deps[i].Dependencies, tmp)
+	}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////

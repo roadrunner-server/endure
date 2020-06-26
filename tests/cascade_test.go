@@ -103,9 +103,7 @@ func TestCascade_Serve_Retry_Err(t *testing.T) {
 			assert.Equal(t, "foo1.S1Err", r.VertexID)
 			println(r.Err.Error())
 			assert.Error(t, r.Err)
-			assert.NoError(t, c.Stop())
-			wg.Done()
-			return
+			//assert.NoError(t, c.Stop())
 		}
 	}()
 

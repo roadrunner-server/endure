@@ -73,6 +73,9 @@ type Vertex struct {
 
 	// for the toposort
 	NumOfDeps int
+
+	Visited bool
+	Visiting bool
 }
 
 type ProvidedEntry struct {
@@ -218,7 +221,7 @@ func (g *Graph) FindProvider(depId string) *Vertex {
 	return nil
 }
 
-func TopologicalSort(vertices []*Vertex) []*Vertex {
+func OldTopologicalSort(vertices []*Vertex) []*Vertex {
 	var ord []*Vertex
 	var verticesWoDeps []*Vertex
 
@@ -237,6 +240,45 @@ func TopologicalSort(vertices []*Vertex) []*Vertex {
 	}
 
 	return ord
+
+}
+
+func TopologicalSort(vertices []*Vertex) []*Vertex {
+	var ord []*Vertex
+	verticesCopy := vertices
+
+	for len(verticesCopy) != 0 {
+		vertex := verticesCopy[len(verticesCopy) - 1]
+		verticesCopy = verticesCopy[:len(verticesCopy) - 1]
+		containsCycle := dfs(vertex, &ord)
+		if containsCycle {
+			return nil
+		}
+	}
+
+	return ord
+}
+
+func dfs(vertex *Vertex, ordered *[]*Vertex) bool {
+	if vertex.Visited {
+		return false
+	} else if vertex.Visiting {
+		return true
+	}
+	vertex.Visiting = true
+	for _, prereqVertex := range vertex.Dependencies {
+		containsCycle := dfs(prereqVertex, ordered)
+		if containsCycle {
+			return true
+		}
+	}
+	vertex.Visited = true
+	vertex.Visiting = false
+	*ordered = append(*ordered, vertex)
+	return false
+}
+
+func TopologicalSortOnFail(vertex Vertex) {
 
 }
 
