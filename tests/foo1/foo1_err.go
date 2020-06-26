@@ -35,6 +35,6 @@ func (s *S1Err) Serve() chan error {
 }
 
 func (s *S1Err) Stop() error {
-	println("S1_err: error occurred, stopping")
+	println("S1_err: stopping")
 	return nil
 }

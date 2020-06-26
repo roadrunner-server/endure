@@ -221,10 +221,9 @@ func (c *Cascade) Serve() <-chan *Result {
 
 	res := merge(c.startServing(n))
 
-	// clonedRes in channel in the middle
-	clonedRes := make(chan *Result)
-
 	if c.retryOnFail {
+		// clonedRes in channel in the middle
+		clonedRes := make(chan *Result)
 		go func() {
 			// read the message
 			for k := range res {

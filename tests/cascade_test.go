@@ -43,7 +43,7 @@ func TestCascade_Init_OK(t *testing.T) {
 }
 
 func TestCascade_Init_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(true))
+	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
@@ -59,11 +59,12 @@ func TestCascade_Init_Err(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res {
-			println(r.Err.Error() + " in tests")
-			//assert.Error(t, r.Err)
-			//assert.NoError(t, c.Stop())
-			//wg.Done()
-			//return
+			assert.Equal(t, "foo1.S1Err", r.VertexID)
+			println(r.Err.Error())
+			assert.Error(t, r.Err)
+			assert.NoError(t, c.Stop())
+			wg.Done()
+			return
 		}
 	}()
 
