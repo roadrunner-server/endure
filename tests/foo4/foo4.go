@@ -34,18 +34,12 @@ func (s *S4) CreateAnotherDb() (*DB, error) {
 func (s *S4) Configure() chan error {
 	errCh := make(chan error, 1)
 	println("S4: configuring")
-	go func() {
-		errCh <- nil
-	}()
 	return errCh
 }
 
 func (s *S4) Serve() chan error {
 	errCh := make(chan error, 1)
 	println("S4: serving")
-	go func() {
-		errCh <- nil
-	}()
 	return errCh
 }
 

@@ -23,7 +23,7 @@ type Cascade struct {
 
 	rwMutex *sync.RWMutex
 
-	results map[string]chan *Result
+	results map[string]*result
 
 	failProcessor func(k *Result) chan *Result
 }
@@ -109,6 +109,7 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	c.graph = structures.NewGraph()
 	c.runList = structures.NewDoublyLinkedList()
 	c.logger = logger
+	c.results = make(map[string]*result)
 	//c.failProcessor =
 
 	//c := make(chan Time, 1)
@@ -219,52 +220,59 @@ func (c *Cascade) Close() error {
 func (c *Cascade) Serve() <-chan *Result {
 	n := c.runList.Head
 
-	res := merge(c.startServing(n))
+	err := c.serveVertices(n)
+	if err != nil {
+		panic(err)
+	}
+
+
 
 	if c.retryOnFail {
-		// clonedRes in channel in the middle
-		clonedRes := make(chan *Result)
-		go func() {
-			// read the message
-			for k := range res {
-				if k.Err != nil {
-					cRes := c.defaultFailProcessor(k)
+		out := make(chan *Result)
 
-					_ = cRes
-					go func() {
-						// resend message to the clonedRes channel
-						for k := range cRes {
-							if k.Err != nil {
-								time.Sleep(time.Second * 2)
-								// if issue occurred send error to the res channel, which listen only retry
-								res <- k
-								// re-send issue to the user
-								clonedRes <- k
-								return
+		for k, v := range c.results {
+			go func(vertexId string, res *result) {
+				for {
+					time.Sleep(time.Second * 1)
+					select {
+					case e := <-res.errCh:
+						if e != nil {
+							println("EROOOOOOOOOOOOOOOR OCCURRED" + e.Error())
+							out <- &Result{
+								Err:      e,
+								Code:     0,
+								VertexID: vertexId,
+							}
+
+							err := c.defaultPoller(vertexId)
+							if err != nil {
+								panic(err)
 							}
 						}
-					}()
-				}
-			}
-		}()
 
-		return clonedRes
+					}
+				}
+			}(k, v)
+		}
+		return out
 	}
 
 	// read message
 	// do retry
 	// clone the message and re-send it to the receiver
-
-	return res
+	r := make([]*result, 0, 5)
+	for _, v := range c.results {
+		r = append(r, v)
+	}
+	return merge(r)
 }
 
-func (c *Cascade) defaultFailProcessor(k *Result) chan *Result {
+func (c *Cascade) defaultPoller(vId string) error {
 	// get the vertex
 	// calculate dependencies
 	// close/stop affected vertices
 	// build new topologically sorted graph and new run-list
 	// re-serve and connect messages to the clonedRes channel
-	vId := k.VertexID
 
 	vertex := c.graph.GetVertex(vId)
 
@@ -301,15 +309,6 @@ func (c *Cascade) defaultFailProcessor(k *Result) chan *Result {
 		cNodes = cNodes.Next
 	}
 
-	//err := c.stop(nodes, in)
-	//if err != nil {
-	//	c.logger.
-	//		Err(err).
-	//		Stack().
-	//		Msg("error during the retry stop")
-	//	return
-	//}
-
 	nn := nodes
 	err := c.init(nn)
 	if err != nil {
@@ -320,9 +319,11 @@ func (c *Cascade) defaultFailProcessor(k *Result) chan *Result {
 		return nil
 	}
 
-	// serve only failed nodes
-	cRes := merge(c.startServing(nodes))
-	return cRes
+	err = c.serveVertices(nodes)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Cascade) Stop() error {

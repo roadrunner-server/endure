@@ -29,9 +29,6 @@ func (s1 *S1) Init(s2 *foo2.S2, db *foo4.DB) error {
 func (s1 *S1) Serve() chan error {
 	errCh := make(chan error, 1)
 	println("S1: serving")
-	go func() {
-		errCh <- nil
-	}()
 	return errCh
 }
 

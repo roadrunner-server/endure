@@ -28,9 +28,6 @@ func (s3 *S3) Init(svc foo2.S2) error {
 func (s3 *S3) Serve() chan error {
 	errCh := make(chan error, 1)
 	println("S3: serving")
-	go func() {
-		errCh <- nil
-	}()
 	return errCh
 }
 

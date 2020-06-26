@@ -2,6 +2,7 @@ package foo1
 
 import (
 	"errors"
+	"time"
 
 	"github.com/spiral/cascade/tests/foo2"
 	"github.com/spiral/cascade/tests/foo4"
@@ -29,6 +30,7 @@ func (s *S1Err) Serve() chan error {
 	errCh := make(chan error, 1)
 	println("S1_err: serving")
 	go func() {
+		time.Sleep(time.Second * 1)
 		errCh <- errors.New("test error")
 	}()
 	return errCh

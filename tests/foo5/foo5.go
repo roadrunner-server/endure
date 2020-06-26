@@ -25,18 +25,12 @@ func (s *S5) Init() error {
 func (s *S5) Configure() chan error {
 	errCh := make(chan error, 1)
 	println("S5: configuring")
-	go func() {
-		errCh <- nil
-	}()
 	return errCh
 }
 
 func (s *S5) Serve() chan error {
 	errCh := make(chan error, 1)
 	println("S5: serving")
-	go func() {
-		errCh <- nil
-	}()
 	return errCh
 }
 

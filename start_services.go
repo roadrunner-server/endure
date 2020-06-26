@@ -216,9 +216,9 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-func (c *Cascade) startServing(n *structures.DllNode) []*result {
+func (c *Cascade) serveVertices(n *structures.DllNode) error {
 	// TODO len of DDLNodes
-	out := make([]*result, 0, 5)
+	//out := make([]*result, 0, 5)
 	nCopy := n
 	// handle all configure
 	for nCopy != nil {
@@ -228,13 +228,16 @@ func (c *Cascade) startServing(n *structures.DllNode) []*result {
 		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
 		//var res Result
 		if reflect.TypeOf(nCopy.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-			out = append(out, c.configure(nCopy, in))
+			// call configure
+			//out = append(out, c.call(nCopy, in, ConfigureMethodName))
+			err := c.call(nCopy, in, ConfigureMethodName)
+			if err != nil {
+				return err
+			}
 		}
 
 		nCopy = nCopy.Next
 	}
-
-	// handle errors&
 
 	// reset the list
 	nCopy = n
@@ -245,54 +248,49 @@ func (c *Cascade) startServing(n *structures.DllNode) []*result {
 		// add service itself
 		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
 
-		out = append(out, c.serve(nCopy, in))
-
+		// call serve
+		//out = append(out, c.call(nCopy, in, ServeMethodName))
+		err := c.call(nCopy, in, ServeMethodName)
+		if err != nil {
+			return err
+		}
 		nCopy = nCopy.Next
 	}
-	return out
+	return nil
 }
 
-func (c *Cascade) serve(n *structures.DllNode, in []reflect.Value) *result {
-	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ServeMethodName)
-	ret := m.Func.Call(in)
-	res := ret[0].Interface()
-	if res != nil {
-		if e, ok := res.(chan error); ok && e != nil {
-			// return the result
-			return &result{
-				errCh:    e,
-				vertexId: n.Vertex.Id,
-			}
-		}
-	}
-	r := &result{
-		errCh:    make(chan error, 1),
-		vertexId: n.Vertex.Id,
-	}
-	r.errCh <- unknownErrorOccurred
-	return r
-}
-
-func (c *Cascade) configure(n *structures.DllNode, in []reflect.Value) *result {
+func (c *Cascade) call(n *structures.DllNode, in []reflect.Value, methodName string) error {
 	// Call Configure() method, which returns only error (or nil)
-	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ConfigureMethodName)
+	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(methodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
 	if res != nil {
 		if e, ok := res.(chan error); ok && e != nil {
-			// return the result
-			return &result{
-				errCh:    e,
-				vertexId: n.Vertex.Id,
+			switch methodName {
+			case ServeMethodName:
+				c.results[n.Vertex.Id] = &result{
+					errCh:    e,
+					vertexId: n.Vertex.Id,
+				}
+			case ConfigureMethodName:
+
 			}
+
+			return nil
+			// return the result
+			//return &result{
+			//	errCh:    e,
+			//	vertexId: n.Vertex.Id,
+			//}
 		}
 	}
-	r := &result{
-		errCh:    make(chan error, 1),
-		vertexId: n.Vertex.Id,
-	}
-	r.errCh <- unknownErrorOccurred
-	return r
+	//r := &result{
+	//	errCh:    make(chan error, 1),
+	//	vertexId: n.Vertex.Id,
+	//}
+	//r.errCh <- unknownErrorOccurred
+	//return r
+	return unknownErrorOccurred
 }
 
 func (c *Cascade) internalStop(n *structures.DllNode) error {
