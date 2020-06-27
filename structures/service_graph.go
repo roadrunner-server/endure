@@ -1,7 +1,6 @@
 package structures
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 )
@@ -158,7 +157,7 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) error {
 		depV = g.FindProvider(depID)
 	}
 	if depV == nil {
-		return errors.New(fmt.Sprintf("can't find dep: %s for the vertex: %s", depID, vertexID))
+		return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID)
 	}
 
 	// add Dependency into the List

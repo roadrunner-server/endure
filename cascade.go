@@ -26,7 +26,7 @@ type Cascade struct {
 
 	results map[string]*result
 
-	failProcessor func(k *Result) chan *Result
+	//failProcessor func(k *Result) chan *Result
 
 	restartPoller chan struct{}
 }
@@ -306,9 +306,6 @@ func (c *Cascade) defaultPoller(vId string) error {
 
 	nodes := affectedRunList.Head
 
-	in := make([]reflect.Value, 0, 1)
-	// add service itself
-	in = append(in, reflect.ValueOf(nodes.Vertex.Iface))
 	cNodes := nodes
 	for cNodes != nil {
 		err := c.internalStop(cNodes)
