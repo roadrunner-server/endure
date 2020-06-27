@@ -20,6 +20,7 @@ type Cascade struct {
 	logger zerolog.Logger
 	// OPTIONS
 	retryOnFail  bool
+	retryFunc    func(serveChannels map[string]*result, restart chan struct{}) chan *Result
 	numOfRetries int
 
 	rwMutex *sync.RWMutex
@@ -28,7 +29,8 @@ type Cascade struct {
 
 	//failProcessor func(k *Result) chan *Result
 
-	restartPoller chan struct{}
+	restartPollerCh chan struct{}
+	shutdownPoller  chan struct{}
 }
 
 // Level defines log levels.
@@ -113,20 +115,10 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	c.runList = structures.NewDoublyLinkedList()
 	c.logger = logger
 	c.results = make(map[string]*result)
-	c.restartPoller = make(chan struct{})
-	//c.failProcessor =
-
-	//c := make(chan Time, 1)
-	//t := &Timer{
-	//	C: c,
-	//	r: runtimeTimer{
-	//		when: when(d),
-	//		f:    sendTime,
-	//		arg:  c,
-	//	},
-	//}
-	//startTimer(&t.r)
-	//return t
+	c.restartPollerCh = make(chan struct{})
+	c.shutdownPoller = make(chan struct{})
+	// TODO option
+	c.retryFunc = c.retry
 
 	return c, nil
 }
@@ -230,58 +222,63 @@ func (c *Cascade) Serve() <-chan *Result {
 	}
 
 	if c.retryOnFail {
-		out := make(chan *Result)
-		go func() {
-			c.poll(out)
-			for {
-				select {
-				case <-c.restartPoller:
-					c.poll(out)
-				}
-			}
-		}()
+		out := c.retryFunc(c.results, c.restartPollerCh)
 		return out
 	}
 
-	// read message
-	// do retry
-	// clone the message and re-send it to the receiver
-	r := make([]*result, 0, 5)
-	for _, v := range c.results {
-		r = append(r, v)
-	}
-	return merge(r)
+	return merge(c.results)
 }
 
-func (c *Cascade) poll(out chan *Result) {
-	for k, v := range c.results {
+func (c *Cascade) retry(serveChannels map[string]*result, restart chan struct{}) chan *Result {
+	out := make(chan *Result)
+	go func() {
+		c.poll(out, serveChannels, restart)
+		for {
+			select {
+			case <-restart:
+				c.poll(out, serveChannels, restart)
+			}
+		}
+	}()
+	return out
+}
+
+func (c *Cascade) poll(out chan *Result, serveChannels map[string]*result, restart chan struct{}) {
+	for k, v := range serveChannels {
 		go func(vertexId string, res *result) {
 			for {
 				time.Sleep(time.Second * 1)
 				select {
 				case e := <-res.errCh:
 					if e != nil {
-						println("EROOOOOOOOOOOOOOOR OCCURRED" + e.Error())
+						c.logger.Err(e).
+							Str("error occurred in the vertex:", vertexId).
+							Msg("error processed in poll")
 						out <- &Result{
 							Err:      e,
 							Code:     0,
 							VertexID: vertexId,
 						}
 
-						err := c.defaultPoller(vertexId)
+						// TODO split
+						// 1. public function to find graph path
+						// 2. public function to restart founded graph path
+						err := c.findGraphPathAndRestart(vertexId)
 						if err != nil {
 							panic(err)
 						}
-						c.restartPoller <- struct{}{}
+						restart <- struct{}{}
 						runtime.Goexit()
 					}
+				case <-c.shutdownPoller:
+					runtime.Goexit()
 				}
 			}
 		}(k, v)
 	}
 }
 
-func (c *Cascade) defaultPoller(vId string) error {
+func (c *Cascade) findGraphPathAndRestart(vId string) error {
 	// get the vertex
 	// calculate dependencies
 	// close/stop affected vertices
