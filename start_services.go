@@ -230,7 +230,7 @@ func (c *Cascade) serveVertices(n *structures.DllNode) error {
 		if reflect.TypeOf(nCopy.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
 			// call configure
 			//out = append(out, c.call(nCopy, in, ConfigureMethodName))
-			err := c.call(nCopy, in, ConfigureMethodName)
+			err := c.configure(nCopy, in)
 			if err != nil {
 				return err
 			}
@@ -250,7 +250,7 @@ func (c *Cascade) serveVertices(n *structures.DllNode) error {
 
 		// call serve
 		//out = append(out, c.call(nCopy, in, ServeMethodName))
-		err := c.call(nCopy, in, ServeMethodName)
+		err := c.serve(nCopy, in)
 		if err != nil {
 			return err
 		}
@@ -259,37 +259,33 @@ func (c *Cascade) serveVertices(n *structures.DllNode) error {
 	return nil
 }
 
-func (c *Cascade) call(n *structures.DllNode, in []reflect.Value, methodName string) error {
-	// Call Configure() method, which returns only error (or nil)
-	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(methodName)
+func (c *Cascade) serve(n *structures.DllNode, in []reflect.Value) error {
+	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
 	if res != nil {
 		if e, ok := res.(chan error); ok && e != nil {
-			switch methodName {
-			case ServeMethodName:
-				c.results[n.Vertex.Id] = &result{
-					errCh:    e,
-					vertexId: n.Vertex.Id,
-				}
-			case ConfigureMethodName:
-
+			// TODO mutex ??
+			c.results[n.Vertex.Id] = &result{
+				errCh:    e,
+				vertexId: n.Vertex.Id,
 			}
-
 			return nil
-			// return the result
-			//return &result{
-			//	errCh:    e,
-			//	vertexId: n.Vertex.Id,
-			//}
 		}
 	}
-	//r := &result{
-	//	errCh:    make(chan error, 1),
-	//	vertexId: n.Vertex.Id,
-	//}
-	//r.errCh <- unknownErrorOccurred
-	//return r
+	return unknownErrorOccurred
+}
+
+func (c *Cascade) configure(n *structures.DllNode, in []reflect.Value) error {
+	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ConfigureMethodName)
+	ret := m.Func.Call(in)
+	res := ret[0].Interface()
+	if res != nil {
+		if e, ok := res.(error); ok && e != nil {
+			return e
+		}
+		return nil
+	}
 	return unknownErrorOccurred
 }
 
