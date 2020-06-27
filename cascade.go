@@ -3,6 +3,7 @@ package cascade
 import (
 	"os"
 	"reflect"
+	"runtime"
 	"sync"
 	"time"
 
@@ -26,6 +27,8 @@ type Cascade struct {
 	results map[string]*result
 
 	failProcessor func(k *Result) chan *Result
+
+	restartPoller chan struct{}
 }
 
 // Level defines log levels.
@@ -110,6 +113,7 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	c.runList = structures.NewDoublyLinkedList()
 	c.logger = logger
 	c.results = make(map[string]*result)
+	c.restartPoller = make(chan struct{})
 	//c.failProcessor =
 
 	//c := make(chan Time, 1)
@@ -225,35 +229,17 @@ func (c *Cascade) Serve() <-chan *Result {
 		panic(err)
 	}
 
-
-
 	if c.retryOnFail {
 		out := make(chan *Result)
-
-		for k, v := range c.results {
-			go func(vertexId string, res *result) {
-				for {
-					time.Sleep(time.Second * 1)
-					select {
-					case e := <-res.errCh:
-						if e != nil {
-							println("EROOOOOOOOOOOOOOOR OCCURRED" + e.Error())
-							out <- &Result{
-								Err:      e,
-								Code:     0,
-								VertexID: vertexId,
-							}
-
-							err := c.defaultPoller(vertexId)
-							if err != nil {
-								panic(err)
-							}
-						}
-
-					}
+		go func() {
+			c.poll(out)
+			for {
+				select {
+				case <-c.restartPoller:
+					c.poll(out)
 				}
-			}(k, v)
-		}
+			}
+		}()
 		return out
 	}
 
@@ -265,6 +251,34 @@ func (c *Cascade) Serve() <-chan *Result {
 		r = append(r, v)
 	}
 	return merge(r)
+}
+
+func (c *Cascade) poll(out chan *Result) {
+	for k, v := range c.results {
+		go func(vertexId string, res *result) {
+			for {
+				time.Sleep(time.Second * 1)
+				select {
+				case e := <-res.errCh:
+					if e != nil {
+						println("EROOOOOOOOOOOOOOOR OCCURRED" + e.Error())
+						out <- &Result{
+							Err:      e,
+							Code:     0,
+							VertexID: vertexId,
+						}
+
+						err := c.defaultPoller(vertexId)
+						if err != nil {
+							panic(err)
+						}
+						c.restartPoller <- struct{}{}
+						runtime.Goexit()
+					}
+				}
+			}
+		}(k, v)
+	}
 }
 
 func (c *Cascade) defaultPoller(vId string) error {
