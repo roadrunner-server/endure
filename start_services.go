@@ -216,64 +216,50 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-func (c *Cascade) serveVertices(n *structures.DllNode) error {
-	// TODO len of DDLNodes
-	//out := make([]*result, 0, 5)
+func (c *Cascade) serveVertex(n *structures.DllNode) *result {
 	nCopy := n
 	// handle all configure
-	for nCopy != nil {
-		in := make([]reflect.Value, 0, 1)
-
-		// add service itself
-		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
-		//var res Result
-		if reflect.TypeOf(nCopy.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-			// call configure
-			//out = append(out, c.call(nCopy, in, ConfigureMethodName))
-			err := c.configure(nCopy, in)
-			if err != nil {
-				return err
-			}
-		}
-
-		nCopy = nCopy.Next
-	}
-
-	// reset the list
-	nCopy = n
-	// and handle all serve
-	for nCopy != nil {
-		in := make([]reflect.Value, 0, 1)
-
-		// add service itself
-		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
-
-		// call serve
-		//out = append(out, c.call(nCopy, in, ServeMethodName))
-		err := c.serve(nCopy, in)
+	in := make([]reflect.Value, 0, 1)
+	// add service itself
+	in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
+	//var res Result
+	if reflect.TypeOf(nCopy.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+		// call configure
+		//out = append(out, c.call(nCopy, in, ConfigureMethodName))
+		err := c.configure(nCopy, in)
 		if err != nil {
-			return err
+			// TODO
+			panic(err)
 		}
-		nCopy = nCopy.Next
 	}
+
+	// call serve
+	//out = append(out, c.call(nCopy, in, ServeMethodName))
+	res := c.serve(nCopy, in)
+	if res != nil {
+		return res
+	}
+
 	return nil
 }
 
-func (c *Cascade) serve(n *structures.DllNode, in []reflect.Value) error {
+func (c *Cascade) serve(n *structures.DllNode, in []reflect.Value) *result {
 	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
 	if res != nil {
 		if e, ok := res.(chan error); ok && e != nil {
 			// TODO mutex ??
-			c.results[n.Vertex.Id] = &result{
+			return &result{
 				errCh:    e,
+				exit:     make(chan struct{}),
 				vertexId: n.Vertex.Id,
 			}
-			return nil
 		}
 	}
-	return unknownErrorOccurred
+	// error, result should not be nil
+	// the only one reason to be nil is to vertex return parameter (channel) is not initialized
+	return nil
 }
 
 func (c *Cascade) configure(n *structures.DllNode, in []reflect.Value) error {

@@ -41,7 +41,7 @@ func (s2 *S2ServeErr) Configure() error {
 func (s2 *S2ServeErr) Serve() chan error {
 	errCh := make(chan error, 1)
 	go func() {
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 2)
 		errCh <- errors.New("S2ServeErr test err in serve")
 	}()
 	println("S2ServeErr: serving")

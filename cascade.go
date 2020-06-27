@@ -1,11 +1,12 @@
 package cascade
 
 import (
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"reflect"
-	"runtime"
 	"sync"
-	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/spiral/cascade/structures"
@@ -25,12 +26,15 @@ type Cascade struct {
 
 	rwMutex *sync.RWMutex
 
-	results map[string]*result
+	//results map[string]*result
 
 	//failProcessor func(k *Result) chan *Result
 
-	restartPollerCh chan struct{}
+	restartPollerCh chan []string
 	shutdownPoller  chan struct{}
+
+	//// TEST
+	runVertex chan []string
 }
 
 // Level defines log levels.
@@ -66,7 +70,7 @@ type Options func(cascade *Cascade)
 
 /* Input parameters: logLevel
 -1 is the most informative level - TraceLevel
-0 - DebugLevel defines debug log level
+0 - DebugLevel defines debug log level --> also turn on pprof endpoint
 1 - InfoLevel defines info log level.
 2 - WarnLevel defines warn log level.
 3 - ErrorLevel defines error log level.
@@ -85,6 +89,8 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	switch logLevel {
 	case DebugLevel:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		// start pprof
+		startPprof()
 	case InfoLevel:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	case WarnLevel:
@@ -114,13 +120,22 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	c.graph = structures.NewGraph()
 	c.runList = structures.NewDoublyLinkedList()
 	c.logger = logger
-	c.results = make(map[string]*result)
-	c.restartPollerCh = make(chan struct{})
+	//c.results = make(map[string]*result)
+	c.restartPollerCh = make(chan []string)
 	c.shutdownPoller = make(chan struct{})
+	// TEST
+	c.runVertex = make(chan []string)
+	//
 	// TODO option
-	c.retryFunc = c.retry
+	//c.retryFunc = c.retry
 
 	return c, nil
+}
+
+func startPprof() {
+	go func() {
+		log.Println(http.ListenAndServe("0.0.0.0:6061", nil))
+	}()
 }
 
 func RetryOnFail(set bool) Options {
@@ -216,69 +231,110 @@ func (c *Cascade) Close() error {
 func (c *Cascade) Serve() <-chan *Result {
 	n := c.runList.Head
 
-	err := c.serveVertices(n)
-	if err != nil {
-		panic(err)
+	internalResults := make([]*result, 0, 5)
+
+	for n != nil {
+		// initial start
+		res := c.serveVertex(n)
+		// if err != nil, but we set up restart
+		if res != nil && c.retryOnFail {
+			// TODO restart here
+			internalResults = append(internalResults, res)
+		} else if res != nil {
+			internalResults = append(internalResults, res)
+			//c.logger.Fatal().Err(err).Str("failed to start vertex", n.Vertex.Id).Msg("fatal error during the initial serve phase")
+		}
+
+		n = n.Next
 	}
 
-	if c.retryOnFail {
-		out := c.retryFunc(c.results, c.restartPollerCh)
-		return out
-	}
+	// next listen for the failing nodes after start
+	//if c.retryOnFail {
+	//	out := c.retryFunc(c.results, c.restartPollerCh)
+	//	return out
+	//}
 
-	return merge(c.results)
+	return merge(internalResults)
 }
 
-func (c *Cascade) retry(serveChannels map[string]*result, restart chan struct{}) chan *Result {
-	out := make(chan *Result)
+func (c *Cascade) retry(serveChannels map[string]*result, restart chan []string) chan *Result {
+	out := c.poll()
 	go func() {
-		c.poll(out, serveChannels, restart)
+
 		for {
 			select {
-			case <-restart:
-				c.poll(out, serveChannels, restart)
+			case vertices := <-c.runVertex:
+				// vertices to re-run
+				for v := range vertices {
+					println(v)
+				}
 			}
 		}
 	}()
+
+	//out := make(chan *Result)
+	//go func() {
+	//	c.poll(out, serveChannels, restart)
+	//	for {
+	//		select {
+	//		case <-restart:
+	//			c.poll(out, serveChannels, restart)
+	//		case <-c.shutdownPoller:
+	//			return
+	//		}
+	//	}
+	//}()
 	return out
 }
 
-func (c *Cascade) poll(out chan *Result, serveChannels map[string]*result, restart chan struct{}) {
-	for k, v := range serveChannels {
-		go func(vertexId string, res *result) {
+// restart -> start
+func (c *Cascade) poll(serveChannels map[string]*result, restart chan []string) chan *Result {
+	out := make(chan *Result)
+	for _, r := range serveChannels {
+		go func(res *result) {
 			for {
-				time.Sleep(time.Second * 1)
 				select {
+				// kill signal
 				case e := <-res.errCh:
 					if e != nil {
 						c.logger.Err(e).
-							Str("error occurred in the vertex:", vertexId).
+							Str("error occurred in the vertex:", res.vertexId).
 							Msg("error processed in poll")
 						out <- &Result{
 							Err:      e,
 							Code:     0,
-							VertexID: vertexId,
+							VertexID: res.vertexId,
 						}
 
 						// TODO split
 						// 1. public function to find graph path
 						// 2. public function to restart founded graph path
-						err := c.findGraphPathAndRestart(vertexId)
+						c.rwMutex.Lock()
+						affectedVertices, err := c.findGraphPathAndRestart(res.vertexId)
+						c.rwMutex.Unlock()
 						if err != nil {
 							panic(err)
 						}
-						restart <- struct{}{}
-						runtime.Goexit()
+
+						vIds := make([]string, 0, 5)
+						for _, vv := range affectedVertices {
+							vIds = append(vIds, vv.Id)
+						}
 					}
-				case <-c.shutdownPoller:
-					runtime.Goexit()
+					// exit from the goroutine
+				case <-res.exit:
+					return
 				}
 			}
-		}(k, v)
+		}(r)
 	}
+
+	return out
 }
 
-func (c *Cascade) findGraphPathAndRestart(vId string) error {
+// out - error
+// affected vertices
+func (c *Cascade) findGraphPathAndRestart(vId string) ([]*structures.Vertex, error) {
 	// get the vertex
 	// calculate dependencies
 	// close/stop affected vertices
@@ -303,9 +359,9 @@ func (c *Cascade) findGraphPathAndRestart(vId string) error {
 
 	nodes := affectedRunList.Head
 
-	cNodes := nodes
-	for cNodes != nil {
-		err := c.internalStop(cNodes)
+	cVertices := nodes
+	for cVertices != nil {
+		err := c.internalStop(cVertices)
 		if err != nil {
 			// TODO do not return until finished
 			// just log the errors
@@ -314,7 +370,7 @@ func (c *Cascade) findGraphPathAndRestart(vId string) error {
 		}
 
 		// prev DLL node
-		cNodes = cNodes.Next
+		cVertices = cVertices.Next
 	}
 
 	nn := nodes
@@ -324,14 +380,24 @@ func (c *Cascade) findGraphPathAndRestart(vId string) error {
 			Err(err).
 			Stack().
 			Msg("error during the retry init")
-		return nil
+		return nil, nil
 	}
 
-	err = c.serveVertices(nodes)
-	if err != nil {
-		return err
+	for nodes != nil {
+		// initial start
+		err := c.serveVertex(nodes)
+		// if err != nil, but we set up restart
+		if err != nil && c.retryOnFail {
+			//panic(err)
+			println("RETRYYY: " + err.Error())
+		} else if err != nil {
+			c.logger.Fatal().Err(err).Str("failed to start vertex", nodes.Vertex.Id).Msg("fatal error during the initial serve phase")
+		}
+
+		nodes = nodes.Next
 	}
-	return nil
+
+	return sorted, nil
 }
 
 func (c *Cascade) Stop() error {

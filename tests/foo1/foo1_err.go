@@ -30,7 +30,7 @@ func (s *S1Err) Serve() chan error {
 	errCh := make(chan error, 1)
 	println("S1_err: serving")
 	go func() {
-		time.Sleep(time.Second * 8)
+		time.Sleep(time.Second * 4)
 		errCh <- errors.New("s1_err test error")
 	}()
 	return errCh
