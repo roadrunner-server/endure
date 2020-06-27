@@ -284,9 +284,9 @@ func (c *Cascade) configure(n *structures.DllNode, in []reflect.Value) error {
 		if e, ok := res.(error); ok && e != nil {
 			return e
 		}
-		return nil
+		return unknownErrorOccurred
 	}
-	return unknownErrorOccurred
+	return nil
 }
 
 func (c *Cascade) internalStop(n *structures.DllNode) error {

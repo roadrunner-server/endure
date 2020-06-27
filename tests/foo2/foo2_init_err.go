@@ -30,10 +30,9 @@ func (s2 *S2Err) Close() error {
 	return nil
 }
 
-func (s2 *S2Err) Configure() chan error {
-	errCh := make(chan error, 1)
+func (s2 *S2Err) Configure() error {
 	println("S2Err: configuring")
-	return errCh
+	return nil
 }
 
 func (s2 *S2Err) Serve() chan error {
