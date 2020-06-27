@@ -1,5 +1,7 @@
 package foo4
 
+import "github.com/spiral/cascade/tests/foo5"
+
 type S4 struct {
 }
 
@@ -8,7 +10,8 @@ type DB struct {
 }
 
 // No deps
-func (s *S4) Init() error {
+func (s *S4) Init(wr foo5.S5) error {
+	wr.WRead()
 	println("hello from S4 --> Init")
 	return nil
 }
@@ -28,11 +31,23 @@ func (s *S4) CreateAnotherDb() (*DB, error) {
 	}, nil
 }
 
-func (s *S4) Serve(upstream chan interface{}) error {
+func (s *S4) Configure() error {
+	println("S4: configuring")
+	return nil
+}
+
+func (s *S4) Serve() chan error {
+	errCh := make(chan error, 1)
+	println("S4: serving")
+	return errCh
+}
+
+func (s *S4) Close() error {
+	println("S4: closing")
 	return nil
 }
 
 func (s *S4) Stop() error {
-	println("S4: error occurred, stopping")
+	println("S4: stopping")
 	return nil
 }

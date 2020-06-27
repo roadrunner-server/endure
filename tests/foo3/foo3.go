@@ -25,11 +25,13 @@ func (s3 *S3) Init(svc foo2.S2) error {
 	return nil
 }
 
-func (s3 *S3) Serve(upstream chan interface{}) error {
-	return nil
+func (s3 *S3) Serve() chan error {
+	errCh := make(chan error, 1)
+	println("S3: serving")
+	return errCh
 }
 
 func (s3 *S3) Stop() error {
-	println("S3: error occurred, stopping")
+	println("S3: stopping")
 	return nil
 }

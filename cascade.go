@@ -3,16 +3,13 @@ package cascade
 import (
 	"os"
 	"reflect"
-	"strings"
+	"runtime"
+	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/spiral/cascade/structures"
 )
-
-// InitMethodName is the function name for the reflection
-const InitMethodName = "Init"
-// Stop is the function name for the reflection to Stop the service
-const StopMethodName = "Stop"
 
 type Cascade struct {
 	// Dependency graph
@@ -21,6 +18,17 @@ type Cascade struct {
 	runList *structures.DoublyLinkedList
 	// logger
 	logger zerolog.Logger
+	// OPTIONS
+	retryOnFail  bool
+	numOfRetries int
+
+	rwMutex *sync.RWMutex
+
+	results map[string]*result
+
+	//failProcessor func(k *Result) chan *Result
+
+	restartPoller chan struct{}
 }
 
 // Level defines log levels.
@@ -48,6 +56,8 @@ const (
 	TraceLevel Level = -1
 )
 
+type Options func(cascade *Cascade)
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////// PUBLIC ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +74,10 @@ const (
 7 - Disabled disables the logger.
 see the cascade.Level
 */
-func NewContainer(logLevel Level) (*Cascade, error) {
+func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
+	c := &Cascade{
+		rwMutex: &sync.RWMutex{},
+	}
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	switch logLevel {
@@ -92,11 +105,38 @@ func NewContainer(logLevel Level) (*Cascade, error) {
 
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
-	return &Cascade{
-		graph:   structures.NewGraph(),
-		runList: structures.NewDoublyLinkedList(),
-		logger:  logger,
-	}, nil
+	for _, option := range options {
+		option(c)
+	}
+
+	c.graph = structures.NewGraph()
+	c.runList = structures.NewDoublyLinkedList()
+	c.logger = logger
+	c.results = make(map[string]*result)
+	c.restartPoller = make(chan struct{})
+	//c.failProcessor =
+
+	//c := make(chan Time, 1)
+	//t := &Timer{
+	//	C: c,
+	//	r: runtimeTimer{
+	//		when: when(d),
+	//		f:    sendTime,
+	//		arg:  c,
+	//	},
+	//}
+	//startTimer(&t.r)
+	//return t
+
+	return c, nil
+}
+
+func RetryOnFail(set bool) Options {
+	return func(cascade *Cascade) {
+		cascade.retryOnFail = set
+		// default value
+		cascade.numOfRetries = 5
+	}
 }
 
 // Register depends the dependencies
@@ -149,7 +189,7 @@ func (c *Cascade) Init() error {
 
 	// we should buld init list in the reverse order
 	// TODO return cycle error
-	sortedVertices := c.graph.TopologicalSort()
+	sortedVertices := structures.OldTopologicalSort(c.graph.Vertices)
 
 	// TODO properly handle the len of the sorted vertices
 	c.runList.SetHead(&structures.DllNode{
@@ -160,26 +200,188 @@ func (c *Cascade) Init() error {
 		c.runList.Push(sortedVertices[i])
 	}
 
-	return c.init(c.runList.Head)
-}
+	head := c.runList.Head
 
-func (c *Cascade) Serve(upstream chan interface{}) error {
-	panic("unimplemented!")
-}
-func (c *Cascade) Stop() error {
-	panic("unimplemented!")
-}
-
-func (c *Cascade) Get(name string) interface{} {
-	panic("unimplemented!")
-}
-func (c *Cascade) Has(name string) bool {
-	panic("unimplemented!")
-}
-
-func (c *Cascade) List() []string {
-	panic("unimplemented!")
+	err := c.init(head)
+	if err != nil {
+		c.logger.
+			Err(err).
+			Stack().
+			Msg("error during the init")
+		return err
+	}
 	return nil
+}
+
+func (c *Cascade) Configure() error {
+	return nil
+}
+
+func (c *Cascade) Close() error {
+	return nil
+}
+
+func (c *Cascade) Serve() <-chan *Result {
+	n := c.runList.Head
+
+	err := c.serveVertices(n)
+	if err != nil {
+		panic(err)
+	}
+
+	if c.retryOnFail {
+		out := make(chan *Result)
+		go func() {
+			c.poll(out)
+			for {
+				select {
+				case <-c.restartPoller:
+					c.poll(out)
+				}
+			}
+		}()
+		return out
+	}
+
+	// read message
+	// do retry
+	// clone the message and re-send it to the receiver
+	r := make([]*result, 0, 5)
+	for _, v := range c.results {
+		r = append(r, v)
+	}
+	return merge(r)
+}
+
+func (c *Cascade) poll(out chan *Result) {
+	for k, v := range c.results {
+		go func(vertexId string, res *result) {
+			for {
+				time.Sleep(time.Second * 1)
+				select {
+				case e := <-res.errCh:
+					if e != nil {
+						println("EROOOOOOOOOOOOOOOR OCCURRED" + e.Error())
+						out <- &Result{
+							Err:      e,
+							Code:     0,
+							VertexID: vertexId,
+						}
+
+						err := c.defaultPoller(vertexId)
+						if err != nil {
+							panic(err)
+						}
+						c.restartPoller <- struct{}{}
+						runtime.Goexit()
+					}
+				}
+			}
+		}(k, v)
+	}
+}
+
+func (c *Cascade) defaultPoller(vId string) error {
+	// get the vertex
+	// calculate dependencies
+	// close/stop affected vertices
+	// build new topologically sorted graph and new run-list
+	// re-serve and connect messages to the clonedRes channel
+
+	vertex := c.graph.GetVertex(vId)
+
+	vertices := c.resetVertices(vertex)
+
+	sorted := structures.TopologicalSort(vertices)
+
+	affectedRunList := structures.NewDoublyLinkedList()
+	// TODO properly handle the len of the sorted vertices
+	affectedRunList.SetHead(&structures.DllNode{
+		Vertex: sorted[len(sorted)-1]})
+
+	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
+	for i := len(sorted) - 2; i >= 0; i-- {
+		affectedRunList.Push(sorted[i])
+	}
+
+	nodes := affectedRunList.Head
+
+	cNodes := nodes
+	for cNodes != nil {
+		err := c.internalStop(cNodes)
+		if err != nil {
+			// TODO do not return until finished
+			// just log the errors
+			// stack it in slice and if slice is not empty, print it ??
+			c.logger.Err(err).Stack().Msg("error occurred during the services stopping")
+		}
+
+		// prev DLL node
+		cNodes = cNodes.Next
+	}
+
+	nn := nodes
+	err := c.init(nn)
+	if err != nil {
+		c.logger.
+			Err(err).
+			Stack().
+			Msg("error during the retry init")
+		return nil
+	}
+
+	err = c.serveVertices(nodes)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Cascade) Stop() error {
+	n := c.runList.Head
+
+	for n != nil {
+		err := c.internalStop(n)
+		if err != nil {
+			// TODO do not return until finished
+			// just log the errors
+			// stack it in slice and if slice is not empty, print it ??
+			c.logger.Err(err).Stack().Msg("error occurred during the services stopping")
+		}
+
+		// prev DLL node
+		n = n.Next
+	}
+	return nil
+}
+
+func (c *Cascade) resetVertices(vertex *structures.Vertex) []*structures.Vertex {
+	// restore number of dependencies for the root
+	vertex.NumOfDeps = len(vertex.Dependencies)
+	vertex.Visiting = false
+	vertex.Visited = false
+	vertices := make([]*structures.Vertex, 0, 5)
+	vertices = append(vertices, vertex)
+
+	tmp := make(map[string]*structures.Vertex)
+
+	c.dfs(vertex.Dependencies, tmp)
+
+	for _, v := range tmp {
+		vertices = append(vertices, v)
+	}
+	return vertices
+}
+
+func (c *Cascade) dfs(deps []*structures.Vertex, tmp map[string]*structures.Vertex) {
+	for i := 0; i < len(deps); i++ {
+		deps[i].Visited = false
+		deps[i].Visiting = false
+		deps[i].NumOfDeps = len(deps)
+		tmp[deps[i].Id] = deps[i]
+		c.dfs(deps[i].Dependencies, tmp)
+	}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -209,34 +411,13 @@ func (c *Cascade) init(n *structures.DllNode) error {
 		// at this step absence of Init() is impossible
 		init, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(InitMethodName)
 
-		initArgs, err := functionParameters(init)
+		err := c.funcCall(init, n)
 		if err != nil {
+			c.logger.
+				Err(err).
+				Stack().Str("vertexID", n.Vertex.Id).
+				Msg("error occurred while calling a function")
 			return err
-		}
-
-		// If len(initArgs) is eq to 1, than we deal with empty Init() method
-		//
-		if len(initArgs) == 1 {
-			err = c.noDepsCall(init, n)
-			if err != nil {
-				err2 := c.stopServices(n.Prev)
-				if err2 != nil {
-					panic(err2)
-				}
-				return err
-			}
-		} else {
-			// else, we deal with variadic len of Init function parameters Init(a,b,c, etc)
-			// we should resolve all it all
-			err = c.depsCall(init, n)
-			if err != nil {
-				c.logger.Err(err)
-				err2 := c.stopServices(n.Prev)
-				if err2 != nil {
-					panic(err2)
-				}
-				return err
-			}
 		}
 
 		// next DLL node
@@ -244,50 +425,4 @@ func (c *Cascade) init(n *structures.DllNode) error {
 	}
 
 	return nil
-}
-
-// stopServices will call Stop on every node in node.Prev in DLL
-func (c *Cascade) stopServices(n *structures.DllNode) error {
-	c.logger.Info().Msg("running backward")
-	// traverse the dll
-	for n != nil {
-		// we already checked the Interface satisfaction
-		// at this step absence of Stop() is impossible
-		stop, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(StopMethodName)
-
-		in := make([]reflect.Value, 0, 1)
-
-		// add service itself, this is only 1 dependency for the Stop
-		in = append(in, reflect.ValueOf(n.Vertex.Iface))
-
-		ret := stop.Func.Call(in)
-		rErr := ret[0].Interface()
-		if rErr != nil {
-			e := rErr.(error)
-			panic(e)
-		}
-
-		// prev DLL node
-		n = n.Prev
-	}
-
-	return nil
-}
-
-func removePointerAsterisk(s string) string {
-	return strings.Trim(s, "*")
-}
-
-func isReference(t reflect.Type) bool {
-	return t.Kind() == reflect.Ptr
-}
-
-// TODO add all primitive types
-func isPrimitive(str string) bool {
-	switch str {
-	case "int":
-		return true
-	default:
-		return false
-	}
 }

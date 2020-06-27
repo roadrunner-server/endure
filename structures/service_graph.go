@@ -1,7 +1,7 @@
 package structures
 
 import (
-	"errors"
+	"fmt"
 	"reflect"
 )
 
@@ -72,6 +72,9 @@ type Vertex struct {
 
 	// for the toposort
 	NumOfDeps int
+
+	Visited bool
+	Visiting bool
 }
 
 type ProvidedEntry struct {
@@ -86,9 +89,9 @@ func (v *Vertex) AddValue(valueKey string, value reflect.Value, isRef bool) erro
 		v.Provides = make(map[string]ProvidedEntry)
 	}
 
-	if val, ok := v.Provides[valueKey]; ok && val.Value != nil {
-		return errors.New("key already present in the map")
-	}
+	//if val, ok := v.Provides[valueKey]; ok && val.Value != nil {
+	//	return errors.New("key already present in the map")
+	//}
 
 	v.Provides[valueKey] = ProvidedEntry{
 		IsReference: &isRef,
@@ -127,7 +130,7 @@ func (v *Vertex) AddValue(valueKey string, value reflect.Value, isRef bool) erro
 //
 func NewGraph() *Graph {
 	return &Graph{
-		Graph:     make(map[string]*Vertex),
+		Graph: make(map[string]*Vertex),
 	}
 }
 
@@ -142,7 +145,7 @@ AddDep doing the following:
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
-func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) {
+func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) error {
 	// idV should always present
 	idV := g.GetVertex(vertexID)
 	if idV == nil {
@@ -152,6 +155,9 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) {
 	depV := g.GetVertex(depID)
 	if depV == nil {
 		depV = g.FindProvider(depID)
+	}
+	if depV == nil {
+		return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID)
 	}
 
 	// add Dependency into the List
@@ -180,12 +186,12 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) {
 	for i := 0; i < len(idV.Dependencies); i++ {
 		tmpId := idV.Dependencies[i].Id
 		if tmpId == depV.Id {
-			return
+			return nil
 		}
 	}
-	idV.Dependencies = append(idV.Dependencies, depV)
 	depV.NumOfDeps++
-
+	idV.Dependencies = append(idV.Dependencies, depV)
+	return nil
 }
 
 func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
@@ -214,11 +220,11 @@ func (g *Graph) FindProvider(depId string) *Vertex {
 	return nil
 }
 
-func (g *Graph) TopologicalSort() []*Vertex {
+func OldTopologicalSort(vertices []*Vertex) []*Vertex {
 	var ord []*Vertex
 	var verticesWoDeps []*Vertex
 
-	for _, v := range g.Vertices {
+	for _, v := range vertices {
 		if v.NumOfDeps == 0 {
 			verticesWoDeps = append(verticesWoDeps, v)
 		}
@@ -229,14 +235,53 @@ func (g *Graph) TopologicalSort() []*Vertex {
 		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps)-1]
 
 		ord = append(ord, v)
-		g.removeDep(v, &verticesWoDeps)
+		removeDep(v, &verticesWoDeps)
 	}
 
 	return ord
 
 }
 
-func (g *Graph) removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
+func TopologicalSort(vertices []*Vertex) []*Vertex {
+	var ord []*Vertex
+	verticesCopy := vertices
+
+	for len(verticesCopy) != 0 {
+		vertex := verticesCopy[len(verticesCopy) - 1]
+		verticesCopy = verticesCopy[:len(verticesCopy) - 1]
+		containsCycle := dfs(vertex, &ord)
+		if containsCycle {
+			return nil
+		}
+	}
+
+	return ord
+}
+
+func dfs(vertex *Vertex, ordered *[]*Vertex) bool {
+	if vertex.Visited {
+		return false
+	} else if vertex.Visiting {
+		return true
+	}
+	vertex.Visiting = true
+	for _, prereqVertex := range vertex.Dependencies {
+		containsCycle := dfs(prereqVertex, ordered)
+		if containsCycle {
+			return true
+		}
+	}
+	vertex.Visited = true
+	vertex.Visiting = false
+	*ordered = append(*ordered, vertex)
+	return false
+}
+
+func TopologicalSortOnFail(vertex Vertex) {
+
+}
+
+func removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
 	for i := 0; i < len(vertex.Dependencies); i++ {
 		dep := vertex.Dependencies[i]
 		dep.NumOfDeps--

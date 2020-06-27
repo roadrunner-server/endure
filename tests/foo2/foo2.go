@@ -1,6 +1,8 @@
 package foo2
 
-import "github.com/spiral/cascade/tests/foo4"
+import (
+	"github.com/spiral/cascade/tests/foo4"
+)
 
 type DB struct {
 }
@@ -24,11 +26,22 @@ func (s2 *S2) CreateDB() (DB, error) {
 	return DB{}, nil
 }
 
-func (s2 *S2) Serve(upstream chan interface{}) error {
+func (s2 *S2) Close() error {
 	return nil
 }
 
+func (s2 *S2) Configure() error {
+	println("S2: configuring")
+	return nil
+}
+
+func (s2 *S2) Serve() chan error {
+	errCh := make(chan error, 1)
+	println("S2: serving")
+	return errCh
+}
+
 func (s2 *S2) Stop() error {
-	println("S2: error occurred, stopping")
+	println("S2: stopping")
 	return nil
 }

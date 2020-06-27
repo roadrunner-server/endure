@@ -1,26 +1,52 @@
 package cascade
 
+// InitMethodName is the function name for the reflection
+const InitMethodName = "Init"
+
+// ConfigureMethodName
+const ConfigureMethodName = "Configure"
+
+// CloseMethodName
+const CloseMethodName = "Close"
+
+// ServeMethodName
+const ServeMethodName = "Serve"
+
+// Stop is the function name for the reflection to Stop the service
+const StopMethodName = "Stop"
+
+// TODO interface?
+type Result struct {
+	Err      error
+	Code     int
+	VertexID string
+}
+
+type result struct {
+	errCh    chan error
+	vertexId string
+}
+
 type (
 	// TODO namings
 	Graceful interface {
-		// Start is used when we need to make preparation and wait for all services till Serve
-		Start() error
-		// PreStop stops processing in the service before big Stop
-		PreStop() error
+		// Configure is used when we need to make preparation and wait for all services till Serve
+		Configure() error
+		// Close frees resources allocated by the service
+		Close() error
 	}
 	Service interface {
-		//
-		Serve(upstream chan interface{}) error
+		// Serve
+		Serve() chan error
+		// Stop
 		Stop() error
 	}
 
 	Container interface {
-		Service
+		Serve() <-chan *Result
+		Close() error
 		Register(service interface{}) error
-		Get(name string) interface{}
-		Has(name string) bool
 		Init() error
-		List() []string
 	}
 
 	// Provider declares the ability to provide service edges of declared types.

@@ -37,6 +37,18 @@ func (dll *DoublyLinkedList) Push(vertex *Vertex) {
 	dll.Head = node
 }
 
+func (dll *DoublyLinkedList) PushTail(vertex *Vertex) {
+	node := &DllNode{
+		Vertex: vertex,
+	}
+	node.Next = dll.Tail
+	dll.Tail.Next = node
+
+	node.Prev = dll.Head
+
+	dll.Tail = node
+}
+
 // constant O(1) time and space
 func (dll *DoublyLinkedList) SetTail(node *DllNode) {
 	if dll.Tail == nil {

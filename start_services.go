@@ -7,7 +7,7 @@ import (
 	"github.com/spiral/cascade/structures"
 )
 
-func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
+func (c *Cascade) funcCall(init reflect.Method, n *structures.DllNode) error {
 	in := c.getInitValues(n)
 
 	// Iterate over dependencies
@@ -15,7 +15,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 	ret := init.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		if e, ok := rErr.(error); ok {
+		if e, ok := rErr.(error); ok && e != nil {
 			c.logger.Err(e)
 			return e
 		} else {
@@ -33,16 +33,20 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 		if err != nil {
 			return err
 		}
+		c.logger.Info().
+			Str("vertexID", n.Vertex.Id).
+			Str("IN parameter", in[0].Type().String()).
+			Msg("value added successfully")
 	} else {
 		panic("len in less than 2")
 	}
 
-	err := c.traverseProvider(n, []reflect.Value{reflect.ValueOf(n.Vertex.Iface)})
+	err := c.traverseCallProvider(n, []reflect.Value{reflect.ValueOf(n.Vertex.Iface)})
 	if err != nil {
 		return err
 	}
 
-	err = c.traverseRegisters(n)
+	err = c.traverseCallRegisters(n)
 	if err != nil {
 		return err
 	}
@@ -50,51 +54,7 @@ func (c *Cascade) depsCall(init reflect.Method, n *structures.DllNode) error {
 	return nil
 }
 
-func (c *Cascade) noDepsCall(init reflect.Method, n *structures.DllNode) error {
-	in := make([]reflect.Value, 0, 1)
-
-	// add service itself
-	in = append(in, reflect.ValueOf(n.Vertex.Iface))
-
-	ret := init.Func.Call(in)
-	rErr := ret[0].Interface()
-	if rErr != nil {
-		if e, ok := rErr.(error); ok {
-			c.logger.Err(e)
-			return e
-		} else {
-			return unknownErrorOccurred
-		}
-	}
-	// just to be safe here
-	if len(in) > 0 {
-		// `in` type here is initialized function receiver
-		c.logger.Info().
-			Str("vertexID", n.Vertex.Id).
-			Str("in parameter", in[0].Type().String()).
-			Msg("calling with no deps")
-		err := n.Vertex.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
-		if err != nil {
-			return err
-		}
-	}
-
-	err := c.traverseProvider(n, in)
-	if err != nil {
-		c.logger.Err(err)
-		return err
-	}
-
-	err = c.traverseRegisters(n)
-	if err != nil {
-		c.logger.Err(err)
-		return err
-	}
-
-	return nil
-}
-
-func (c *Cascade) traverseRegisters(n *structures.DllNode) error {
+func (c *Cascade) traverseCallRegisters(n *structures.DllNode) error {
 	inReg := make([]reflect.Value, 0, 1)
 
 	// add service itself
@@ -151,8 +111,8 @@ func (c *Cascade) traverseRegisters(n *structures.DllNode) error {
 				if len(ret) > 0 {
 					rErr := ret[0].Interface()
 					if rErr != nil {
-						if e, ok := rErr.(error); ok {
-							c.logger.Err(e).Msg("error")
+						if e, ok := rErr.(error); ok && e != nil {
+							c.logger.Err(e).Msg("error occurred during the Registers invocation")
 							return e
 						} else {
 							return unknownErrorOccurred
@@ -167,7 +127,7 @@ func (c *Cascade) traverseRegisters(n *structures.DllNode) error {
 	return nil
 }
 
-func (c *Cascade) traverseProvider(n *structures.DllNode, in []reflect.Value) error {
+func (c *Cascade) traverseCallProvider(n *structures.DllNode, in []reflect.Value) error {
 	// type implements Provider interface
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
 		// if type implements Provider() it should has FnsProviderToInvoke
@@ -183,8 +143,8 @@ func (c *Cascade) traverseProvider(n *structures.DllNode, in []reflect.Value) er
 				if len(ret) > 1 {
 					rErr := ret[1].Interface()
 					if rErr != nil {
-						if e, ok := rErr.(error); ok {
-							c.logger.Err(e)
+						if e, ok := rErr.(error); ok && e != nil {
+							c.logger.Err(e).Msg("error occurred in the traverseCallProvider")
 							return e
 						} else {
 							return unknownErrorOccurred
@@ -245,4 +205,138 @@ func (c *Cascade) getInitValues(n *structures.DllNode) []reflect.Value {
 		}
 	}
 	return in
+}
+
+/*
+Algorithm is the following (all steps executing in the topological order):
+1. Call Configure() on all services -- OPTIONAL
+2. Call Serve() on all services --     MUST
+3. Call Stop() on all services --      MUST
+4. Call Clear() on a services, which implements this interface -- OPTIONAL
+*/
+// call configure on the node
+
+func (c *Cascade) serveVertices(n *structures.DllNode) error {
+	// TODO len of DDLNodes
+	//out := make([]*result, 0, 5)
+	nCopy := n
+	// handle all configure
+	for nCopy != nil {
+		in := make([]reflect.Value, 0, 1)
+
+		// add service itself
+		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
+		//var res Result
+		if reflect.TypeOf(nCopy.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+			// call configure
+			//out = append(out, c.call(nCopy, in, ConfigureMethodName))
+			err := c.configure(nCopy, in)
+			if err != nil {
+				return err
+			}
+		}
+
+		nCopy = nCopy.Next
+	}
+
+	// reset the list
+	nCopy = n
+	// and handle all serve
+	for nCopy != nil {
+		in := make([]reflect.Value, 0, 1)
+
+		// add service itself
+		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
+
+		// call serve
+		//out = append(out, c.call(nCopy, in, ServeMethodName))
+		err := c.serve(nCopy, in)
+		if err != nil {
+			return err
+		}
+		nCopy = nCopy.Next
+	}
+	return nil
+}
+
+func (c *Cascade) serve(n *structures.DllNode, in []reflect.Value) error {
+	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ServeMethodName)
+	ret := m.Func.Call(in)
+	res := ret[0].Interface()
+	if res != nil {
+		if e, ok := res.(chan error); ok && e != nil {
+			// TODO mutex ??
+			c.results[n.Vertex.Id] = &result{
+				errCh:    e,
+				vertexId: n.Vertex.Id,
+			}
+			return nil
+		}
+	}
+	return unknownErrorOccurred
+}
+
+func (c *Cascade) configure(n *structures.DllNode, in []reflect.Value) error {
+	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(ConfigureMethodName)
+	ret := m.Func.Call(in)
+	res := ret[0].Interface()
+	if res != nil {
+		if e, ok := res.(error); ok && e != nil {
+			return e
+		}
+		return unknownErrorOccurred
+	}
+	return nil
+}
+
+func (c *Cascade) internalStop(n *structures.DllNode) error {
+	in := make([]reflect.Value, 0, 1)
+
+	// add service itself
+	in = append(in, reflect.ValueOf(n.Vertex.Iface))
+
+	err := c.stop(n, in)
+	if err != nil {
+		c.logger.Err(err).Stack().Msg("error occurred during the stop")
+	}
+
+	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+		err = c.close(n, in)
+		if err != nil {
+			c.logger.Err(err).Stack().Msg("error occurred during the close")
+		}
+	}
+
+	return nil
+}
+
+func (c *Cascade) stop(n *structures.DllNode, in []reflect.Value) error {
+	// Call Stop() method, which returns only error (or nil)
+	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(StopMethodName)
+	ret := m.Func.Call(in)
+	rErr := ret[0].Interface()
+	if rErr != nil {
+		if e, ok := rErr.(error); ok && e != nil {
+			return e
+		} else {
+			return unknownErrorOccurred
+		}
+	}
+	return nil
+}
+
+// TODO add stack to the all of the log events
+func (c *Cascade) close(n *structures.DllNode, in []reflect.Value) error {
+	// Call Close() method, which returns only error (or nil)
+	m, _ := reflect.TypeOf(n.Vertex.Iface).MethodByName(CloseMethodName)
+	ret := m.Func.Call(in)
+	rErr := ret[0].Interface()
+	if rErr != nil {
+		if e, ok := rErr.(error); ok && e != nil {
+			return e
+		} else {
+			return unknownErrorOccurred
+		}
+	}
+	return nil
 }

@@ -111,7 +111,10 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 				// vertex - S4 func
 
 				// we store pointer in the Deps structure in the isRef field
-				c.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at))
+				err = c.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at))
+				if err != nil {
+					return err
+				}
 				c.logger.Info().
 					Str("vertexID", vertexID).
 					Str("depends", atStr).
@@ -162,7 +165,10 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 		}
 
 
-		c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg))
+		err = c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg))
+		if err != nil {
+			return err
+		}
 		c.logger.Info().
 			Str("vertexID", vertexID).
 			Str("depends", initArg.String()).
