@@ -1,6 +1,10 @@
 package foo4
 
-import "github.com/spiral/cascade/tests/foo5"
+import (
+	"time"
+
+	"github.com/spiral/cascade/tests/foo5"
+)
 
 type S4 struct {
 }
@@ -12,7 +16,6 @@ type DB struct {
 // No deps
 func (s *S4) Init(wr foo5.S5) error {
 	wr.WRead()
-	println("hello from S4 --> Init")
 	return nil
 }
 
@@ -25,29 +28,27 @@ func (s *S4) Provides() []interface{} {
 
 // this is the same type but different packages
 func (s *S4) CreateAnotherDb() (*DB, error) {
-	println("hello from S4 --> CreateAnotherDb")
 	return &DB{
-		Name: "S4 greeting you, padavan",
+		Name: "",
 	}, nil
 }
 
 func (s *S4) Configure() error {
-	println("S4: configuring")
+	time.Sleep(time.Second)
 	return nil
 }
 
 func (s *S4) Serve() chan error {
 	errCh := make(chan error, 1)
-	println("S4: serving")
 	return errCh
 }
 
 func (s *S4) Close() error {
-	println("S4: closing")
+	time.Sleep(time.Second)
 	return nil
 }
 
 func (s *S4) Stop() error {
-	println("S4: stopping")
+	time.Sleep(time.Second)
 	return nil
 }

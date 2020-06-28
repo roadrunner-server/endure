@@ -2,6 +2,7 @@ package foo2
 
 import (
 	"errors"
+	"time"
 
 	"github.com/spiral/cascade/tests/foo4"
 )
@@ -13,7 +14,6 @@ type S2Err struct {
 }
 
 func (s2 *S2Err) Init(db *foo4.DB) error {
-	println("hello from S2Err --> Init")
 	return errors.New("init test error")
 }
 
@@ -22,7 +22,6 @@ func (s2 *S2Err) Provides() []interface{} {
 }
 
 func (s2 *S2Err) CreateDB() (DB, error) {
-	println("hello from S2Err --> CreateDB")
 	return DB{}, nil
 }
 
@@ -31,17 +30,16 @@ func (s2 *S2Err) Close() error {
 }
 
 func (s2 *S2Err) Configure() error {
-	println("S2Err: configuring")
+	time.Sleep(time.Second)
 	return nil
 }
 
 func (s2 *S2Err) Serve() chan error {
 	errCh := make(chan error, 1)
-	println("S2Err: serving")
 	return errCh
 }
 
 func (s2 *S2Err) Stop() error {
-	println("S2Err: stopping")
+	time.Sleep(time.Second)
 	return nil
 }

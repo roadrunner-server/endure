@@ -97,7 +97,7 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 				// check if type is primitive type
 				if isPrimitive(at.String()) {
 					log.Fatal().
-						Str("vertexID", vertexID).
+						Str("vertex id", vertexID).
 						Str("type", at.String()).
 						Msg("primitive type in the function parameters")
 				}
@@ -116,7 +116,7 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 					return err
 				}
 				c.logger.Info().
-					Str("vertexID", vertexID).
+					Str("vertex id", vertexID).
 					Str("depends", atStr).
 					Msg("adding dependency via Depends()")
 			}
@@ -132,7 +132,7 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 			}
 
 			c.logger.Info().
-				Str("vertexID", vertexID).
+				Str("vertex id", vertexID).
 				Str("function name", getFunctionName(fn)).
 				Msg("appending register function to invoke later")
 
@@ -154,7 +154,7 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 	for _, initArg := range initArgs {
 		if isPrimitive(initArg.String()) {
 			log.Fatal().
-				Str("vertexID", vertexID).
+				Str("vertex id", vertexID).
 				Str("type", initArg.String()).
 				Msg("primitive type in the function parameters")
 			continue
@@ -170,7 +170,7 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 			return err
 		}
 		c.logger.Info().
-			Str("vertexID", vertexID).
+			Str("vertex id", vertexID).
 			Str("depends", initArg.String()).
 			Msg("adding dependency via Init()")
 	}
