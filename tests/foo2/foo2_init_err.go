@@ -2,7 +2,6 @@ package foo2
 
 import (
 	"errors"
-	"time"
 
 	"github.com/spiral/cascade/tests/foo4"
 )
@@ -30,7 +29,6 @@ func (s2 *S2Err) Close() error {
 }
 
 func (s2 *S2Err) Configure() error {
-	time.Sleep(time.Second)
 	return nil
 }
 
@@ -40,6 +38,5 @@ func (s2 *S2Err) Serve() chan error {
 }
 
 func (s2 *S2Err) Stop() error {
-	time.Sleep(time.Second)
 	return nil
 }

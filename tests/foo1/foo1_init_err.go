@@ -2,7 +2,6 @@ package foo1
 
 import (
 	"errors"
-	"time"
 
 	"github.com/spiral/cascade/tests/foo2"
 	"github.com/spiral/cascade/tests/foo4"
@@ -27,6 +26,5 @@ func (s *S1Err) Serve() chan error {
 }
 
 func (s *S1Err) Stop() error {
-	time.Sleep(time.Second)
 	return nil
 }

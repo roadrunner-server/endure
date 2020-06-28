@@ -1,8 +1,6 @@
 package foo4
 
 import (
-	"time"
-
 	"github.com/spiral/cascade/tests/foo5"
 )
 
@@ -34,7 +32,6 @@ func (s *S4) CreateAnotherDb() (*DB, error) {
 }
 
 func (s *S4) Configure() error {
-	time.Sleep(time.Second)
 	return nil
 }
 
@@ -44,11 +41,9 @@ func (s *S4) Serve() chan error {
 }
 
 func (s *S4) Close() error {
-	time.Sleep(time.Second)
 	return nil
 }
 
 func (s *S4) Stop() error {
-	time.Sleep(time.Second)
 	return nil
 }

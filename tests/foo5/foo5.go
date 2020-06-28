@@ -1,7 +1,5 @@
 package foo5
 
-import "time"
-
 type Reader interface {
 	WRead() // just stupid name
 }
@@ -23,7 +21,6 @@ func (s *S5) Init() error {
 }
 
 func (s *S5) Configure() error {
-	time.Sleep(time.Second)
 	return nil
 }
 
@@ -33,11 +30,9 @@ func (s *S5) Serve() chan error {
 }
 
 func (s *S5) Close() error {
-	time.Sleep(time.Second)
 	return nil
 }
 
 func (s *S5) Stop() error {
-	time.Sleep(time.Second)
 	return nil
 }

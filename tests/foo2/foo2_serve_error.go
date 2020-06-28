@@ -30,7 +30,6 @@ func (s2 *S2ServeErr) Close() error {
 }
 
 func (s2 *S2ServeErr) Configure() error {
-	time.Sleep(time.Second)
 	return nil
 }
 
@@ -44,6 +43,5 @@ func (s2 *S2ServeErr) Serve() chan error {
 }
 
 func (s2 *S2ServeErr) Stop() error {
-	time.Sleep(time.Second)
 	return nil
 }

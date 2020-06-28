@@ -31,6 +31,5 @@ func (s *S1ServeErr) Serve() chan error {
 }
 
 func (s *S1ServeErr) Stop() error {
-	time.Sleep(time.Second)
 	return nil
 }
