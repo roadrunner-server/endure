@@ -1,6 +1,8 @@
 package foo3
 
 import (
+	"time"
+
 	"github.com/spiral/cascade/tests/foo2"
 	"github.com/spiral/cascade/tests/foo4"
 )
@@ -14,24 +16,21 @@ func (s3 *S3) Depends() []interface{} {
 	}
 }
 
-func (s3 *S3) SomeOtherDep(svc *foo4.S4, svc2 foo2.S2ServeErr) error {
-	println("hello from S3 --> SomeOtherDep")
+func (s3 *S3) SomeOtherDep(svc *foo4.S4, svc2 foo2.S2) error {
 	return nil
 }
 
 // Depends on S3
-func (s3 *S3) Init(svc foo2.S2ServeErr) error {
-	println("hello from S3 --> Init")
+func (s3 *S3) Init(svc foo2.S2) error {
 	return nil
 }
 
 func (s3 *S3) Serve() chan error {
 	errCh := make(chan error, 1)
-	println("S3: serving")
 	return errCh
 }
 
 func (s3 *S3) Stop() error {
-	println("S3: stopping")
+	time.Sleep(time.Second)
 	return nil
 }
