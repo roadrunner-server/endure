@@ -96,11 +96,16 @@ func TestCascade_Init_Err(t *testing.T) {
 	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(false))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&foo4.S4{}))
-	assert.NoError(t, c.Register(&foo1.S1{}))
-	assert.NoError(t, c.Register(&foo3.S3{}))
-	assert.NoError(t, c.Register(&foo5.S5{}))
+	assert.NoError(t, c.Register(&foo1.S1Err{}))
 	assert.NoError(t, c.Register(&foo2.S2Err{})) // should produce an error during the Init
+	assert.Error(t, c.Init())
+}
+
+func TestCascade_PrimitiveType_Err(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(false))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&foo1.S1Pr{}))
 	assert.Error(t, c.Init())
 }
 

@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Cascade) initCall(init reflect.Method, v *structures.Vertex) error {
-	in := c.getInitValues(v)
+	in := c.getValuesForVertex(v)
 
 	// Iterate over dependencies
 	// And search in Vertices for the provided types
@@ -165,7 +165,7 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value)
 	return nil
 }
 
-func (c *Cascade) getInitValues(vertex *structures.Vertex) []reflect.Value {
+func (c *Cascade) getValuesForVertex(vertex *structures.Vertex) []reflect.Value {
 	in := make([]reflect.Value, 0, 1)
 
 	// add service itself
