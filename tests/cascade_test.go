@@ -43,6 +43,55 @@ func TestCascade_Init_OK(t *testing.T) {
 	time.Sleep(time.Second * 1)
 }
 
+func TestCascade_Init_1_Element(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.TraceLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&foo1.S1One{}))
+	assert.NoError(t, c.Init())
+
+	res := c.Serve()
+
+	go func() {
+		for r := range res {
+			if r.Err != nil {
+				assert.NoError(t, r.Err)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	assert.NoError(t, c.Stop())
+	time.Sleep(time.Second * 1)
+}
+
+func TestCascade_ProvidedValueButNeedPointer(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.TraceLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&foo2.S2V{}))
+	assert.NoError(t, c.Register(&foo4.S4V{}))
+	assert.NoError(t, c.Init())
+
+	res := c.Serve()
+
+	go func() {
+		for r := range res {
+			if r.Err != nil {
+				assert.NoError(t, r.Err)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	assert.NoError(t, c.Stop())
+	time.Sleep(time.Second * 1)
+}
+
 func TestCascade_Init_Err(t *testing.T) {
 	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(false))
 	assert.NoError(t, err)
@@ -88,8 +137,8 @@ func TestCascade_Serve_Err(t *testing.T) {
 time X is 0s
 1. After X+1s S2ServeErr produces error in Serve
 2. At the same time at X+1s S1Err also produces error in Serve
-3. In case of S2ServeErr vertices S5 and S4 should be restarted
-4. In case of S1Err vertices S5 -> S4 -> S2ServeErr (with error in Serve in X+5s) -> S1Err should be restarted
+3. In case of S2ServeErr vertices S5 and S4V should be restarted
+4. In case of S1Err vertices S5 -> S4V -> S2ServeErr (with error in Serve in X+5s) -> S1Err should be restarted
 */
 func TestCascade_Serve_Retry_Err(t *testing.T) {
 	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(true))
@@ -135,8 +184,8 @@ func TestCascade_Serve_Retry_Err(t *testing.T) {
 time X is 0s
 1. After X+1s S2ServeErr produces error in Serve
 2. At the same time at X+1s S1Err also produces error in Serve
-3. In case of S2ServeErr vertices S5 and S4 should be restarted
-4. In case of S1Err vertices S5 -> S4 -> S2ServeErr (with error in Serve in X+5s) -> S1Err should be restarted
+3. In case of S2ServeErr vertices S5 and S4V should be restarted
+4. In case of S1Err vertices S5 -> S4V -> S2ServeErr (with error in Serve in X+5s) -> S1Err should be restarted
 5. Test should receive at least 100 errors
 */
 func TestCascade_Serve_Retry_100_Err(t *testing.T) {

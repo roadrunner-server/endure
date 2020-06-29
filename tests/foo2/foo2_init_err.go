@@ -13,7 +13,7 @@ type S2Err struct {
 }
 
 func (s2 *S2Err) Init(db *foo4.DB) error {
-	return errors.New("init test error")
+	return errors.New("s2 init test error")
 }
 
 func (s2 *S2Err) Provides() []interface{} {

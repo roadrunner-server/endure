@@ -197,15 +197,17 @@ func (c *Cascade) Init() error {
 		return err
 	}
 
-	// we should buld init list in the reverse order
-	// TODO return cycle error
+	// we should build init list in the reverse order
 	sortedVertices := structures.OldTopologicalSort(c.graph.Vertices)
 
-	// TODO properly handle the len of the sorted vertices
+	if len(sortedVertices) == 0 {
+		c.logger.Fatal().Msg("graph should contain at least 1 vertex")
+	}
+	// 0 element is the HEAD
 	c.runList.SetHead(&structures.DllNode{
 		Vertex: sortedVertices[0]})
 
-	// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
+	// push elements to the list
 	for i := 1; i < len(sortedVertices); i++ {
 		c.runList.Push(sortedVertices[i])
 	}
@@ -283,7 +285,7 @@ func (c *Cascade) startMainThread() {
 					return
 				}
 				c.logger.Info().Str("vertex id", res.vertexId).Msg("processing error in the main thread")
-				if c.checkLeafErrorTime(res) {
+				if c.checkLeafErrorTime(res) { // <-- here also mutex
 					c.logger.Info().Str("vertex id", res.vertexId).Msg("error processing skipped because vertex already restarted by the root")
 					break
 				}
@@ -355,30 +357,6 @@ func (c *Cascade) startMainThread() {
 
 					c.serveRunList(head)
 
-					//for head != nil {
-					//	// serve current vertex
-					//	// TODO backoff
-					//	r := c.serveVertex(head.Vertex)
-					//	// if err != nil, but we set up restart
-					//	if r != nil {
-					//		c.results[r.vertexId] = r
-					//	} else {
-					//		panic("res nil")
-					//	}
-					//
-					//	// start polling events from the vertex
-					//	c.poll(r)
-					//	// set restarted time
-					//	if c.restarted[head.Vertex.Id] != nil {
-					//		*c.restarted[head.Vertex.Id] = time.Now()
-					//	} else {
-					//		tmp := time.Now()
-					//		c.restarted[head.Vertex.Id] = &tmp
-					//	}
-					//
-					//	// move to the next node
-					//	head = head.Next
-					//}
 				}
 
 				// unlock the scope
