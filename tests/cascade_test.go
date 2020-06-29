@@ -37,10 +37,10 @@ func TestCascade_Init_OK(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 2)
 
 	assert.NoError(t, c.Stop())
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 1)
 }
 
 func TestCascade_Init_Err(t *testing.T) {

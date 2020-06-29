@@ -24,7 +24,7 @@ func (s *S1ServeErr) AddService(svc *foo4.S4) error {
 func (s *S1ServeErr) Serve() chan error {
 	errCh := make(chan error, 1)
 	go func() {
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Millisecond * 500)
 		errCh <- errors.New("s1 test error")
 	}()
 	return errCh

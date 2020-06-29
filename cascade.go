@@ -70,8 +70,8 @@ type Options func(cascade *Cascade)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Input parameters: logLevel
--1 is the most informative level - TraceLevel
-0 - DebugLevel defines debug log level --> also turn on pprof endpoint
+-1 is the most informative level - TraceLevel --> also turns on pprof endpoint
+0 - DebugLevel defines debug log level --> also turns on pprof endpoint
 1 - InfoLevel defines info log level.
 2 - WarnLevel defines warn log level.
 3 - ErrorLevel defines error log level.
@@ -108,6 +108,8 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 		zerolog.SetGlobalLevel(zerolog.Disabled)
 	case -1: // TraceLevel
 		zerolog.SetGlobalLevel(zerolog.TraceLevel)
+		// start pprof
+		startPprof()
 	default:
 		zerolog.SetGlobalLevel(zerolog.Disabled)
 	}
@@ -183,7 +185,6 @@ func (c *Cascade) Register(vertex interface{}) error {
 	if err != nil {
 		return err
 	}
-
 	c.logger.Info().Str("type", t.String()).Msgf("registering type")
 
 	return nil
@@ -226,18 +227,17 @@ func (c *Cascade) Init() error {
 	return nil
 }
 
-func (c *Cascade) Configure() error {
-	return nil
-}
-
-func (c *Cascade) Close() error {
-	return nil
-}
-
 func (c *Cascade) Serve() <-chan *Result {
 	c.startMainThread()
 	n := c.runList.Head
 	c.rwMutex.Lock()
+	c.serveRunList(n)
+	c.rwMutex.Unlock()
+
+	return c.userResultsCh
+}
+
+func (c *Cascade) serveRunList(n *structures.DllNode) {
 	for n != nil {
 		// initial start
 
@@ -259,14 +259,6 @@ func (c *Cascade) Serve() <-chan *Result {
 
 		n = n.Next
 	}
-	c.rwMutex.Unlock()
-
-	//next listen for the failing nodes after start
-	if c.retryOnFail {
-		return c.userResultsCh
-	}
-
-	return c.userResultsCh
 }
 
 func (c *Cascade) Stop() error {
@@ -361,30 +353,32 @@ func (c *Cascade) startMainThread() {
 						headCopy = headCopy.Next
 					}
 
-					for head != nil {
-						// serve current vertex
-						// TODO backoff
-						r := c.serveVertex(head.Vertex)
-						// if err != nil, but we set up restart
-						if r != nil {
-							c.results[r.vertexId] = r
-						} else {
-							panic("res nil")
-						}
+					c.serveRunList(head)
 
-						// start polling events from the vertex
-						c.poll(r)
-						// set restarted time
-						if c.restarted[head.Vertex.Id] != nil {
-							*c.restarted[head.Vertex.Id] = time.Now()
-						} else {
-							tmp := time.Now()
-							c.restarted[head.Vertex.Id] = &tmp
-						}
-
-						// move to the next node
-						head = head.Next
-					}
+					//for head != nil {
+					//	// serve current vertex
+					//	// TODO backoff
+					//	r := c.serveVertex(head.Vertex)
+					//	// if err != nil, but we set up restart
+					//	if r != nil {
+					//		c.results[r.vertexId] = r
+					//	} else {
+					//		panic("res nil")
+					//	}
+					//
+					//	// start polling events from the vertex
+					//	c.poll(r)
+					//	// set restarted time
+					//	if c.restarted[head.Vertex.Id] != nil {
+					//		*c.restarted[head.Vertex.Id] = time.Now()
+					//	} else {
+					//		tmp := time.Now()
+					//		c.restarted[head.Vertex.Id] = &tmp
+					//	}
+					//
+					//	// move to the next node
+					//	head = head.Next
+					//}
 				}
 
 				// unlock the scope

@@ -24,11 +24,17 @@ type Result struct {
 
 type result struct {
 	// error channel from vertex
-	errCh    chan error
+	errCh chan error
 	// unique vertex id
 	vertexId string
 	// signal to the vertex goroutine to exit
-	exit     chan struct{}
+	exit chan struct{}
+}
+
+type Error struct {
+	Err   error
+	Code  int
+	Stack []uint
 }
 
 type (

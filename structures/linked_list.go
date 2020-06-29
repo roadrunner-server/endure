@@ -88,34 +88,7 @@ func (dll *DoublyLinkedList) InsertAfter(node, nodeToInsert *DllNode) {
 	}
 	node.Next = nodeToInsert
 }
-func (dll *DoublyLinkedList) InsertAtPosition(position int, nodeToInsert *DllNode) {
-	if position == 1 {
-		dll.SetHead(nodeToInsert)
-		return
-	}
-	node := dll.Head
-	currentPos := 1
-	for node != nil && currentPos != position {
-		node = node.Next
-		currentPos += 1
-	}
-	if node != nil {
-		dll.InsertBefore(node, nodeToInsert)
-	} else {
-		dll.SetTail(nodeToInsert)
-	}
-}
 
-func (dll *DoublyLinkedList) RemoveNodesWithVertexId(vertexId string) {
-	node := dll.Head
-	for node != nil {
-		nodeToRemove := node
-		node = node.Next
-		if nodeToRemove.Vertex.Id == vertexId {
-			dll.Remove(node)
-		}
-	}
-}
 
 func (dll *DoublyLinkedList) Remove(node *DllNode) {
 	if node == dll.Head {
@@ -125,14 +98,6 @@ func (dll *DoublyLinkedList) Remove(node *DllNode) {
 		dll.Tail = dll.Tail.Prev
 	}
 	dll.removeNode(node)
-}
-
-func (dll *DoublyLinkedList) ContainsNodeWithVertexId(vertexId string) bool {
-	node := dll.Head
-	for node != nil && node.Vertex.Id != vertexId {
-		node = node.Next
-	}
-	return node != nil
 }
 
 func (dll *DoublyLinkedList) removeNode(node *DllNode) {
