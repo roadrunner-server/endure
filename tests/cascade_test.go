@@ -215,6 +215,11 @@ func TestCascade_Serve_Retry_100_Err(t *testing.T) {
 	go func() {
 		for r := range res {
 			assert.Error(t, r.Err)
+			if r.Err.Error() == "error while invoke Init" {
+				assert.NoError(t, c.Stop())
+				wg.Done()
+				return
+			}
 			if r.VertexID == ord[0] || r.VertexID == ord[1] {
 				count++
 				if count == 100 {
@@ -232,11 +237,6 @@ func TestCascade_Serve_Retry_100_Err(t *testing.T) {
 }
 
 func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			println("function should panic")
-		}
-	}()
 	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
 	assert.NoError(t, err)
 
@@ -259,13 +259,13 @@ func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				wg.Done()
-			}
-		}()
 		for r := range res {
 			assert.Error(t, r.Err)
+			if r.Err.Error() == "error while invoke Init" {
+				assert.NoError(t, c.Stop())
+				wg.Done()
+				return
+			}
 			if r.VertexID == ord[0] || r.VertexID == ord[1] {
 				count++
 				if count == 100 {
@@ -283,11 +283,6 @@ func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
 }
 
 func TestCascade_PrimitiveType_Err(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			println("function should panic")
-		}
-	}()
 	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(false))
 	assert.NoError(t, err)
 

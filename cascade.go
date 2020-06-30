@@ -1,6 +1,7 @@
 package cascade
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -62,7 +63,6 @@ type Cascade struct {
 	/// main thread
 	handleErrorCh      chan *result
 	userResultsCh      chan *Result
-	mainThreadErrorsCh chan error
 	shutdownCh         chan struct{}
 	errorTimings       map[string]*time.Time
 	restarted          map[string]*time.Time
@@ -252,12 +252,11 @@ func (c *Cascade) Serve() (error, <-chan *Result) {
 	c.startMainThread()
 	n := c.runList.Head
 	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 	err := c.serveRunList(n)
 	if err != nil {
 		return err, nil
 	}
-	c.rwMutex.Unlock()
-
 	return nil, c.userResultsCh
 }
 
@@ -274,11 +273,6 @@ func (c *Cascade) Stop() error {
 
 func (c *Cascade) startMainThread() {
 	go func() {
-		defer func() {
-			if r := recover(); r == nil {
-				println("function should panic")
-			}
-		}()
 		for {
 			select {
 			// failed Vertex
@@ -296,12 +290,16 @@ func (c *Cascade) startMainThread() {
 				// lock the handleErrorCh processing
 				c.rwMutex.Lock()
 
-
 				// get vertex from the graph
 				vertex := c.graph.GetVertex(res.vertexId)
 				if vertex == nil {
 					c.rwMutex.Unlock()
-					c.logger.Panic("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexId))
+					c.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexId))
+					c.userResultsCh <- &Result{
+						Err:      errors.New("failed to topologically sort the graph or vertex is nil"),
+						Code:     500,
+						VertexID: "",
+					}
 				}
 
 				// reset vertex and dependencies to the initial state
@@ -312,7 +310,8 @@ func (c *Cascade) startMainThread() {
 				sorted := structures.TopologicalSort(vertices)
 				if sorted == nil {
 					c.rwMutex.Unlock()
-					c.logger.Panic("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexId))
+					c.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexId))
+					return
 				}
 
 				for _, v := range sorted {
@@ -353,7 +352,13 @@ func (c *Cascade) startMainThread() {
 						err := c.init(headCopy.Vertex)
 						if err != nil {
 							c.rwMutex.Unlock()
-							c.logger.Panic("error during the startMainThread", zap.String("vertex id", head.Vertex.Id), zap.Error(err))
+							c.logger.Error("error while invoke Init", zap.String("vertex id", head.Vertex.Id), zap.Error(err))
+							c.userResultsCh <- &Result{
+								Err:      errors.New("error while invoke Init"),
+								Code:     500,
+								VertexID: headCopy.Vertex.Id,
+							}
+							return
 						}
 
 						headCopy = headCopy.Next
@@ -363,36 +368,49 @@ func (c *Cascade) startMainThread() {
 					err := c.serveRunList(head)
 					if err != nil {
 						c.rwMutex.Unlock()
-						c.logger.Panic("fatal error during the configure in main thread", zap.String("vertex id", head.Vertex.Id), zap.Error(err))
+						c.userResultsCh <- &Result{
+							Err:      errors.New("error while invoke Init"),
+							Code:     500,
+							VertexID: headCopy.Vertex.Id,
+						}
+						c.logger.Error("fatal error during the configure in main thread", zap.String("vertex id", head.Vertex.Id), zap.Error(err))
+						return
 					}
-				}
-				c.rwMutex.Unlock()
-			case <-c.shutdownCh:
-				c.rwMutex.Lock()
-
-				c.logger.Info("exiting from the Cascade")
-				n := c.runList.Head
-
-				for n != nil {
-					err := c.internalStop(n.Vertex.Id)
-					if err != nil {
-						// TODO do not return until finished
-						// just log the errors
-						// stack it in slice and if slice is not empty, print it ??
-						c.logger.Error("error occurred during the services stopping", zap.String("vertex id", n.Vertex.Id), zap.Error(err))
-					}
-					if channel, ok := c.results[n.Vertex.Id]; ok && channel != nil {
-						channel.exit <- struct{}{}
-					}
-
-					// prev DLL node
-					n = n.Next
-
 				}
 				c.rwMutex.Unlock()
 			}
 		}
 	}()
+
+	go func() {
+		for {
+			select {
+			case <-c.shutdownCh:
+				c.rwMutex.Lock()
+				c.logger.Info("exiting from the Cascade")
+				c.shutdown(c.runList.Head)
+				c.rwMutex.Unlock()
+			}
+		}
+	}()
+}
+
+func (c *Cascade) shutdown(n *structures.DllNode) {
+	for n != nil {
+		err := c.internalStop(n.Vertex.Id)
+		if err != nil {
+			// TODO do not return until finished
+			// just log the errors
+			// stack it in slice and if slice is not empty, print it ??
+			c.logger.Error("error occurred during the services stopping", zap.String("vertex id", n.Vertex.Id), zap.Error(err))
+		}
+		if channel, ok := c.results[n.Vertex.Id]; ok && channel != nil {
+			channel.exit <- struct{}{}
+		}
+
+		// prev DLL node
+		n = n.Next
+	}
 }
 
 // serveRunList run configure (if exist) and serve for each node and put the results in the map
