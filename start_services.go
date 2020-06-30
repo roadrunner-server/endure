@@ -2,13 +2,15 @@ package cascade
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/spiral/cascade/structures"
+	"go.uber.org/zap"
 )
 
 func (c *Cascade) initCall(init reflect.Method, v *structures.Vertex) error {
-	in := c.getValuesForVertex(v)
+	in := c.findInitParameters(v)
 
 	// Iterate over dependencies
 	// And search in Vertices for the provided types
@@ -16,7 +18,7 @@ func (c *Cascade) initCall(init reflect.Method, v *structures.Vertex) error {
 	rErr := ret[0].Interface()
 	if rErr != nil {
 		if e, ok := rErr.(error); ok && e != nil {
-			c.logger.Err(e).Msg("error during initCall")
+			c.logger.Error("error calling init", zap.String("vertex id", v.Id), zap.Error(e))
 			return e
 		} else {
 			return unknownErrorOccurred
@@ -26,18 +28,16 @@ func (c *Cascade) initCall(init reflect.Method, v *structures.Vertex) error {
 	// just to be safe here
 	if len(in) > 0 {
 		/*
-		n.Vertex.AddValue
-		1. removePointerAsterisk to have uniform way of adding and searching the function args
-		2. if value already exists, AddValue will replace it with new one
+			n.Vertex.AddValue
+			1. removePointerAsterisk to have uniform way of adding and searching the function args
+			2. if value already exists, AddValue will replace it with new one
 		*/
 		err := v.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
 		if err != nil {
 			return err
 		}
-		c.logger.Info().
-			Str("vertex id", v.Id).
-			Str("IN parameter", in[0].Type().String()).
-			Msg("value added successfully")
+		c.logger.Debug("value added successfully", zap.String("vertex id", v.Id), zap.String("parameter", in[0].Type().String()))
+
 	} else {
 		panic("len in less than 2")
 	}
@@ -85,8 +85,8 @@ func (c *Cascade) traverseCallRegisters(vertex *structures.Vertex) error {
 						if val.Value.CanAddr() {
 							inReg = append(inReg, val.Value.Addr())
 						} else {
-							c.logger.Warn().Str("type", val.Value.Type().String()).Msgf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type())
-							c.logger.Warn().Msgf("making a fresh pointer")
+							c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type()), zap.String("type", val.Value.Type().String()))
+							c.logger.Warn("making a fresh pointer")
 
 							nt := reflect.New(val.Value.Type())
 							inReg = append(inReg, nt)
@@ -113,7 +113,7 @@ func (c *Cascade) traverseCallRegisters(vertex *structures.Vertex) error {
 					rErr := ret[0].Interface()
 					if rErr != nil {
 						if e, ok := rErr.(error); ok && e != nil {
-							c.logger.Err(e).Msg("error occurred during the Registers invocation")
+							c.logger.Error("error calling Registers", zap.String("vertex id", vertex.Id), zap.Error(e))
 							return e
 						} else {
 							return unknownErrorOccurred
@@ -128,44 +128,7 @@ func (c *Cascade) traverseCallRegisters(vertex *structures.Vertex) error {
 	return nil
 }
 
-func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value) error {
-	// type implements Provider interface
-	if reflect.TypeOf(v.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
-		// if type implements Provider() it should has FnsProviderToInvoke
-		if v.Meta.FnsProviderToInvoke != nil {
-			for i := 0; i < len(v.Meta.FnsProviderToInvoke); i++ {
-				m, ok := reflect.TypeOf(v.Iface).MethodByName(v.Meta.FnsProviderToInvoke[i])
-				if !ok {
-					panic("method Provides should be")
-				}
-
-				ret := m.Func.Call(in)
-				// handle error
-				if len(ret) > 1 {
-					rErr := ret[1].Interface()
-					if rErr != nil {
-						if e, ok := rErr.(error); ok && e != nil {
-							c.logger.Err(e).Msg("error occurred in the traverseCallProvider")
-							return e
-						} else {
-							return unknownErrorOccurred
-						}
-					}
-
-					err := v.AddValue(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()))
-					if err != nil {
-						return err
-					}
-				} else {
-					return errors.New("provider should return Value and error types")
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (c *Cascade) getValuesForVertex(vertex *structures.Vertex) []reflect.Value {
+func (c *Cascade) findInitParameters(vertex *structures.Vertex) []reflect.Value {
 	in := make([]reflect.Value, 0, 1)
 
 	// add service itself
@@ -195,8 +158,8 @@ func (c *Cascade) getValuesForVertex(vertex *structures.Vertex) []reflect.Value 
 						if val.Value.CanAddr() {
 							in = append(in, val.Value.Addr())
 						} else {
-							c.logger.Warn().Str("type", val.Value.Type().String()).Msgf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type())
-							c.logger.Warn().Msgf("making a fresh pointer")
+							c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type()), zap.String("type", val.Value.Type().String()))
+							c.logger.Warn("making a fresh pointer")
 							nt := reflect.New(val.Value.Type())
 							in = append(in, nt)
 						}
@@ -208,6 +171,45 @@ func (c *Cascade) getValuesForVertex(vertex *structures.Vertex) []reflect.Value 
 	return in
 }
 
+func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value) error {
+	// type implements Provider interface
+	if reflect.TypeOf(v.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
+		// if type implements Provider() it should has FnsProviderToInvoke
+		if v.Meta.FnsProviderToInvoke != nil {
+			for i := 0; i < len(v.Meta.FnsProviderToInvoke); i++ {
+				m, ok := reflect.TypeOf(v.Iface).MethodByName(v.Meta.FnsProviderToInvoke[i])
+				if !ok {
+					panic("method Provides should be")
+				}
+
+				ret := m.Func.Call(in)
+				// handle error
+				if len(ret) > 1 {
+					rErr := ret[1].Interface()
+					if rErr != nil {
+						if e, ok := rErr.(error); ok && e != nil {
+							c.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", v.Id))
+							return e
+						} else {
+							return unknownErrorOccurred
+						}
+					}
+
+					err := v.AddValue(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()))
+					if err != nil {
+						return err
+					}
+				} else {
+					return errors.New("provider should return Value and error types")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+
+
 /*
 Algorithm is the following (all steps executing in the topological order):
 1. Call Configure() on all services -- OPTIONAL
@@ -217,32 +219,20 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-func (c *Cascade) serveVertex(v *structures.Vertex) *result {
-	nCopy := v
-	// handle all configure
-	in := make([]reflect.Value, 0, 1)
-	// add service itself
-	in = append(in, reflect.ValueOf(nCopy.Iface))
-	//var res Result
-	if reflect.TypeOf(nCopy.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-		// call configure
-		//userResultsCh = append(userResultsCh, c.call(nCopy, in, ConfigureMethodName))
-		err := c.configure(nCopy, in)
-		if err != nil {
-			// TODO
-			panic(err)
-		}
-	}
-
-	// call serve
-	//userResultsCh = append(userResultsCh, c.call(nCopy, in, ServeMethodName))
-	res := c.serve(nCopy, in)
-	if res != nil {
-		return res
-	}
-
-	return nil
-}
+//func (c *Cascade) serveVertex(v *structures.Vertex) *result {
+//	nCopy := v
+//	// handle all configure
+//	in := make([]reflect.Value, 0, 1)
+//	// add service itself
+//	in = append(in, reflect.ValueOf(nCopy.Iface))
+//
+//
+//	// call serve
+//	//userResultsCh = append(userResultsCh, c.call(nCopy, in, ServeMethodName))
+//
+//
+//	return nil
+//}
 
 func (c *Cascade) serve(v *structures.Vertex, in []reflect.Value) *result {
 	m, _ := reflect.TypeOf(v.Iface).MethodByName(ServeMethodName)
@@ -285,13 +275,13 @@ func (c *Cascade) internalStop(vId string) error {
 
 	err := c.stop(v.Id, in)
 	if err != nil {
-		c.logger.Err(err).Stack().Msg("error occurred during the stop")
+		c.logger.Error("error occurred during the stop", zap.String("vertex id", v.Id))
 	}
 
 	if reflect.TypeOf(v.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
 		err = c.close(v.Id, in)
 		if err != nil {
-			c.logger.Err(err).Stack().Msg("error occurred during the close")
+			c.logger.Error("error occurred during the close", zap.String("vertex id", v.Id))
 		}
 	}
 

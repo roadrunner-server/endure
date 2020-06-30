@@ -3,16 +3,17 @@ package cascade
 import (
 	"reflect"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spiral/cascade/structures"
+	"go.uber.org/zap"
 )
+
 /*
 addProviders:
 Adds a provided type via the Provider interface. And adding:
 1. Key to the `Vertex Provides` map with empty ProvidedEntry, because we use key at the Init stage and fill the map with
 actual type after FnsProviderToInvoke will be invoked
 2. FnsProviderToInvoke --> is the list of the Provided function to invoke via the reflection
- */
+*/
 func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 	if provider, ok := vertex.(Provider); ok {
 		for _, fn := range provider.Provides() {
@@ -96,10 +97,7 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 			for _, at := range argsTypes {
 				// check if type is primitive type
 				if isPrimitive(at.String()) {
-					log.Fatal().
-						Str("vertex id", vertexID).
-						Str("type", at.String()).
-						Msg("primitive type in the function parameters")
+					c.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", at.String()))
 				}
 				atStr := at.String()
 				if vertexID == atStr {
@@ -115,10 +113,7 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 				if err != nil {
 					return err
 				}
-				c.logger.Info().
-					Str("vertex id", vertexID).
-					Str("depends", atStr).
-					Msg("adding dependency via Depends()")
+				c.logger.Debug("adding dependency via Depends()", zap.String("vertex id", vertexID), zap.String("depends", atStr))
 			}
 
 			// get the Vertex from the graph (gVertex)
@@ -131,10 +126,7 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 				gVertex.Meta.FnsRegisterToInvoke = make([]string, 0, 5)
 			}
 
-			c.logger.Info().
-				Str("vertex id", vertexID).
-				Str("function name", getFunctionName(fn)).
-				Msg("appending register function to invoke later")
+			c.logger.Debug("appending register function to invoke later", zap.String("vertex id", vertexID), zap.String("function name", getFunctionName(fn)))
 
 			gVertex.Meta.FnsRegisterToInvoke = append(gVertex.Meta.FnsRegisterToInvoke, getFunctionName(fn))
 		}
@@ -153,10 +145,7 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 	// iterate over all function parameters
 	for _, initArg := range initArgs {
 		if isPrimitive(initArg.String()) {
-			log.Fatal().
-				Str("vertex id", vertexID).
-				Str("type", initArg.String()).
-				Msg("primitive type in the function parameters")
+			c.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", initArg.String()))
 			continue
 		}
 		// receiver
@@ -164,15 +153,11 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 			continue
 		}
 
-
 		err = c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg))
 		if err != nil {
 			return err
 		}
-		c.logger.Info().
-			Str("vertex id", vertexID).
-			Str("depends", initArg.String()).
-			Msg("adding dependency via Init()")
+		c.logger.Debug("adding dependency via Init()", zap.String("vertex id", vertexID), zap.String("depends", initArg.String()))
 	}
 	return nil
 }

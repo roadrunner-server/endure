@@ -16,7 +16,7 @@ import (
 )
 
 func TestCascade_Init_OK(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.TraceLevel)
+	c, err := cascade.NewContainer(cascade.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
@@ -26,7 +26,8 @@ func TestCascade_Init_OK(t *testing.T) {
 	assert.NoError(t, c.Register(&foo5.S5{}))
 	assert.NoError(t, c.Init())
 
-	res := c.Serve()
+	err, res := c.Serve()
+	assert.NoError(t, err)
 
 	go func() {
 		for r := range res {
@@ -44,13 +45,14 @@ func TestCascade_Init_OK(t *testing.T) {
 }
 
 func TestCascade_Init_1_Element(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.TraceLevel)
+	c, err := cascade.NewContainer(cascade.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo1.S1One{}))
 	assert.NoError(t, c.Init())
 
-	res := c.Serve()
+	err, res := c.Serve()
+	assert.NoError(t, err)
 
 	go func() {
 		for r := range res {
@@ -68,14 +70,15 @@ func TestCascade_Init_1_Element(t *testing.T) {
 }
 
 func TestCascade_ProvidedValueButNeedPointer(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.TraceLevel)
+	c, err := cascade.NewContainer(cascade.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo2.S2V{}))
 	assert.NoError(t, c.Register(&foo4.S4V{}))
 	assert.NoError(t, c.Init())
 
-	res := c.Serve()
+	err, res := c.Serve()
+	assert.NoError(t, err)
 
 	go func() {
 		for r := range res {
@@ -93,7 +96,7 @@ func TestCascade_ProvidedValueButNeedPointer(t *testing.T) {
 }
 
 func TestCascade_Init_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(false))
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo1.S1Err{}))
@@ -101,16 +104,8 @@ func TestCascade_Init_Err(t *testing.T) {
 	assert.Error(t, c.Init())
 }
 
-func TestCascade_PrimitiveType_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(false))
-	assert.NoError(t, err)
-
-	assert.NoError(t, c.Register(&foo1.S1Pr{}))
-	assert.Error(t, c.Init())
-}
-
 func TestCascade_Serve_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(false))
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
@@ -120,7 +115,8 @@ func TestCascade_Serve_Err(t *testing.T) {
 	assert.NoError(t, c.Register(&foo1.S1ServeErr{})) // should produce an error during the Serve
 	assert.NoError(t, c.Init())
 
-	res := c.Serve()
+	err, res := c.Serve()
+	assert.NoError(t, err)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -146,18 +142,19 @@ time X is 0s
 4. In case of S1Err vertices S5 -> S4V -> S2ServeErr (with error in Serve in X+5s) -> S1Err should be restarted
 */
 func TestCascade_Serve_Retry_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(true))
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
 	assert.NoError(t, c.Register(&foo2.S2{}))
-	assert.NoError(t, c.Register(&foo2.S2ServeErr{}))
+	assert.NoError(t, c.Register(&foo2.S2ServeErr{})) // Random error here
 	assert.NoError(t, c.Register(&foo3.S3{}))
 	assert.NoError(t, c.Register(&foo5.S5{}))
 	assert.NoError(t, c.Register(&foo1.S1ServeErr{})) // should produce an error during the Serve
 	assert.NoError(t, c.Init())
 
-	res := c.Serve()
+	err, res := c.Serve()
+	assert.NoError(t, err)
 
 	// we can't be sure, what node will be processed first
 	ord := [2]string{"foo1.S1ServeErr", "foo2.S2ServeErr"}
@@ -194,18 +191,19 @@ time X is 0s
 5. Test should receive at least 100 errors
 */
 func TestCascade_Serve_Retry_100_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.TraceLevel, cascade.RetryOnFail(true))
+	c, err := cascade.NewContainer(cascade.InfoLevel, cascade.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
 	assert.NoError(t, c.Register(&foo2.S2{}))
-	assert.NoError(t, c.Register(&foo2.S2ServeErr{}))
+	assert.NoError(t, c.Register(&foo2.S2ServeErr{})) // Random error here
 	assert.NoError(t, c.Register(&foo3.S3{}))
 	assert.NoError(t, c.Register(&foo5.S5{}))
 	assert.NoError(t, c.Register(&foo1.S1ServeErr{})) // should produce an error during the Serve
 	assert.NoError(t, c.Init())
 
-	res := c.Serve()
+	err, res := c.Serve()
+	assert.NoError(t, err)
 
 	// we can't be sure, what node will be processed first
 	ord := [2]string{"foo1.S1ServeErr", "foo2.S2ServeErr"}
@@ -231,4 +229,69 @@ func TestCascade_Serve_Retry_100_Err(t *testing.T) {
 	}()
 
 	wg.Wait()
+}
+
+func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			println("function should panic")
+		}
+	}()
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&foo4.S4{}))
+	assert.NoError(t, c.Register(&foo2.S2{}))
+	assert.NoError(t, c.Register(&foo2.S2ServeErr{})) // Random error here
+	assert.NoError(t, c.Register(&foo3.S3Init{}))     // Random error here
+	assert.NoError(t, c.Register(&foo5.S5{}))
+	assert.NoError(t, c.Register(&foo1.S1ServeErr{})) // should produce an error during the Serve
+	assert.NoError(t, c.Init())
+
+	err, res := c.Serve()
+	assert.NoError(t, err)
+
+	// we can't be sure, what node will be processed first
+	ord := [2]string{"foo1.S1ServeErr", "foo2.S2ServeErr"}
+
+	count := 0
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				wg.Done()
+			}
+		}()
+		for r := range res {
+			assert.Error(t, r.Err)
+			if r.VertexID == ord[0] || r.VertexID == ord[1] {
+				count++
+				if count == 100 {
+					assert.NoError(t, c.Stop())
+					wg.Done()
+					return
+				}
+			} else {
+				assert.Fail(t, "vertex should be in the ord slice")
+			}
+		}
+	}()
+
+	wg.Wait()
+}
+
+func TestCascade_PrimitiveType_Err(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			println("function should panic")
+		}
+	}()
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(false))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&foo1.S1Pr{}))
+	assert.Error(t, c.Init())
+	assert.NoError(t, c.Stop())
 }
