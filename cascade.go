@@ -218,7 +218,7 @@ func (c *Cascade) Init() error {
 	}
 
 	// we should build init list in the reverse order
-	sortedVertices := structures.OldTopologicalSort(c.graph.Vertices)
+	sortedVertices := structures.TopologicalSort(c.graph.Vertices)
 
 	if len(sortedVertices) == 0 {
 		c.logger.Panic("graph should contain at least 1 vertex")

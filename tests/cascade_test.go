@@ -108,23 +108,29 @@ func TestCascade_Serve_Err(t *testing.T) {
 	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(false))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&foo4.S4{}))
+	assert.NoError(t, c.Register(&foo4.S4ServeError{}))
 	assert.NoError(t, c.Register(&foo2.S2{}))
-	assert.NoError(t, c.Register(&foo3.S3{}))
+	assert.NoError(t, c.Register(&foo3.S3ServeError{}))
 	assert.NoError(t, c.Register(&foo5.S5{}))
 	assert.NoError(t, c.Register(&foo1.S1ServeErr{})) // should produce an error during the Serve
-	assert.NoError(t, c.Init())
+	err = c.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err, res := c.Serve()
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		for r := range res { //<--- Error is HERE
-			assert.Equal(t, "foo1.S1ServeErr", r.VertexID)
+			assert.Equal(t, "foo4.S4ServeError", r.VertexID)
 			assert.Error(t, r.Error.Err)
 			assert.NoError(t, c.Stop())
+			time.Sleep(time.Second * 3)
 			wg.Done()
 			return
 		}
