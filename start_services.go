@@ -240,7 +240,6 @@ func (c *Cascade) serve(v *structures.Vertex, in []reflect.Value) *result {
 	res := ret[0].Interface()
 	if res != nil {
 		if e, ok := res.(chan error); ok && e != nil {
-			// TODO mutex ??
 			return &result{
 				errCh:    e,
 				exit:     make(chan struct{}, 2),

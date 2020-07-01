@@ -15,7 +15,6 @@ const ServeMethodName = "Serve"
 // Stop is the function name for the reflection to Stop the service
 const StopMethodName = "Stop"
 
-// TODO interface?
 type Result struct {
 	Error    Error
 	VertexID string

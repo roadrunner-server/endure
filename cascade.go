@@ -392,11 +392,9 @@ func (c *Cascade) startMainThread() {
 					// TODO --> to the separate function
 					// creating run list
 					affectedRunList := structures.NewDoublyLinkedList()
-					// TODO properly handle the len of the sorted vertices
 					affectedRunList.SetHead(&structures.DllNode{
 						Vertex: sorted[len(sorted)-1]})
 
-					// TODO what if sortedVertices will contain only 1 node (len(sortedVertices) - 2 will panic)
 					for i := len(sorted) - 2; i >= 0; i-- {
 						affectedRunList.Push(sorted[i])
 					}
