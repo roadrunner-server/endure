@@ -214,7 +214,7 @@ func TestCascade_Serve_Retry_100_Err(t *testing.T) {
 	go func() {
 		for r := range res {
 			assert.Error(t, r.Error.Err)
-			if r.Error.Code == 500 {
+			if r.Error.Code == 501 {
 				assert.NoError(t, c.Stop())
 				wg.Done()
 				return
@@ -260,7 +260,7 @@ func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
 	go func() {
 		for r := range res {
 			assert.Error(t, r.Error.Err)
-			if r.Error.Code == 500 {
+			if r.Error.Code == 501 {
 				assert.NoError(t, c.Stop())
 				wg.Done()
 				return

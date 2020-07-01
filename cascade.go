@@ -62,9 +62,9 @@ type Cascade struct {
 	/// main thread
 	handleErrorCh chan *result
 	userResultsCh chan *Result
-	shutdownCh    chan struct{}
-	errorTimings  map[string]*time.Time
-	restarted     map[string]*time.Time
+
+	errorTime     map[string]*time.Time
+	restartedTime map[string]*time.Time
 }
 
 type Options func(cascade *Cascade)
@@ -74,16 +74,16 @@ type Options func(cascade *Cascade)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Input parameters: logLevel
--1 is the most informative level - TraceLevel --> also turns on pprof endpoint
-0 - DebugLevel defines debug log level --> also turns on pprof endpoint
-1 - InfoLevel defines info log level.
-2 - WarnLevel defines warn log level.
-3 - ErrorLevel defines error log level.
-4 - FatalLevel defines fatal log level.
-5 - PanicLevel defines panic log level.
-6 - NoLevel defines an absent log level.
-7 - Disabled disables the logger.
-see the cascade.Level
+   -1 is the most informative level - TraceLevel --> also turns on pprof endpoint
+   0 - DebugLevel defines debug log level --> also turns on pprof endpoint
+   1 - InfoLevel defines info log level.
+   2 - WarnLevel defines warn log level.
+   3 - ErrorLevel defines error log level.
+   4 - FatalLevel defines fatal log level.
+   5 - PanicLevel defines panic log level.
+   6 - NoLevel defines an absent log level.
+   7 - Disabled disables the logger.
+   see the cascade.Level
 */
 func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	c := &Cascade{
@@ -150,9 +150,8 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	// FINAL
 	c.handleErrorCh = make(chan *result)
 	c.userResultsCh = make(chan *Result)
-	c.shutdownCh = make(chan struct{})
-	c.errorTimings = make(map[string]*time.Time)
-	c.restarted = make(map[string]*time.Time)
+	c.errorTime = make(map[string]*time.Time)
+	c.restartedTime = make(map[string]*time.Time)
 
 	return c, nil
 }
@@ -248,10 +247,10 @@ func (c *Cascade) Init() error {
 }
 
 func (c *Cascade) Serve() (error, <-chan *Result) {
-	c.startMainThread()
-	n := c.runList.Head
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
+	c.startMainThread()
+	n := c.runList.Head
 	err := c.serveRunList(n)
 	if err != nil {
 		return err, nil
@@ -260,13 +259,46 @@ func (c *Cascade) Serve() (error, <-chan *Result) {
 }
 
 func (c *Cascade) Stop() error {
-	c.shutdownCh <- struct{}{}
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	c.logger.Info("exiting from the Cascade")
+	n := c.runList.Head
+	c.shutdown(n)
 	return nil
 }
 
-func (c *Cascade) Restart() error {
+func (c *Cascade) restart() error {
+	c.handleErrorCh <- &result{
+		internalExit: true,
+	}
+
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
+
+	c.logger.Info("restarting the Cascade")
+	n := c.runList.Head
+
+	// shutdown, send exit signals to every user Serve() goroutine
+	c.shutdown(n)
+
+	// reset the run list to initial state
+	c.runList.Reset()
+	// reset all results
+	c.results = make(map[string]*result)
+	// reset error timings
+	c.errorTime = make(map[string]*time.Time)
+	// reset restarted timings
+	c.restartedTime = make(map[string]*time.Time)
+
+	// re-start main thread
+	c.startMainThread()
+
+	// error only can be received from the configure method
+	err := c.serveRunList(n)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -284,28 +316,37 @@ func (c *Cascade) startMainThread() {
 			select {
 			// failed Vertex
 			case res, ok := <-c.handleErrorCh:
-				if !ok {
-					c.logger.Debug("handle error channel was closed")
-					return
-				}
-				c.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexId))
-				if c.checkLeafErrorTime(res) { // <-- here also mutex
-					c.logger.Debug("error processing skipped because vertex already restarted by the root", zap.String("vertex id", res.vertexId))
-					break
-				}
-
 				// lock the handleErrorCh processing
 				c.rwMutex.Lock()
+				if !ok {
+					c.logger.Debug("handle error channel was closed")
+					c.rwMutex.Unlock()
+					return
+				}
+				// received signal to exit from main goroutine
+				if res.internalExit == true {
+					c.rwMutex.Unlock()
+					return
+				}
+
+				c.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexId))
+				if c.checkLeafErrorTime(res) {
+					c.logger.Debug("error processing skipped because vertex already restartedTime by the root", zap.String("vertex id", res.vertexId))
+					c.sendResultToUser(res)
+					c.rwMutex.Unlock()
+					continue
+				}
 
 				// get vertex from the graph
 				vertex := c.graph.GetVertex(res.vertexId)
 				if vertex == nil {
-					c.rwMutex.Unlock()
 					c.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexId))
 					c.userResultsCh <- &Result{
-						Error:    FailedToSortTheGraph,
+						Error:    FailedToGetTheVertex,
 						VertexID: "",
 					}
+					c.rwMutex.Unlock()
+					return
 				}
 
 				// reset vertex and dependencies to the initial state
@@ -315,8 +356,12 @@ func (c *Cascade) startMainThread() {
 				// Topologically sort the graph
 				sorted := structures.TopologicalSort(vertices)
 				if sorted == nil {
-					c.rwMutex.Unlock()
 					c.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexId))
+					c.userResultsCh <- &Result{
+						Error:    FailedToSortTheGraph,
+						VertexID: "",
+					}
+					c.rwMutex.Unlock()
 					return
 				}
 
@@ -357,12 +402,12 @@ func (c *Cascade) startMainThread() {
 					for headCopy != nil {
 						err := c.init(headCopy.Vertex)
 						if err != nil {
-							c.rwMutex.Unlock()
 							c.logger.Error("error while invoke Init", zap.String("vertex id", head.Vertex.Id), zap.Error(err))
 							c.userResultsCh <- &Result{
 								Error:    ErrorDuringInit,
 								VertexID: headCopy.Vertex.Id,
 							}
+							c.rwMutex.Unlock()
 							return
 						}
 
@@ -372,33 +417,29 @@ func (c *Cascade) startMainThread() {
 					// start serving run list, error can be returned only from the configure
 					err := c.serveRunList(head)
 					if err != nil {
-						c.rwMutex.Unlock()
 						c.userResultsCh <- &Result{
 							Error:    ErrorDuringInit,
 							VertexID: headCopy.Vertex.Id,
 						}
 						c.logger.Error("fatal error during the configure in main thread", zap.String("vertex id", head.Vertex.Id), zap.Error(err))
+						c.rwMutex.Unlock()
 						return
 					}
 				}
+				c.sendResultToUser(res)
 				c.rwMutex.Unlock()
 			}
 		}
 	}()
+}
 
-	go func() {
-		for {
-			select {
-			case <-c.shutdownCh:
-				c.rwMutex.Lock()
-				c.logger.Info("exiting from the Cascade")
-				n := c.runList.Head
-				c.shutdown(n)
-				c.rwMutex.Unlock()
-				return
-			}
-		}
-	}()
+func (c *Cascade) sendResultToUser(res *result) {
+	c.userResultsCh <- &Result{
+		Error: Error{
+			Err: res.err,
+		},
+		VertexID: res.vertexId,
+	}
 }
 
 func (c *Cascade) shutdown(n *structures.DllNode) {
@@ -446,11 +487,11 @@ func (c *Cascade) serveRunList(n *structures.DllNode) error {
 		}
 
 		c.poll(res)
-		if c.restarted[nCopy.Vertex.Id] != nil {
-			*c.restarted[nCopy.Vertex.Id] = time.Now()
+		if c.restartedTime[nCopy.Vertex.Id] != nil {
+			*c.restartedTime[nCopy.Vertex.Id] = time.Now()
 		} else {
 			tmp := time.Now()
-			c.restarted[nCopy.Vertex.Id] = &tmp
+			c.restartedTime[nCopy.Vertex.Id] = &tmp
 		}
 
 		nCopy = nCopy.Next
@@ -460,9 +501,7 @@ func (c *Cascade) serveRunList(n *structures.DllNode) error {
 }
 
 func (c *Cascade) checkLeafErrorTime(res *result) bool {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-	return c.restarted[res.vertexId] != nil && (*c.restarted[res.vertexId]).After(*c.errorTimings[res.vertexId])
+	return c.restartedTime[res.vertexId] != nil && (*c.restartedTime[res.vertexId]).After(*c.errorTime[res.vertexId])
 }
 
 // poll is used to poll the errors from the vertex
@@ -477,27 +516,23 @@ func (c *Cascade) poll(r *result) {
 				if e != nil {
 					// set error time
 					c.rwMutex.Lock()
-					if c.errorTimings[res.vertexId] != nil {
-						*c.errorTimings[res.vertexId] = time.Now()
+					if c.errorTime[res.vertexId] != nil {
+						*c.errorTime[res.vertexId] = time.Now()
 					} else {
 						tmp := time.Now()
-						c.errorTimings[res.vertexId] = &tmp
+						c.errorTime[res.vertexId] = &tmp
 					}
 					c.rwMutex.Unlock()
 
 					c.logger.Error("error processed in poll", zap.String("vertex id", res.vertexId), zap.Error(e))
 
-					c.userResultsCh <- &Result{
-						Error:      Error{
-							Err:   e,
-						},
-						VertexID: res.vertexId,
-					}
+					// set the error
+					res.err = e
 
 					// send handleErrorCh signal
 					c.handleErrorCh <- res
 				}
-				// exit from the goroutine
+			// exit from the goroutine
 			case <-res.exit:
 				c.logger.Info("got exit signal", zap.String("vertex id", res.vertexId))
 				err := c.internalStop(res.vertexId)
@@ -553,7 +588,7 @@ func (c *Cascade) register(name string, vertex interface{}) error {
 }
 
 /*
-Traverse the DLL in the forward direction
+   Traverse the DLL in the forward direction
 
 */
 func (c *Cascade) init(v *structures.Vertex) error {

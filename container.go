@@ -24,10 +24,14 @@ type Result struct {
 type result struct {
 	// error channel from vertex
 	errCh chan error
+	// error from the channel
+	err error
 	// unique vertex id
 	vertexId string
 	// signal to the vertex goroutine to exit
 	exit chan struct{}
+	// internal exit, used to notify main thread to release resources
+	internalExit bool
 }
 
 type (
@@ -48,7 +52,7 @@ type (
 	Container interface {
 		Serve() (error, <-chan *Result)
 		Stop() error
-		Restart() error
+		restart() error
 		Register(service interface{}) error
 		Init() error
 	}

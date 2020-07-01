@@ -21,7 +21,13 @@ var FailedToSortTheGraph = Error{
 
 var ErrorDuringInit = Error{
 	Err:     errors.New("error during the Init function call"),
-	Code:    500,
+	Code:    501,
+	Stack:   debug.Stack(),
+}
+
+var FailedToGetTheVertex = Error{
+	Err:     errors.New("failed to get vertex from the graph, vertex is nil"),
+	Code:    502,
 	Stack:   debug.Stack(),
 }
 
