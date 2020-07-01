@@ -1,14 +1,6 @@
 package foo5
 
-type Reader interface {
-	WRead() // just stupid name
-}
-
-
 type S5 struct {
-}
-
-func (s *S5) WRead() {
 }
 
 type DB struct {
@@ -19,6 +11,8 @@ type DB struct {
 func (s *S5) Init() error {
 	return nil
 }
+
+
 
 func (s *S5) Configure() error {
 	return nil
