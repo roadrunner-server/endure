@@ -1,6 +1,7 @@
 package cascade
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -176,6 +177,10 @@ func RetryOnFail(set bool) Options {
 func (c *Cascade) Register(vertex interface{}) error {
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
+
+	if t.Kind() != reflect.Ptr {
+		return errors.New("you should pass pointer to the structure instead of value")
+	}
 
 	ok := t.Implements(reflect.TypeOf((*Service)(nil)).Elem())
 	if !ok {

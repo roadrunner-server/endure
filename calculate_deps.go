@@ -36,9 +36,25 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 
 			gVertex.Meta.FnsProviderToInvoke = append(gVertex.Meta.FnsProviderToInvoke, getFunctionName(fn))
 
-			gVertex.Provides[typeStr] = structures.ProvidedEntry{
-				IsReference: nil,
-				Value:       nil,
+			if ret.Kind() == reflect.Interface {
+				if reflect.TypeOf(vertex).Implements(ret) {
+					tmpValue := reflect.ValueOf(vertex)
+					tmpIsRef := isReference(ret)
+					gVertex.Provides[typeStr] = structures.ProvidedEntry{
+						IsReference: &tmpIsRef,
+						Value:       &tmpValue,
+					}
+				} else {
+					gVertex.Provides[typeStr] = structures.ProvidedEntry{
+						IsReference: nil,
+						Value:       nil,
+					}
+				}
+			} else {
+				gVertex.Provides[typeStr] = structures.ProvidedEntry{
+					IsReference: nil,
+					Value:       nil,
+				}
 			}
 		}
 	}
@@ -151,6 +167,31 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 		// receiver
 		if vertexID == removePointerAsterisk(initArg.String()) {
 			continue
+		}
+		if initArg.Kind() == reflect.Interface {
+			for i := 0; i < len(c.graph.Vertices); i++ {
+				// if type implements interface we should add this struct as provider of the interface
+				if reflect.TypeOf(c.graph.Vertices[i].Iface).Implements(initArg) {
+					// skip double add
+					if _, ok := c.graph.Vertices[i].Provides[removePointerAsterisk(initArg.String())]; ok {
+						continue
+					}
+					tmpIsRef := isReference(initArg)
+					tmpValue := reflect.ValueOf(c.graph.Vertices[i].Iface)
+					if c.graph.Vertices[i].Provides != nil {
+						c.graph.Vertices[i].Provides[removePointerAsterisk(initArg.String())] = structures.ProvidedEntry{
+							IsReference: &tmpIsRef,
+							Value:       &tmpValue,
+						}
+					} else {
+						c.graph.Vertices[i].Provides = make(map[string]structures.ProvidedEntry)
+						c.graph.Vertices[i].Provides[removePointerAsterisk(initArg.String())] = structures.ProvidedEntry{
+							IsReference: &tmpIsRef,
+							Value:       &tmpValue,
+						}
+					}
+				}
+			}
 		}
 
 		err = c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg))

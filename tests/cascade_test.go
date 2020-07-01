@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spiral/cascade/tests/foo5"
+	"github.com/spiral/cascade/tests/foo6"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/spiral/cascade"
@@ -25,6 +26,35 @@ func TestCascade_Init_OK(t *testing.T) {
 	assert.NoError(t, c.Register(&foo1.S1{}))
 	assert.NoError(t, c.Register(&foo5.S5{}))
 	assert.NoError(t, c.Init())
+
+	err, res := c.Serve()
+	assert.NoError(t, err)
+
+	go func() {
+		for r := range res {
+			if r.Error.Err != nil {
+				assert.NoError(t, r.Error.Err)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	assert.NoError(t, c.Stop())
+	time.Sleep(time.Second * 1)
+}
+
+func TestCascade_Interfaces_OK(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&foo5.S5Interface{}))
+	assert.NoError(t, c.Register(&foo6.S6Interface{}))
+	err = c.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err, res := c.Serve()
 	assert.NoError(t, err)

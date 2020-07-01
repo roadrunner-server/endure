@@ -12,8 +12,7 @@ type DB struct {
 }
 
 // No deps
-func (s *S4) Init(wr foo5.S5) error {
-	wr.WRead()
+func (s *S4) Init(foo5 foo5.S5) error {
 	return nil
 }
 
@@ -29,6 +28,16 @@ func (s *S4) CreateAnotherDb() (*DB, error) {
 	return &DB{
 		Name: "",
 	}, nil
+}
+
+func (s *S4) Depends() []interface{} {
+	return []interface{}{
+		s.AddService,
+	}
+}
+
+func (s *S4) AddService(svc foo5.S5) error {
+	return nil
 }
 
 func (s *S4) Configure() error {

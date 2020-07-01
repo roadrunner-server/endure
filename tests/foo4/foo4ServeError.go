@@ -12,8 +12,7 @@ type S4ServeError struct {
 
 
 // No deps
-func (s *S4ServeError) Init(wr foo5.S5) error {
-	wr.WRead()
+func (s *S4ServeError) Init(s5 foo5.S5) error {
 	return nil
 }
 
