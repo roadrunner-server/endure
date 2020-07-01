@@ -19,7 +19,6 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 		for _, fn := range provider.Provides() {
 			ret, err := providersReturnType(fn)
 			if err != nil {
-				// todo: delete gVertex
 				return err
 			}
 
@@ -104,7 +103,6 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 			// what type it might depend on?
 			argsTypes, err := argType(fn)
 			if err != nil {
-				// todo: delete vertex
 				return err
 			}
 

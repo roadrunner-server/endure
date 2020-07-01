@@ -243,7 +243,6 @@ func (g *Graph) AddDepRev(vertexID, depID string, kind Kind, isRef bool) error {
 
 func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
 	g.Graph[vertexId] = &Vertex{
-		// todo fill all the information
 		Id:           vertexId,
 		Iface:        vertexIface,
 		Meta:         meta,
