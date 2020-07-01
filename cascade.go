@@ -1,7 +1,6 @@
 package cascade
 
 import (
-	"errors"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -61,11 +60,11 @@ type Cascade struct {
 	results map[string]*result
 
 	/// main thread
-	handleErrorCh      chan *result
-	userResultsCh      chan *Result
-	shutdownCh         chan struct{}
-	errorTimings       map[string]*time.Time
-	restarted          map[string]*time.Time
+	handleErrorCh chan *result
+	userResultsCh chan *Result
+	shutdownCh    chan struct{}
+	errorTimings  map[string]*time.Time
+	restarted     map[string]*time.Time
 }
 
 type Options func(cascade *Cascade)
@@ -261,9 +260,13 @@ func (c *Cascade) Serve() (error, <-chan *Result) {
 }
 
 func (c *Cascade) Stop() error {
-
 	c.shutdownCh <- struct{}{}
+	return nil
+}
 
+func (c *Cascade) Restart() error {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 	return nil
 }
 
@@ -272,6 +275,10 @@ func (c *Cascade) Stop() error {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func (c *Cascade) startMainThread() {
+	// handle error channel goroutine
+	/*
+		Used for handling error from the vertices
+	*/
 	go func() {
 		for {
 			select {
@@ -296,8 +303,7 @@ func (c *Cascade) startMainThread() {
 					c.rwMutex.Unlock()
 					c.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexId))
 					c.userResultsCh <- &Result{
-						Err:      errors.New("failed to topologically sort the graph or vertex is nil"),
-						Code:     500,
+						Error:    FailedToSortTheGraph,
 						VertexID: "",
 					}
 				}
@@ -354,8 +360,7 @@ func (c *Cascade) startMainThread() {
 							c.rwMutex.Unlock()
 							c.logger.Error("error while invoke Init", zap.String("vertex id", head.Vertex.Id), zap.Error(err))
 							c.userResultsCh <- &Result{
-								Err:      errors.New("error while invoke Init"),
-								Code:     500,
+								Error:    ErrorDuringInit,
 								VertexID: headCopy.Vertex.Id,
 							}
 							return
@@ -369,8 +374,7 @@ func (c *Cascade) startMainThread() {
 					if err != nil {
 						c.rwMutex.Unlock()
 						c.userResultsCh <- &Result{
-							Err:      errors.New("error while invoke Init"),
-							Code:     500,
+							Error:    ErrorDuringInit,
 							VertexID: headCopy.Vertex.Id,
 						}
 						c.logger.Error("fatal error during the configure in main thread", zap.String("vertex id", head.Vertex.Id), zap.Error(err))
@@ -388,8 +392,10 @@ func (c *Cascade) startMainThread() {
 			case <-c.shutdownCh:
 				c.rwMutex.Lock()
 				c.logger.Info("exiting from the Cascade")
-				c.shutdown(c.runList.Head)
+				n := c.runList.Head
+				c.shutdown(n)
 				c.rwMutex.Unlock()
+				return
 			}
 		}
 	}()
@@ -408,7 +414,7 @@ func (c *Cascade) shutdown(n *structures.DllNode) {
 			channel.exit <- struct{}{}
 		}
 
-		// prev DLL node
+		// next DLL node
 		n = n.Next
 	}
 }
@@ -482,8 +488,9 @@ func (c *Cascade) poll(r *result) {
 					c.logger.Error("error processed in poll", zap.String("vertex id", res.vertexId), zap.Error(e))
 
 					c.userResultsCh <- &Result{
-						Err:      e,
-						Code:     0,
+						Error:      Error{
+							Err:   e,
+						},
 						VertexID: res.vertexId,
 					}
 

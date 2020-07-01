@@ -2,9 +2,29 @@ package cascade
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	"github.com/pkg/errors"
 )
+
+type Error struct {
+	Err     error
+	Code    int
+	Stack   []byte
+}
+
+var FailedToSortTheGraph = Error{
+	Err:     errors.New("failed to topologically sort the graph"),
+	Code:    500,
+	Stack:   debug.Stack(),
+}
+
+var ErrorDuringInit = Error{
+	Err:     errors.New("error during the Init function call"),
+	Code:    500,
+	Stack:   debug.Stack(),
+}
+
 
 var typeNotImplementError = errors.New("type should implement Service interface")
 var vertexAlreadyExists = func(name string) error { return fmt.Errorf("vertex `%s` already exists", name) }

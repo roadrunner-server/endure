@@ -17,8 +17,7 @@ const StopMethodName = "Stop"
 
 // TODO interface?
 type Result struct {
-	Err      error
-	Code     int
+	Error    Error
 	VertexID string
 }
 
@@ -29,12 +28,6 @@ type result struct {
 	vertexId string
 	// signal to the vertex goroutine to exit
 	exit chan struct{}
-}
-
-type Error struct {
-	Err   error
-	Code  int
-	Stack []uint
 }
 
 type (
@@ -53,8 +46,9 @@ type (
 	}
 
 	Container interface {
-		Serve() <-chan *Result
-		Close() error
+		Serve() (error, <-chan *Result)
+		Stop() error
+		Restart() error
 		Register(service interface{}) error
 		Init() error
 	}

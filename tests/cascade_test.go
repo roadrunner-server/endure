@@ -31,8 +31,8 @@ func TestCascade_Init_OK(t *testing.T) {
 
 	go func() {
 		for r := range res {
-			if r.Err != nil {
-				assert.NoError(t, r.Err)
+			if r.Error.Err != nil {
+				assert.NoError(t, r.Error.Err)
 				return
 			}
 		}
@@ -56,8 +56,8 @@ func TestCascade_Init_1_Element(t *testing.T) {
 
 	go func() {
 		for r := range res {
-			if r.Err != nil {
-				assert.NoError(t, r.Err)
+			if r.Error.Err != nil {
+				assert.NoError(t, r.Error.Err)
 				return
 			}
 		}
@@ -82,8 +82,8 @@ func TestCascade_ProvidedValueButNeedPointer(t *testing.T) {
 
 	go func() {
 		for r := range res {
-			if r.Err != nil {
-				assert.NoError(t, r.Err)
+			if r.Error.Err != nil {
+				assert.NoError(t, r.Error.Err)
 				return
 			}
 		}
@@ -123,8 +123,7 @@ func TestCascade_Serve_Err(t *testing.T) {
 	go func() {
 		for r := range res { //<--- Error is HERE
 			assert.Equal(t, "foo1.S1ServeErr", r.VertexID)
-			println(r.Err.Error())
-			assert.Error(t, r.Err)
+			assert.Error(t, r.Error.Err)
 			assert.NoError(t, c.Stop())
 			wg.Done()
 			return
@@ -165,7 +164,7 @@ func TestCascade_Serve_Retry_Err(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res {
-			assert.Error(t, r.Err)
+			assert.Error(t, r.Error.Err)
 			if r.VertexID == ord[0] || r.VertexID == ord[1] {
 				count++
 				if count == 2 {
@@ -214,8 +213,8 @@ func TestCascade_Serve_Retry_100_Err(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res {
-			assert.Error(t, r.Err)
-			if r.Err.Error() == "error while invoke Init" {
+			assert.Error(t, r.Error.Err)
+			if r.Error.Code == 500 {
 				assert.NoError(t, c.Stop())
 				wg.Done()
 				return
@@ -260,8 +259,8 @@ func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res {
-			assert.Error(t, r.Err)
-			if r.Err.Error() == "error while invoke Init" {
+			assert.Error(t, r.Error.Err)
+			if r.Error.Code == 500 {
 				assert.NoError(t, c.Stop())
 				wg.Done()
 				return
@@ -283,6 +282,11 @@ func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
 }
 
 func TestCascade_PrimitiveType_Err(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			println("test should panic")
+		}
+	}()
 	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(false))
 	assert.NoError(t, err)
 
