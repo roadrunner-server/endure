@@ -2,13 +2,14 @@ package http
 
 import (
 	"context"
+	//"errors"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
-	"github.com/spiral/cascade/samples/db_http_logger/db"
-	"github.com/spiral/cascade/samples/db_http_logger/logger"
+	"github.com/spiral/cascade/samples/db_http_logger/modules/db"
+	"github.com/spiral/cascade/samples/db_http_logger/modules/logger"
 )
 
 type Infrastructure struct {
@@ -41,7 +42,18 @@ func (infra *Infrastructure) Init(db db.Repository, logger logger.SuperLogger) e
 func (infra *Infrastructure) Serve() chan error {
 	errCh := make(chan error, 1)
 
+	f := infra.server.Handler.ServeHTTP
+
+	// chain middlewares
+	for i := 0; i < len(infra.mdwr); i++ {
+		infra.mdwr[i](f)
+	}
+
 	go func() {
+		//go func() {
+		//	time.Sleep(time.Second * 1)
+		//	errCh <- errors.New("test error from http")
+		//}()
 		err := infra.server.ListenAndServe()
 		if err == http.ErrServerClosed {
 			return
@@ -49,13 +61,18 @@ func (infra *Infrastructure) Serve() chan error {
 			errCh <- err
 			return
 		}
+
 	}()
 
 	return errCh
 }
 
 func (infra *Infrastructure) Stop() error {
-	return infra.server.Shutdown(context.Background())
+	err := infra.server.Shutdown(context.Background())
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (infra *Infrastructure) Configure() error {
@@ -80,12 +97,6 @@ func (infra *Infrastructure) Configure() error {
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
-	}
-	f := server.Handler.ServeHTTP
-
-	// chain middlewares
-	for i := 0; i < len(infra.mdwr); i++ {
-		infra.mdwr[i](f)
 	}
 
 	infra.server = server

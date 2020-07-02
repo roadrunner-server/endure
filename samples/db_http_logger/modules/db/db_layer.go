@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/spiral/cascade/samples/db_http_logger/logger"
+	"github.com/spiral/cascade/samples/db_http_logger/modules/logger"
 	bolt "go.etcd.io/bbolt"
 )
 

@@ -4,16 +4,16 @@ import (
 	"net/http"
 
 	"github.com/NYTimes/gziphandler"
-	cascade_http "github.com/spiral/cascade/samples/db_http_logger/http"
-	"github.com/spiral/cascade/samples/db_http_logger/logger"
+	cascadeHttp "github.com/spiral/cascade/samples/db_http_logger/modules/http"
+	"github.com/spiral/cascade/samples/db_http_logger/modules/logger"
 )
 
 type GzipPlugin struct {
-	infra  *cascade_http.Infrastructure
+	infra  *cascadeHttp.Infrastructure
 	logger logger.SuperLogger
 }
 
-func (gz *GzipPlugin) Init(i *cascade_http.Infrastructure, logger logger.SuperLogger) error {
+func (gz *GzipPlugin) Init(i *cascadeHttp.Infrastructure, logger logger.SuperLogger) error {
 	gz.infra = i
 	gz.logger = logger
 	return nil

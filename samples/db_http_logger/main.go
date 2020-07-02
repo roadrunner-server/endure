@@ -1,11 +1,14 @@
 package main
 
 import (
+	"time"
+
 	"github.com/spiral/cascade"
-	"github.com/spiral/cascade/samples/db_http_logger/db"
-	"github.com/spiral/cascade/samples/db_http_logger/gzip_plugin"
-	"github.com/spiral/cascade/samples/db_http_logger/http"
-	"github.com/spiral/cascade/samples/db_http_logger/logger"
+	"github.com/spiral/cascade/samples/db_http_logger/modules/db"
+	"github.com/spiral/cascade/samples/db_http_logger/modules/gzip_plugin"
+	"github.com/spiral/cascade/samples/db_http_logger/modules/headers"
+	"github.com/spiral/cascade/samples/db_http_logger/modules/http"
+	"github.com/spiral/cascade/samples/db_http_logger/modules/logger"
 )
 
 func main() {
@@ -32,6 +35,11 @@ func main() {
 		panic(err)
 	}
 
+	err = container.Register(&headers.Headers{})
+	if err != nil {
+		panic(err)
+	}
+
 	err = container.Init()
 	if err != nil {
 		panic(err)
@@ -45,7 +53,13 @@ func main() {
 	for {
 		select {
 		case e := <-errCh:
+			time.Sleep(time.Second * 1)
 			println(e.Error.Err.Error())
+			er := container.Stop()
+			if er != nil {
+				panic(er)
+			}
+			return
 		}
 	}
 }

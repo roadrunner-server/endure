@@ -334,12 +334,6 @@ func (c *Cascade) startMainThread() {
 				}
 
 				c.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexId))
-				if c.checkLeafErrorTime(res) {
-					c.logger.Debug("error processing skipped because vertex already restartedTime by the root", zap.String("vertex id", res.vertexId))
-					c.sendResultToUser(res)
-					c.rwMutex.Unlock()
-					continue
-				}
 
 				// get vertex from the graph
 				vertex := c.graph.GetVertex(res.vertexId)
@@ -370,6 +364,7 @@ func (c *Cascade) startMainThread() {
 				}
 
 				for _, v := range sorted {
+
 					// skip self
 					if v.Id == res.vertexId {
 						continue
@@ -480,6 +475,15 @@ func (c *Cascade) serveRunList(n *structures.DllNode) error {
 				return err
 			}
 		}
+		nCopy = nCopy.Next
+	}
+
+	nCopy = n
+	for nCopy != nil {
+		// handle all configure
+		in := make([]reflect.Value, 0, 1)
+		// add service itself
+		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
 
 		res := c.serve(nCopy.Vertex, in)
 		if res != nil {
