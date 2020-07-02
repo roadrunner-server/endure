@@ -2,7 +2,6 @@ package cascade
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"reflect"
@@ -75,9 +74,9 @@ type Options func(cascade *Cascade)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Input parameters: logLevel
-   -1 is the most informative level - TraceLevel --> also turns on pprof endpoint
-   0 - DebugLevel defines debug log level --> also turns on pprof endpoint
-   1 - InfoLevel defines info log level.
+   -1 is the most informative level - DebugLevel --> also turns on pprof endpoint
+   0 - InfoLevel defines info log level.
+   1 -
    2 - WarnLevel defines warn log level.
    3 - ErrorLevel defines error log level.
    4 - FatalLevel defines fatal log level.
@@ -159,7 +158,7 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 
 func startPprof() {
 	go func() {
-		log.Println(http.ListenAndServe("0.0.0.0:6061", nil))
+		_ = http.ListenAndServe("0.0.0.0:6061", nil)
 	}()
 }
 
