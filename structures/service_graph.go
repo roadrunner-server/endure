@@ -192,55 +192,6 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) error {
 	return nil
 }
 
-func (g *Graph) AddDepRev(vertexID, depID string, kind Kind, isRef bool) error {
-	// idV should always present
-	idV := g.GetVertex(vertexID)
-	if idV == nil {
-		panic("vertex should be in the graph")
-	}
-	// but depV can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
-	depV := g.GetVertex(depID)
-	if depV == nil {
-		depV = g.FindProvider(depID)
-	}
-	if depV == nil {
-		return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID)
-	}
-
-	// add Dependency into the List
-	// to call later
-	// because we should know Init method parameters for every Vertex
-	switch kind {
-	case Init:
-		if idV.Meta.InitDepsList == nil {
-			idV.Meta.InitDepsList = make([]DepsEntry, 0, 1)
-		}
-		idV.Meta.InitDepsList = append(idV.Meta.InitDepsList, DepsEntry{
-			Name:        depID,
-			IsReference: &isRef,
-		})
-	case Depends:
-		if idV.Meta.DepsList == nil {
-			idV.Meta.DepsList = make([]DepsEntry, 0, 1)
-		}
-		idV.Meta.DepsList = append(idV.Meta.DepsList, DepsEntry{
-			Name:        depID,
-			IsReference: &isRef,
-		})
-	}
-
-	// append depID vertex
-	for i := 0; i < len(idV.Dependencies); i++ {
-		tmpId := idV.Dependencies[i].Id
-		if tmpId == depV.Id {
-			return nil
-		}
-	}
-	depV.NumOfDeps++
-	idV.Dependencies = append(idV.Dependencies, depV)
-	return nil
-}
-
 func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
 	g.Graph[vertexId] = &Vertex{
 		Id:           vertexId,
@@ -264,29 +215,6 @@ func (g *Graph) FindProvider(depId string) *Vertex {
 		}
 	}
 	return nil
-}
-
-// deprecated
-func OldTopologicalSort(vertices []*Vertex) []*Vertex {
-	var ord []*Vertex
-	var verticesWoDeps []*Vertex
-
-	for _, v := range vertices {
-		if v.NumOfDeps == 0 {
-			verticesWoDeps = append(verticesWoDeps, v)
-		}
-	}
-
-	for len(verticesWoDeps) > 0 {
-		v := verticesWoDeps[len(verticesWoDeps)-1]
-		verticesWoDeps = verticesWoDeps[:len(verticesWoDeps)-1]
-
-		ord = append(ord, v)
-		removeDep(v, &verticesWoDeps)
-	}
-
-	return ord
-
 }
 
 func TopologicalSort(vertices []*Vertex) []*Vertex {
