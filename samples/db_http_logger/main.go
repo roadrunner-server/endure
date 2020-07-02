@@ -5,7 +5,7 @@ import (
 
 	"github.com/spiral/cascade"
 	"github.com/spiral/cascade/samples/db_http_logger/modules/db"
-	"github.com/spiral/cascade/samples/db_http_logger/modules/gzip_plugin"
+	"github.com/spiral/cascade/samples/db_http_logger/modules/gzip"
 	"github.com/spiral/cascade/samples/db_http_logger/modules/headers"
 	"github.com/spiral/cascade/samples/db_http_logger/modules/http"
 	"github.com/spiral/cascade/samples/db_http_logger/modules/logger"
@@ -30,7 +30,7 @@ func main() {
 		panic(err)
 	}
 
-	err = container.Register(&gzip_plugin.GzipPlugin{})
+	err = container.Register(&gzip.Gzip{})
 	if err != nil {
 		panic(err)
 	}
