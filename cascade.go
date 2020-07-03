@@ -372,43 +372,47 @@ func (c *Cascade) startMainThread() {
 					return
 				}
 
-				for _, v := range sorted {
-					// skip self
-					if v.Id == res.vertexId {
-						continue
-					}
-					// get result by vertex ID
-					tmp := c.results[v.Id]
-					// send exit signal to the goroutine in sorted order
-					c.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", tmp.vertexId))
-					tmp.exit <- struct{}{}
-
-					c.results[v.Id] = nil
-				}
-
-				c.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", res.vertexId))
-				// close self here
-				res.exit <- struct{}{}
-
 				if c.retry {
+					// send exit signal to only sorted and involved vertices
+					c.sendExitSignal(sorted, res)
+
+					// Init backoff
 					b := backoff.NewExponentialBackOff()
 					b.MaxInterval = c.maxInterval
 					b.InitialInterval = c.initialInterval
 					err := backoff.Retry(c.retryOperation(sorted), b)
+					// error during backoff, this is not a fatal, but critical
 					if err != nil {
 						c.logger.Error("backoff finished with error", zap.Error(err))
 						c.userResultsCh <- &Result{
 							Error:    BackoffRetryError,
 							VertexID: "",
 						}
+						c.rwMutex.Unlock()
 						return
 					}
+				} else {
+					c.logger.Info("retry is turned off, sending exit signal to every vertex in the graph")
+					// send exit signal to whole graph
+					c.sendExitSignal(c.graph.Vertices, res)
+					c.sendResultToUser(res)
+					c.rwMutex.Unlock()
 				}
-				c.sendResultToUser(res)
-				c.rwMutex.Unlock()
 			}
 		}
 	}()
+}
+
+func (c *Cascade) sendExitSignal(sorted []*structures.Vertex, res *result) {
+	for _, v := range sorted {
+		// get result by vertex ID
+		tmp := c.results[v.Id]
+		// send exit signal to the goroutine in sorted order
+		c.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", tmp.vertexId))
+		tmp.exit <- struct{}{}
+
+		c.results[v.Id] = nil
+	}
 }
 
 func (c *Cascade) retryOperation(sorted []*structures.Vertex) func() error {
@@ -423,13 +427,12 @@ func (c *Cascade) retryOperation(sorted []*structures.Vertex) func() error {
 			affectedRunList.Push(sorted[i])
 		}
 
-		head := affectedRunList.Head
-		headCopy := head
+		headCopy := affectedRunList.Head
 
 		for headCopy != nil {
 			err := c.init(headCopy.Vertex)
 			if err != nil {
-				c.logger.Error("error while invoke Init", zap.String("vertex id", head.Vertex.Id), zap.Error(err))
+				c.logger.Error("error while invoke Init", zap.String("vertex id", headCopy.Vertex.Id), zap.Error(err))
 				c.userResultsCh <- &Result{
 					Error:    ErrorDuringInit,
 					VertexID: headCopy.Vertex.Id,
@@ -440,14 +443,16 @@ func (c *Cascade) retryOperation(sorted []*structures.Vertex) func() error {
 			headCopy = headCopy.Next
 		}
 
+		headCopy = affectedRunList.Head
+
 		// start serving run list, error can be returned only from the configure
-		err, vId := c.serveRunList(head)
+		err, vId := c.serveRunList(headCopy)
 		if err != nil {
 			c.userResultsCh <- &Result{
 				Error:    ErrorDuringInit,
 				VertexID: vId,
 			}
-			c.logger.Error("fatal error during the configure in main thread", zap.String("vertex id", head.Vertex.Id), zap.Error(err))
+			c.logger.Error("fatal error during the configure in main thread", zap.String("vertex id", headCopy.Vertex.Id), zap.Error(err))
 			return err
 		}
 		return nil
@@ -493,7 +498,6 @@ func (c *Cascade) serveRunList(n *structures.DllNode) (error, string) {
 
 		//var res Result
 		if reflect.TypeOf(nCopy.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-			// TODO backoff here
 			err := c.configure(nCopy.Vertex, in)
 			if err != nil {
 				return err, nCopy.Vertex.Id

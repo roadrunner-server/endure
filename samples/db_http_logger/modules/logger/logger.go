@@ -1,9 +1,7 @@
 package logger
 
 import (
-	"errors"
 	"fmt"
-	"time"
 )
 
 type Logger struct {
@@ -24,10 +22,6 @@ func (l *Logger) Init() error {
 
 func (l *Logger) Serve() chan error {
 	errCh := make(chan error)
-	go func() {
-		time.Sleep(time.Second * 1)
-		errCh <- errors.New("test error from logger")
-	}()
 	return errCh
 }
 
