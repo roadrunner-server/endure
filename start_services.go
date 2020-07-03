@@ -10,8 +10,26 @@ import (
 	"go.uber.org/zap"
 )
 
-func (c *Cascade) initCall(init reflect.Method, v *structures.Vertex) error {
-	in := c.findInitParameters(v)
+/*
+   Traverse the DLL in the forward direction
+
+*/
+func (c *Cascade) init(v *structures.Vertex) error {
+	// we already checked the Interface satisfaction
+	// at this step absence of Init() is impoosssibruuu
+	init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
+
+	err := c.internalInit(init, v)
+	if err != nil {
+		c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
+func (c *Cascade) internalInit(init reflect.Method, vertex *structures.Vertex) error {
+	in := c.findInitParameters(vertex)
 
 	// Iterate over dependencies
 	// And search in Vertices for the provided types
@@ -19,7 +37,7 @@ func (c *Cascade) initCall(init reflect.Method, v *structures.Vertex) error {
 	rErr := ret[0].Interface()
 	if rErr != nil {
 		if e, ok := rErr.(error); ok && e != nil {
-			c.logger.Error("error calling init", zap.String("vertex id", v.Id), zap.Error(e))
+			c.logger.Error("error calling init", zap.String("vertex id", vertex.Id), zap.Error(e))
 			return e
 		} else {
 			return unknownErrorOccurred
@@ -27,28 +45,30 @@ func (c *Cascade) initCall(init reflect.Method, v *structures.Vertex) error {
 	}
 
 	// just to be safe here
+	// len should be at least 1 (receiver)
 	if len(in) > 0 {
 		/*
-			n.Vertex.AddValue
+			n.Vertex.AddProvider
 			1. removePointerAsterisk to have uniform way of adding and searching the function args
-			2. if value already exists, AddValue will replace it with new one
+			2. if value already exists, AddProvider will replace it with new one
 		*/
-		err := v.AddValue(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
+		err := vertex.AddProvider(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
 		if err != nil {
 			return err
 		}
-		c.logger.Debug("value added successfully", zap.String("vertex id", v.Id), zap.String("parameter", in[0].Type().String()))
+		c.logger.Debug("value added successfully", zap.String("vertex id", vertex.Id), zap.String("parameter", in[0].Type().String()))
 
 	} else {
-		panic("len in less than 2")
+		c.logger.Error("0 or less parameters for Init", zap.String("vertex id", vertex.Id))
+		return errors.New("0 or less parameters for Init")
 	}
 
-	err := c.traverseCallProvider(v, []reflect.Value{reflect.ValueOf(v.Iface)})
+	err := c.traverseCallProvider(vertex, []reflect.Value{reflect.ValueOf(vertex.Iface)})
 	if err != nil {
 		return err
 	}
 
-	err = c.traverseCallRegisters(v)
+	err = c.traverseCallRegisters(vertex)
 	if err != nil {
 		return err
 	}
@@ -57,44 +77,20 @@ func (c *Cascade) initCall(init reflect.Method, v *structures.Vertex) error {
 }
 
 func (c *Cascade) traverseCallRegisters(vertex *structures.Vertex) error {
-	inReg := make([]reflect.Value, 0, 1)
+	in := make([]reflect.Value, 0, 1)
 
 	// add service itself
-	inReg = append(inReg, reflect.ValueOf(vertex.Iface))
+	in = append(in, reflect.ValueOf(vertex.Iface))
 
 	// add dependencies
 	if len(vertex.Meta.DepsList) > 0 {
 		for i := 0; i < len(vertex.Meta.DepsList); i++ {
+			// get dependency id (vertex id)
 			depId := vertex.Meta.DepsList[i].Name
+			// find vertex which provides dependency
 			v := c.graph.FindProvider(depId)
 
-			for k, val := range v.Provides {
-				if k == depId {
-					// value - reference and init dep also reference
-					if *val.IsReference == *vertex.Meta.DepsList[i].IsReference {
-						inReg = append(inReg, *val.Value)
-					} else if *val.IsReference {
-						// same type, but difference in the refs
-						// Init needs to be a value
-						// But Vertex provided reference
-
-						inReg = append(inReg, val.Value.Elem())
-					} else if !*val.IsReference {
-						// vice versa
-						// Vertex provided value
-						// but Init needs to be a reference
-						if val.Value.CanAddr() {
-							inReg = append(inReg, val.Value.Addr())
-						} else {
-							c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type()), zap.String("type", val.Value.Type().String()))
-							c.logger.Warn("making a fresh pointer")
-
-							nt := reflect.New(val.Value.Type())
-							inReg = append(inReg, nt)
-						}
-					}
-				}
-			}
+			in = c.traverseProviders(vertex.Meta.DepsList, v, depId, i, in)
 		}
 	}
 
@@ -105,10 +101,11 @@ func (c *Cascade) traverseCallRegisters(vertex *structures.Vertex) error {
 			for i := 0; i < len(vertex.Meta.FnsRegisterToInvoke); i++ {
 				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsRegisterToInvoke[i])
 				if !ok {
-					panic("method Provides should be")
+					c.logger.Error("type has missing method in FnsRegisterToInvoke", zap.String("vertex id", vertex.Id), zap.String("method", vertex.Meta.FnsRegisterToInvoke[i]))
+					return errors.New("type has missing method in FnsRegisterToInvoke")
 				}
 
-				ret := m.Func.Call(inReg)
+				ret := m.Func.Call(in)
 				// handle error
 				if len(ret) > 0 {
 					rErr := ret[0].Interface()
@@ -130,7 +127,7 @@ func (c *Cascade) traverseCallRegisters(vertex *structures.Vertex) error {
 }
 
 func (c *Cascade) findInitParameters(vertex *structures.Vertex) []reflect.Value {
-	in := make([]reflect.Value, 0, 1)
+	in := make([]reflect.Value, 0, 2)
 
 	// add service itself
 	in = append(in, reflect.ValueOf(vertex.Iface))
@@ -141,30 +138,35 @@ func (c *Cascade) findInitParameters(vertex *structures.Vertex) []reflect.Value 
 			depId := vertex.Meta.InitDepsList[i].Name
 			v := c.graph.FindProvider(depId)
 
-			for k, val := range v.Provides {
-				if k == depId {
-					// value - reference and init dep also reference
-					if *val.IsReference == *vertex.Meta.InitDepsList[i].IsReference {
-						in = append(in, *val.Value)
-					} else if *val.IsReference {
-						// same type, but difference in the refs
-						// Init needs to be a value
-						// But Vertex provided reference
+			in = c.traverseProviders(vertex.Meta.InitDepsList, v, depId, i, in)
+		}
+	}
+	return in
+}
 
-						in = append(in, val.Value.Elem())
-					} else if !*val.IsReference {
-						// vice versa
-						// Vertex provided value
-						// but Init needs to be a reference
-						if val.Value.CanAddr() {
-							in = append(in, val.Value.Addr())
-						} else {
-							c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type()), zap.String("type", val.Value.Type().String()))
-							c.logger.Warn("making a fresh pointer")
-							nt := reflect.New(val.Value.Type())
-							in = append(in, nt)
-						}
-					}
+func (c *Cascade) traverseProviders(list []structures.DepsEntry, depVertex *structures.Vertex, depId string, i int, in []reflect.Value) []reflect.Value {
+	for vertexId, val := range depVertex.Provides {
+		if vertexId == depId {
+			// value - reference and init dep also reference
+			if *val.IsReference == *list[i].IsReference {
+				in = append(in, *val.Value)
+			} else if *val.IsReference {
+				// same type, but difference in the refs
+				// Init needs to be a value
+				// But Vertex provided reference
+
+				in = append(in, val.Value.Elem())
+			} else if !*val.IsReference {
+				// vice versa
+				// Vertex provided value
+				// but Init needs to be a reference
+				if val.Value.CanAddr() {
+					in = append(in, val.Value.Addr())
+				} else {
+					c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type()), zap.String("type", val.Value.Type().String()))
+					c.logger.Warn("making a fresh pointer")
+					nt := reflect.New(val.Value.Type())
+					in = append(in, nt)
 				}
 			}
 		}
@@ -177,6 +179,9 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value)
 	if reflect.TypeOf(v.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
 		// if type implements Provider() it should has FnsProviderToInvoke
 		if v.Meta.FnsProviderToInvoke != nil {
+			// go over all function to invoke
+			// invoke it
+			// and save its return values
 			for i := 0; i < len(v.Meta.FnsProviderToInvoke); i++ {
 				m, ok := reflect.TypeOf(v.Iface).MethodByName(v.Meta.FnsProviderToInvoke[i])
 				if !ok {
@@ -196,7 +201,8 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value)
 						}
 					}
 
-					err := v.AddValue(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()))
+					// add the value to the Providers
+					err := v.AddProvider(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()))
 					if err != nil {
 						return err
 					}
@@ -209,8 +215,6 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value)
 	return nil
 }
 
-
-
 /*
 Algorithm is the following (all steps executing in the topological order):
 1. Call Configure() on all services -- OPTIONAL
@@ -220,8 +224,8 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-func (c *Cascade) internalServe(v *structures.Vertex, in []reflect.Value) *result {
-	m, _ := reflect.TypeOf(v.Iface).MethodByName(ServeMethodName)
+func (c *Cascade) internalServe(vertex *structures.Vertex, in []reflect.Value) *result {
+	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
 	if res != nil {
@@ -229,7 +233,7 @@ func (c *Cascade) internalServe(v *structures.Vertex, in []reflect.Value) *resul
 			return &result{
 				errCh:    e,
 				exit:     make(chan struct{}, 2),
-				vertexId: v.Id,
+				vertexId: vertex.Id,
 			}
 		}
 	}
@@ -238,8 +242,11 @@ func (c *Cascade) internalServe(v *structures.Vertex, in []reflect.Value) *resul
 	return nil
 }
 
-func (c *Cascade) internalConfigure(n *structures.Vertex, in []reflect.Value) error {
-	m, _ := reflect.TypeOf(n.Iface).MethodByName(ConfigureMethodName)
+/*
+internalConfigure invoke Configure() error method
+*/
+func (c *Cascade) internalConfigure(vertex *structures.Vertex, in []reflect.Value) error {
+	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ConfigureMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
 	if res != nil {
@@ -251,32 +258,9 @@ func (c *Cascade) internalConfigure(n *structures.Vertex, in []reflect.Value) er
 	return nil
 }
 
-func (c *Cascade) internalStop(vId string) error {
-	v := c.graph.GetVertex(vId)
-
-	in := make([]reflect.Value, 0, 1)
-	// add service itself
-	in = append(in, reflect.ValueOf(v.Iface))
-
-	err := c.stop(v.Id, in)
-	if err != nil {
-		c.logger.Error("error occurred during the stop", zap.String("vertex id", v.Id))
-	}
-
-	if reflect.TypeOf(v.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-		err = c.close(v.Id, in)
-		if err != nil {
-			c.logger.Error("error occurred during the close", zap.String("vertex id", v.Id))
-		}
-	}
-
-	return nil
-}
-
-func (c *Cascade) stop(vId string, in []reflect.Value) error {
-	v := c.graph.GetVertex(vId)
+func (c *Cascade) internalStop(vertex *structures.Vertex, in []reflect.Value) error {
 	// Call Stop() method, which returns only error (or nil)
-	m, _ := reflect.TypeOf(v.Iface).MethodByName(StopMethodName)
+	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(StopMethodName)
 	ret := m.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
@@ -286,6 +270,29 @@ func (c *Cascade) stop(vId string, in []reflect.Value) error {
 			return unknownErrorOccurred
 		}
 	}
+	return nil
+
+}
+
+func (c *Cascade) stop(vId string) error {
+	vertex := c.graph.GetVertex(vId)
+
+	in := make([]reflect.Value, 0, 1)
+	// add service itself
+	in = append(in, reflect.ValueOf(vertex.Iface))
+
+	err := c.internalStop(vertex, in)
+	if err != nil {
+		c.logger.Error("error occurred during the stop", zap.String("vertex id", vertex.Id))
+	}
+
+	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+		err = c.close(vertex.Id, in)
+		if err != nil {
+			c.logger.Error("error occurred during the close", zap.String("vertex id", vertex.Id))
+		}
+	}
+
 	return nil
 }
 
@@ -331,26 +338,26 @@ func (c *Cascade) sendResultToUser(res *result) {
 }
 
 func (c *Cascade) shutdown(n *structures.DllNode) {
-	for n != nil {
-		err := c.internalStop(n.Vertex.Id)
+	nCopy := n
+	for nCopy != nil {
+		err := c.stop(nCopy.Vertex.Id)
 		if err != nil {
 			// TODO do not return until finished
 			// just log the errors
 			// stack it in slice and if slice is not empty, print it ??
-			c.logger.Error("error occurred during the services stopping", zap.String("vertex id", n.Vertex.Id), zap.Error(err))
+			c.logger.Error("error occurred during the services stopping", zap.String("vertex id", nCopy.Vertex.Id), zap.Error(err))
 		}
-		if channel, ok := c.results[n.Vertex.Id]; ok && channel != nil {
+		if channel, ok := c.results[nCopy.Vertex.Id]; ok && channel != nil {
 			channel.exit <- struct{}{}
 		}
 
 		// next DLL node
-		n = n.Next
+		nCopy = nCopy.Next
 	}
 }
 
 // serve run configure (if exist) and internalServe for each node and put the results in the map
 func (c *Cascade) serve(n *structures.DllNode) error {
-
 	// handle all configure
 	in := make([]reflect.Value, 0, 1)
 	// add service itself
@@ -410,7 +417,7 @@ func (c *Cascade) poll(r *result) {
 			// exit from the goroutine
 			case <-res.exit:
 				c.logger.Info("got exit signal", zap.String("vertex id", res.vertexId))
-				err := c.internalStop(res.vertexId)
+				err := c.stop(res.vertexId)
 				if err != nil {
 					c.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexId), zap.Error(err))
 				}
@@ -462,31 +469,13 @@ func (c *Cascade) register(name string, vertex interface{}) error {
 	return nil
 }
 
-/*
-   Traverse the DLL in the forward direction
-
-*/
-func (c *Cascade) init(v *structures.Vertex) error {
-	// we already checked the Interface satisfaction
-	// at this step absence of Init() is impossible
-	init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
-
-	err := c.initCall(init, v)
-	if err != nil {
-		c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
-		return err
-	}
-
-	return nil
-}
-
 func (c *Cascade) backoffInit(v *structures.Vertex) func() error {
 	return func() error {
 		// we already checked the Interface satisfaction
 		// at this step absence of Init() is impossible
 		init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
 
-		err := c.initCall(init, v)
+		err := c.internalInit(init, v)
 		if err != nil {
 			c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
 			return err
@@ -532,7 +521,6 @@ func (c *Cascade) backoffConfigure(n *structures.DllNode) func() error {
 		return nil
 	}
 }
-
 
 func (c *Cascade) restart() error {
 	c.handleErrorCh <- &result{

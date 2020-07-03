@@ -83,8 +83,7 @@ type ProvidedEntry struct {
 	Value       *reflect.Value
 }
 
-func (v *Vertex) AddValue(valueKey string, value reflect.Value, isRef bool) error {
-	// get the VERTEX
+func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool) error {
 	if v.Provides == nil {
 		v.Provides = make(map[string]ProvidedEntry)
 	}

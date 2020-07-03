@@ -85,7 +85,7 @@ type Options func(cascade *Cascade)
 func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	c := &Cascade{
 		rwMutex:         &sync.RWMutex{},
-		initialInterval: time.Second * 5,
+		initialInterval: time.Second * 1,
 		maxInterval:     time.Second * 60,
 	}
 

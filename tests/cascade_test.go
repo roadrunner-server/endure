@@ -25,6 +25,7 @@ func TestCascade_Init_OK(t *testing.T) {
 	assert.NoError(t, c.Register(&foo3.S3{}))
 	assert.NoError(t, c.Register(&foo1.S1{}))
 	assert.NoError(t, c.Register(&foo5.S5{}))
+	assert.NoError(t, c.Register(&foo6.S6Interface{}))
 	assert.NoError(t, c.Init())
 
 	err, res := c.Serve()
