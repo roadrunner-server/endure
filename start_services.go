@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/spiral/cascade/structures"
 	"go.uber.org/zap"
@@ -219,21 +220,6 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-//func (c *Cascade) serveVertex(v *structures.Vertex) *result {
-//	nCopy := v
-//	// handle all configure
-//	in := make([]reflect.Value, 0, 1)
-//	// add service itself
-//	in = append(in, reflect.ValueOf(nCopy.Iface))
-//
-//
-//	// call internalServe
-//	//userResultsCh = append(userResultsCh, c.call(nCopy, in, ServeMethodName))
-//
-//
-//	return nil
-//}
-
 func (c *Cascade) internalServe(v *structures.Vertex, in []reflect.Value) *result {
 	m, _ := reflect.TypeOf(v.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
@@ -317,5 +303,283 @@ func (c *Cascade) close(vId string, in []reflect.Value) error {
 			return unknownErrorOccurred
 		}
 	}
+	return nil
+}
+
+func (c *Cascade) sendExitSignal(sorted []*structures.Vertex) {
+	for _, v := range sorted {
+		// get result by vertex ID
+		tmp := c.results[v.Id]
+		if tmp == nil {
+			continue
+		}
+		// send exit signal to the goroutine in sorted order
+		c.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", tmp.vertexId))
+		tmp.exit <- struct{}{}
+
+		c.results[v.Id] = nil
+	}
+}
+
+func (c *Cascade) sendResultToUser(res *result) {
+	c.userResultsCh <- &Result{
+		Error: Error{
+			Err: res.err,
+		},
+		VertexID: res.vertexId,
+	}
+}
+
+func (c *Cascade) shutdown(n *structures.DllNode) {
+	for n != nil {
+		err := c.internalStop(n.Vertex.Id)
+		if err != nil {
+			// TODO do not return until finished
+			// just log the errors
+			// stack it in slice and if slice is not empty, print it ??
+			c.logger.Error("error occurred during the services stopping", zap.String("vertex id", n.Vertex.Id), zap.Error(err))
+		}
+		if channel, ok := c.results[n.Vertex.Id]; ok && channel != nil {
+			channel.exit <- struct{}{}
+		}
+
+		// next DLL node
+		n = n.Next
+	}
+}
+
+// serve run configure (if exist) and internalServe for each node and put the results in the map
+func (c *Cascade) serve(n *structures.DllNode) error {
+
+	// handle all configure
+	in := make([]reflect.Value, 0, 1)
+	// add service itself
+	in = append(in, reflect.ValueOf(n.Vertex.Iface))
+
+	res := c.internalServe(n.Vertex, in)
+	if res != nil {
+		c.results[res.vertexId] = res
+	} else {
+		c.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.Id))
+		return errors.New(fmt.Sprintf("nil result returned from the vertex, vertex id: %s", n.Vertex.Id))
+	}
+
+	c.poll(res)
+	if c.restartedTime[n.Vertex.Id] != nil {
+		*c.restartedTime[n.Vertex.Id] = time.Now()
+	} else {
+		tmp := time.Now()
+		c.restartedTime[n.Vertex.Id] = &tmp
+	}
+
+	return nil
+}
+
+func (c *Cascade) checkLeafErrorTime(res *result) bool {
+	return c.restartedTime[res.vertexId] != nil && (*c.restartedTime[res.vertexId]).After(*c.errorTime[res.vertexId])
+}
+
+// poll is used to poll the errors from the vertex
+// and exit from it
+func (c *Cascade) poll(r *result) {
+	rr := r
+	go func(res *result) {
+		for {
+			select {
+			// error
+			case e := <-res.errCh:
+				if e != nil {
+					// set error time
+					c.rwMutex.Lock()
+					if c.errorTime[res.vertexId] != nil {
+						*c.errorTime[res.vertexId] = time.Now()
+					} else {
+						tmp := time.Now()
+						c.errorTime[res.vertexId] = &tmp
+					}
+					c.rwMutex.Unlock()
+
+					c.logger.Error("error processed in poll", zap.String("vertex id", res.vertexId), zap.Error(e))
+
+					// set the error
+					res.err = e
+
+					// send handleErrorCh signal
+					c.handleErrorCh <- res
+				}
+			// exit from the goroutine
+			case <-res.exit:
+				c.logger.Info("got exit signal", zap.String("vertex id", res.vertexId))
+				err := c.internalStop(res.vertexId)
+				if err != nil {
+					c.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexId), zap.Error(err))
+				}
+				return
+			}
+		}
+	}(rr)
+}
+
+// TODO graph responsibility, not Cascade
+func (c *Cascade) resetVertices(vertex *structures.Vertex) []*structures.Vertex {
+	// restore number of dependencies for the root
+	vertex.NumOfDeps = len(vertex.Dependencies)
+	vertex.Visiting = false
+	vertex.Visited = false
+	vertices := make([]*structures.Vertex, 0, 5)
+	vertices = append(vertices, vertex)
+
+	tmp := make(map[string]*structures.Vertex)
+
+	c.dfs(vertex.Dependencies, tmp)
+
+	for _, v := range tmp {
+		vertices = append(vertices, v)
+	}
+	return vertices
+}
+
+// TODO graph responsibility, not Cascade
+func (c *Cascade) dfs(deps []*structures.Vertex, tmp map[string]*structures.Vertex) {
+	for i := 0; i < len(deps); i++ {
+		deps[i].Visited = false
+		deps[i].Visiting = false
+		deps[i].NumOfDeps = len(deps)
+		tmp[deps[i].Id] = deps[i]
+		c.dfs(deps[i].Dependencies, tmp)
+	}
+}
+
+func (c *Cascade) register(name string, vertex interface{}) error {
+	// check the vertex
+	if c.graph.HasVertex(name) {
+		return vertexAlreadyExists(name)
+	}
+
+	// just push the vertex
+	// here we can append in future some meta information
+	c.graph.AddVertex(name, vertex, structures.Meta{})
+	return nil
+}
+
+/*
+   Traverse the DLL in the forward direction
+
+*/
+func (c *Cascade) init(v *structures.Vertex) error {
+	// we already checked the Interface satisfaction
+	// at this step absence of Init() is impossible
+	init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
+
+	err := c.initCall(init, v)
+	if err != nil {
+		c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
+func (c *Cascade) backoffInit(v *structures.Vertex) func() error {
+	return func() error {
+		// we already checked the Interface satisfaction
+		// at this step absence of Init() is impossible
+		init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
+
+		err := c.initCall(init, v)
+		if err != nil {
+			c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
+			return err
+		}
+
+		return nil
+	}
+}
+
+func (c *Cascade) configure(n *structures.DllNode) error {
+	// handle all configure
+	in := make([]reflect.Value, 0, 1)
+	// add service itself
+	in = append(in, reflect.ValueOf(n.Vertex.Iface))
+
+	//var res Result
+	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+		err := c.internalConfigure(n.Vertex, in)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Cascade) backoffConfigure(n *structures.DllNode) func() error {
+	return func() error {
+		// handle all configure
+		in := make([]reflect.Value, 0, 1)
+		// add service itself
+		in = append(in, reflect.ValueOf(n.Vertex.Iface))
+
+		//var res Result
+		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+			err := c.internalConfigure(n.Vertex, in)
+			if err != nil {
+				c.logger.Error("error configuring the vertex", zap.String("vertex id", n.Vertex.Id), zap.Error(err))
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+
+func (c *Cascade) restart() error {
+	c.handleErrorCh <- &result{
+		internalExit: true,
+	}
+
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	c.logger.Info("restarting the Cascade")
+	n := c.runList.Head
+
+	// shutdown, send exit signals to every user Serve() goroutine
+	c.shutdown(n)
+
+	// reset the run list to initial state
+	c.runList.Reset()
+	// reset all results
+	c.results = make(map[string]*result)
+	// reset error timings
+	c.errorTime = make(map[string]*time.Time)
+	// reset restarted timings
+	c.restartedTime = make(map[string]*time.Time)
+
+	// re-start main thread
+	c.startMainThread()
+
+	// call configure
+	nCopy := c.runList.Head
+	for nCopy != nil {
+		err := c.configure(nCopy)
+		if err != nil {
+			c.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.Id), zap.Error(err))
+			return err
+		}
+
+		nCopy = nCopy.Next
+	}
+
+	nCopy = c.runList.Head
+	for nCopy != nil {
+		err := c.serve(n)
+		if err != nil {
+			return err
+		}
+		nCopy = nCopy.Next
+	}
+
 	return nil
 }
