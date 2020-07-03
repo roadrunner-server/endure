@@ -31,6 +31,11 @@ var FailedToGetTheVertex = Error{
 	Stack:   debug.Stack(),
 }
 
+var BackoffRetryError = Error{
+	Err:     errors.New("backoff finished with error"),
+	Code:    503,
+	Stack:   debug.Stack(),
+}
 
 var typeNotImplementError = errors.New("type should implement Service interface")
 var vertexAlreadyExists = func(name string) error { return fmt.Errorf("vertex `%s` already exists", name) }
