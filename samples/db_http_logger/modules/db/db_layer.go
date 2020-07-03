@@ -20,7 +20,7 @@ type Repository interface {
 
 func (db *DB) Init(logger logger.SuperLogger) error {
 	db.logger = logger
-	db.path = "./sample"
+	db.path = "./samples/db_http_logger/modules/db/sample"
 	bdb, err := bolt.Open(db.path, 0666, nil)
 	if err != nil {
 		return err

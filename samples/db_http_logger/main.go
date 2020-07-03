@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/spiral/cascade"
 	"github.com/spiral/cascade/samples/db_http_logger/modules/db"
 	"github.com/spiral/cascade/samples/db_http_logger/modules/gzip"
@@ -53,13 +51,12 @@ func main() {
 	for {
 		select {
 		case e := <-errCh:
-			time.Sleep(time.Second * 1)
 			println(e.Error.Err.Error())
-			er := container.Stop()
-			if er != nil {
-				panic(er)
-			}
-			return
+			//er := container.Stop()
+			//if er != nil {
+			//	panic(er)
+			//}
+			//return
 		}
 	}
 }

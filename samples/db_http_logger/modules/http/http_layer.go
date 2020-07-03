@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	//"errors"
 	"net/http"
 	"time"
 
@@ -50,20 +49,13 @@ func (infra *Infrastructure) Serve() chan error {
 	}
 
 	go func() {
-		//go func() {
-		//	time.Sleep(time.Second * 1)
-		//	errCh <- errors.New("test error from http")
-		//}()
 		err := infra.server.ListenAndServe()
 		if err == http.ErrServerClosed {
 			return
 		} else {
 			errCh <- err
-			return
 		}
-
 	}()
-
 	return errCh
 }
 
