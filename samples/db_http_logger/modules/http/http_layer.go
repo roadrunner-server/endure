@@ -108,17 +108,21 @@ func (infra *Infrastructure) Close() error {
 
 func (infra *Infrastructure) update(writer http.ResponseWriter, request *http.Request) {
 	infra.db.Update()
+	writer.WriteHeader(http.StatusOK)
 }
 
 // ddelete just to not collide with delete keyword
 func (infra *Infrastructure) ddelete(writer http.ResponseWriter, request *http.Request) {
 	infra.db.Delete()
+	writer.WriteHeader(http.StatusOK)
 }
 
 // sselect just to not collide with select keyword
 func (infra *Infrastructure) sselect(writer http.ResponseWriter, request *http.Request) {
 	infra.db.Select()
+	writer.WriteHeader(http.StatusOK)
 }
 func (infra *Infrastructure) insert(writer http.ResponseWriter, request *http.Request) {
 	infra.db.Insert()
+	writer.WriteHeader(http.StatusOK)
 }

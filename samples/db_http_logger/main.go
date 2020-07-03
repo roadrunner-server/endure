@@ -52,11 +52,11 @@ func main() {
 		select {
 		case e := <-errCh:
 			println(e.Error.Err.Error())
-			//er := container.Stop()
-			//if er != nil {
-			//	panic(er)
-			//}
-			//return
+			er := container.Stop()
+			if er != nil {
+				panic(er)
+			}
+			return
 		}
 	}
 }
