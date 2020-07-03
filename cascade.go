@@ -2,7 +2,6 @@ package cascade
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"reflect"
@@ -56,6 +55,7 @@ type Cascade struct {
 	numOfRetries         int
 
 	rwMutex *sync.RWMutex
+	limiter *time.Ticker
 
 	// result always points on healthy channel associated with vertex
 	results map[string]*result
@@ -75,9 +75,9 @@ type Options func(cascade *Cascade)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Input parameters: logLevel
-   -1 is the most informative level - TraceLevel --> also turns on pprof endpoint
-   0 - DebugLevel defines debug log level --> also turns on pprof endpoint
-   1 - InfoLevel defines info log level.
+   -1 is the most informative level - DebugLevel --> also turns on pprof endpoint
+   0 - InfoLevel defines info log level.
+   1 -
    2 - WarnLevel defines warn log level.
    3 - ErrorLevel defines error log level.
    4 - FatalLevel defines fatal log level.
@@ -89,6 +89,7 @@ type Options func(cascade *Cascade)
 func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	c := &Cascade{
 		rwMutex: &sync.RWMutex{},
+		limiter: time.NewTicker(time.Second),
 	}
 
 	var lvl zap.AtomicLevel
@@ -117,22 +118,20 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 		Level:    lvl,
 		Encoding: "console",
 		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey: "message",
-
-			LevelKey:    "level",
-			EncodeLevel: zapcore.CapitalLevelEncoder,
-
-			TimeKey:    "time",
-			EncodeTime: zapcore.ISO8601TimeEncoder,
-
-			CallerKey:    "caller",
-			EncodeCaller: zapcore.ShortCallerEncoder,
+			MessageKey:    "message",
+			LevelKey:      "level",
+			TimeKey:       "time",
+			CallerKey:     "caller",
+			StacktraceKey: "stack",
+			EncodeLevel:   zapcore.CapitalLevelEncoder,
+			EncodeTime:    zapcore.ISO8601TimeEncoder,
+			EncodeCaller:  zapcore.ShortCallerEncoder,
 		},
 		OutputPaths:      []string{"stderr"},
 		ErrorOutputPaths: []string{"stderr"},
 	}
 
-	logger, err := cfg.Build()
+	logger, err := cfg.Build(zap.AddCaller())
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +158,7 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 
 func startPprof() {
 	go func() {
-		log.Println(http.ListenAndServe("0.0.0.0:6061", nil))
+		_ = http.ListenAndServe("0.0.0.0:6061", nil)
 	}()
 }
 
@@ -270,6 +269,7 @@ func (c *Cascade) Stop() error {
 	c.logger.Info("exiting from the Cascade")
 	n := c.runList.Head
 	c.shutdown(n)
+	c.limiter.Stop()
 	return nil
 }
 
@@ -328,6 +328,9 @@ func (c *Cascade) startMainThread() {
 					c.rwMutex.Unlock()
 					return
 				}
+				// limiter
+				_ = <-c.limiter.C
+
 				// received signal to exit from main goroutine
 				if res.internalExit == true {
 					c.rwMutex.Unlock()
@@ -378,13 +381,13 @@ func (c *Cascade) startMainThread() {
 					// get result by vertex ID
 					tmp := c.results[v.Id]
 					// send exit signal to the goroutine in sorted order
-					c.logger.Debug("sending exit signal to the vertex in the main thread", zap.String("vertex id", tmp.vertexId))
+					c.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", tmp.vertexId))
 					tmp.exit <- struct{}{}
 
 					c.results[v.Id] = nil
 				}
 
-				c.logger.Debug("sending exit signal to the vertex in the main thread", zap.String("vertex id", res.vertexId))
+				c.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", res.vertexId))
 				// close self here
 				res.exit <- struct{}{}
 
@@ -481,6 +484,15 @@ func (c *Cascade) serveRunList(n *structures.DllNode) error {
 				return err
 			}
 		}
+		nCopy = nCopy.Next
+	}
+
+	nCopy = n
+	for nCopy != nil {
+		// handle all configure
+		in := make([]reflect.Value, 0, 1)
+		// add service itself
+		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
 
 		res := c.serve(nCopy.Vertex, in)
 		if res != nil {

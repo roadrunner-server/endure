@@ -185,9 +185,8 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) error {
 			return nil
 		}
 	}
-	//depVertex.NumOfDeps++
-	//vertex.Dependencies = append(vertex.Dependencies, depVertex)
-	vertex.NumOfDeps++
+
+	depVertex.NumOfDeps++
 	depVertex.Dependencies = append(depVertex.Dependencies, vertex)
 	return nil
 }
@@ -250,23 +249,4 @@ func dfs(vertex *Vertex, ordered *[]*Vertex) bool {
 	vertex.Visiting = false
 	*ordered = append(*ordered, vertex)
 	return false
-}
-
-func removeDep(vertex *Vertex, verticesWoPrereqs *[]*Vertex) {
-	for i := 0; i < len(vertex.Dependencies); i++ {
-		dep := vertex.Dependencies[i]
-		dep.NumOfDeps--
-		if dep.NumOfDeps == 0 {
-			*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
-		}
-	}
-	// TODO remove dependencies thus we don't need it in the run list
-	//for len(vertex.Dependencies) > 0 {
-	//	dep := vertex.Dependencies[len(vertex.Dependencies)-1]
-	//	//vertex.Dependencies = vertex.Dependencies[:len(vertex.Dependencies)-1]
-	//	dep.NumOfDeps--
-	//	if dep.NumOfDeps == 0 {
-	//		*verticesWoPrereqs = append(*verticesWoPrereqs, dep)
-	//	}
-	//}
 }
