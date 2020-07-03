@@ -2,6 +2,7 @@ package cascade
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"reflect"
@@ -256,10 +257,26 @@ func (c *Cascade) Serve() (error, <-chan *Result) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 	c.startMainThread()
-	n := c.runList.Head
-	err, _ := c.serveRunList(n)
-	if err != nil {
-		return err, nil
+
+	// call configure
+	nCopy := c.runList.Head
+	for nCopy != nil {
+		err := c.configure(nCopy)
+		if err != nil {
+			c.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.Id), zap.Error(err))
+			return err, nil
+		}
+
+		nCopy = nCopy.Next
+	}
+
+	nCopy = c.runList.Head
+	for nCopy != nil {
+		err := c.serve(nCopy)
+		if err != nil {
+			return err, nil
+		}
+		nCopy = nCopy.Next
 	}
 	return nil, c.userResultsCh
 }
@@ -274,39 +291,6 @@ func (c *Cascade) Stop() error {
 	return nil
 }
 
-func (c *Cascade) restart() error {
-	c.handleErrorCh <- &result{
-		internalExit: true,
-	}
-
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
-	c.logger.Info("restarting the Cascade")
-	n := c.runList.Head
-
-	// shutdown, send exit signals to every user Serve() goroutine
-	c.shutdown(n)
-
-	// reset the run list to initial state
-	c.runList.Reset()
-	// reset all results
-	c.results = make(map[string]*result)
-	// reset error timings
-	c.errorTime = make(map[string]*time.Time)
-	// reset restarted timings
-	c.restartedTime = make(map[string]*time.Time)
-
-	// re-start main thread
-	c.startMainThread()
-
-	// error only can be received from the configure method
-	err, _ := c.serveRunList(n)
-	if err != nil {
-		return err
-	}
-	return nil
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////// PRIVATE ///////////////////////////////////////////////////
@@ -317,7 +301,6 @@ func (c *Cascade) startMainThread() {
 	/*
 		Used for handling error from the vertices
 	*/
-
 	go func() {
 		for {
 			select {
@@ -373,28 +356,79 @@ func (c *Cascade) startMainThread() {
 				}
 
 				if c.retry {
-					// send exit signal to only sorted and involved vertices
-					c.sendExitSignal(sorted, res)
+					// send exit signal only to sorted and involved vertices
+					c.sendExitSignal(sorted)
 
 					// Init backoff
 					b := backoff.NewExponentialBackOff()
 					b.MaxInterval = c.maxInterval
 					b.InitialInterval = c.initialInterval
-					err := backoff.Retry(c.retryOperation(sorted), b)
-					// error during backoff, this is not a fatal, but critical
-					if err != nil {
-						c.logger.Error("backoff finished with error", zap.Error(err))
-						c.userResultsCh <- &Result{
-							Error:    BackoffRetryError,
-							VertexID: "",
-						}
-						c.rwMutex.Unlock()
-						return
+
+					affectedRunList := structures.NewDoublyLinkedList()
+					affectedRunList.SetHead(&structures.DllNode{
+						Vertex: sorted[len(sorted)-1]})
+
+					for i := len(sorted) - 2; i >= 0; i-- {
+						affectedRunList.Push(sorted[i])
 					}
+
+					// call init
+					headCopy := affectedRunList.Head
+					for headCopy != nil {
+						berr := backoff.Retry(c.backoffInit(headCopy.Vertex), b)
+						if berr != nil {
+							c.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.Id), zap.Error(berr))
+							c.userResultsCh <- &Result{
+								Error:    ErrorDuringInit,
+								VertexID: headCopy.Vertex.Id,
+							}
+							c.rwMutex.Unlock()
+							return
+						}
+
+						headCopy = headCopy.Next
+					}
+
+					// call configure
+					headCopy = affectedRunList.Head
+					for headCopy != nil {
+						berr := backoff.Retry(c.backoffConfigure(headCopy), b)
+						if berr != nil {
+							c.userResultsCh <- &Result{
+								Error:    ErrorDuringInit,
+								VertexID: headCopy.Vertex.Id,
+							}
+							c.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.Id), zap.Error(berr))
+							c.rwMutex.Unlock()
+							return
+						}
+
+						headCopy = headCopy.Next
+					}
+
+					// call serve
+					headCopy = affectedRunList.Head
+					for headCopy != nil {
+						err := c.serve(headCopy)
+						if err != nil {
+							c.userResultsCh <- &Result{
+								Error:    ErrorDuringServe,
+								VertexID: headCopy.Vertex.Id,
+							}
+							c.logger.Error("fatal error during the serve in the main thread", zap.String("vertex id", headCopy.Vertex.Id), zap.Error(err))
+							c.rwMutex.Unlock()
+							return
+						}
+
+						headCopy = headCopy.Next
+					}
+
+					c.sendResultToUser(res)
+					c.rwMutex.Unlock()
 				} else {
 					c.logger.Info("retry is turned off, sending exit signal to every vertex in the graph")
 					// send exit signal to whole graph
-					c.sendExitSignal(c.graph.Vertices, res)
+					c.sendExitSignal(c.graph.Vertices)
 					c.sendResultToUser(res)
 					c.rwMutex.Unlock()
 				}
@@ -403,59 +437,18 @@ func (c *Cascade) startMainThread() {
 	}()
 }
 
-func (c *Cascade) sendExitSignal(sorted []*structures.Vertex, res *result) {
+func (c *Cascade) sendExitSignal(sorted []*structures.Vertex) {
 	for _, v := range sorted {
 		// get result by vertex ID
 		tmp := c.results[v.Id]
+		if tmp == nil {
+			continue
+		}
 		// send exit signal to the goroutine in sorted order
 		c.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", tmp.vertexId))
 		tmp.exit <- struct{}{}
 
 		c.results[v.Id] = nil
-	}
-}
-
-func (c *Cascade) retryOperation(sorted []*structures.Vertex) func() error {
-	return func() error {
-		// TODO --> to the separate function
-		// creating run list
-		affectedRunList := structures.NewDoublyLinkedList()
-		affectedRunList.SetHead(&structures.DllNode{
-			Vertex: sorted[len(sorted)-1]})
-
-		for i := len(sorted) - 2; i >= 0; i-- {
-			affectedRunList.Push(sorted[i])
-		}
-
-		headCopy := affectedRunList.Head
-
-		for headCopy != nil {
-			err := c.init(headCopy.Vertex)
-			if err != nil {
-				c.logger.Error("error while invoke Init", zap.String("vertex id", headCopy.Vertex.Id), zap.Error(err))
-				c.userResultsCh <- &Result{
-					Error:    ErrorDuringInit,
-					VertexID: headCopy.Vertex.Id,
-				}
-				return err
-			}
-
-			headCopy = headCopy.Next
-		}
-
-		headCopy = affectedRunList.Head
-
-		// start serving run list, error can be returned only from the configure
-		err, vId := c.serveRunList(headCopy)
-		if err != nil {
-			c.userResultsCh <- &Result{
-				Error:    ErrorDuringInit,
-				VertexID: vId,
-			}
-			c.logger.Error("fatal error during the configure in main thread", zap.String("vertex id", headCopy.Vertex.Id), zap.Error(err))
-			return err
-		}
-		return nil
 	}
 }
 
@@ -486,52 +479,31 @@ func (c *Cascade) shutdown(n *structures.DllNode) {
 	}
 }
 
-// serveRunList run configure (if exist) and serve for each node and put the results in the map
-func (c *Cascade) serveRunList(n *structures.DllNode) (error, string) {
-	nCopy := n
+// serve run configure (if exist) and internalServe for each node and put the results in the map
+func (c *Cascade) serve(n *structures.DllNode) error {
 
-	for nCopy != nil {
-		// handle all configure
-		in := make([]reflect.Value, 0, 1)
-		// add service itself
-		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
+	// handle all configure
+	in := make([]reflect.Value, 0, 1)
+	// add service itself
+	in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-		//var res Result
-		if reflect.TypeOf(nCopy.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-			err := c.configure(nCopy.Vertex, in)
-			if err != nil {
-				return err, nCopy.Vertex.Id
-			}
-		}
-		nCopy = nCopy.Next
+	res := c.internalServe(n.Vertex, in)
+	if res != nil {
+		c.results[res.vertexId] = res
+	} else {
+		c.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.Id))
+		return errors.New(fmt.Sprintf("nil result returned from the vertex, vertex id: %s", n.Vertex.Id))
 	}
 
-	nCopy = n
-	for nCopy != nil {
-		// handle all configure
-		in := make([]reflect.Value, 0, 1)
-		// add service itself
-		in = append(in, reflect.ValueOf(nCopy.Vertex.Iface))
-
-		res := c.serve(nCopy.Vertex, in)
-		if res != nil {
-			c.results[res.vertexId] = res
-		} else {
-			c.logger.Panic("nil result returned from the vertex", zap.String("vertex id", nCopy.Vertex.Id))
-		}
-
-		c.poll(res)
-		if c.restartedTime[nCopy.Vertex.Id] != nil {
-			*c.restartedTime[nCopy.Vertex.Id] = time.Now()
-		} else {
-			tmp := time.Now()
-			c.restartedTime[nCopy.Vertex.Id] = &tmp
-		}
-
-		nCopy = nCopy.Next
+	c.poll(res)
+	if c.restartedTime[n.Vertex.Id] != nil {
+		*c.restartedTime[n.Vertex.Id] = time.Now()
+	} else {
+		tmp := time.Now()
+		c.restartedTime[n.Vertex.Id] = &tmp
 	}
 
-	return nil, ""
+	return nil
 }
 
 func (c *Cascade) checkLeafErrorTime(res *result) bool {
@@ -632,8 +604,112 @@ func (c *Cascade) init(v *structures.Vertex) error {
 
 	err := c.initCall(init, v)
 	if err != nil {
-		c.logger.Error("error occurred while calling a function", zap.String("vertex id", v.Id), zap.Error(err))
+		c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
 		return err
+	}
+
+	return nil
+}
+
+func (c *Cascade) backoffInit(v *structures.Vertex) func() error {
+	return func() error {
+		// we already checked the Interface satisfaction
+		// at this step absence of Init() is impossible
+		init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
+
+		err := c.initCall(init, v)
+		if err != nil {
+			c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
+			return err
+		}
+
+		return nil
+	}
+}
+
+func (c *Cascade) configure(n *structures.DllNode) error {
+	// handle all configure
+	in := make([]reflect.Value, 0, 1)
+	// add service itself
+	in = append(in, reflect.ValueOf(n.Vertex.Iface))
+
+	//var res Result
+	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+		err := c.internalConfigure(n.Vertex, in)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Cascade) backoffConfigure(n *structures.DllNode) func() error {
+	return func() error {
+		// handle all configure
+		in := make([]reflect.Value, 0, 1)
+		// add service itself
+		in = append(in, reflect.ValueOf(n.Vertex.Iface))
+
+		//var res Result
+		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+			err := c.internalConfigure(n.Vertex, in)
+			if err != nil {
+				c.logger.Error("error configuring the vertex", zap.String("vertex id", n.Vertex.Id), zap.Error(err))
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+
+func (c *Cascade) restart() error {
+	c.handleErrorCh <- &result{
+		internalExit: true,
+	}
+
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	c.logger.Info("restarting the Cascade")
+	n := c.runList.Head
+
+	// shutdown, send exit signals to every user Serve() goroutine
+	c.shutdown(n)
+
+	// reset the run list to initial state
+	c.runList.Reset()
+	// reset all results
+	c.results = make(map[string]*result)
+	// reset error timings
+	c.errorTime = make(map[string]*time.Time)
+	// reset restarted timings
+	c.restartedTime = make(map[string]*time.Time)
+
+	// re-start main thread
+	c.startMainThread()
+
+	// call configure
+	nCopy := c.runList.Head
+	for nCopy != nil {
+		err := c.configure(nCopy)
+		if err != nil {
+			c.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.Id), zap.Error(err))
+			return err
+		}
+
+		nCopy = nCopy.Next
+	}
+
+	nCopy = c.runList.Head
+	for nCopy != nil {
+		err := c.serve(n)
+		if err != nil {
+			return err
+		}
+		nCopy = nCopy.Next
 	}
 
 	return nil

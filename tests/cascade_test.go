@@ -210,6 +210,8 @@ func TestCascade_Serve_Retry_Err(t *testing.T) {
 				}
 			} else {
 				assert.Fail(t, "vertex should be in the ord slice")
+				wg.Done()
+				return
 			}
 		}
 	}()
@@ -226,7 +228,7 @@ time X is 0s
 5. Test should receive at least 100 errors
 */
 func TestCascade_Serve_Retry_100_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.InfoLevel, cascade.RetryOnFail(true))
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
@@ -250,7 +252,7 @@ func TestCascade_Serve_Retry_100_Err(t *testing.T) {
 	go func() {
 		for r := range res {
 			assert.Error(t, r.Error.Err)
-			if r.Error.Code == 501 {
+			if r.Error.Code >= 500 {
 				assert.NoError(t, c.Stop())
 				wg.Done()
 				return
@@ -264,6 +266,8 @@ func TestCascade_Serve_Retry_100_Err(t *testing.T) {
 				}
 			} else {
 				assert.Fail(t, "vertex should be in the ord slice")
+				wg.Done()
+				return
 			}
 		}
 	}()

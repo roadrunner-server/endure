@@ -227,14 +227,14 @@ Algorithm is the following (all steps executing in the topological order):
 //	in = append(in, reflect.ValueOf(nCopy.Iface))
 //
 //
-//	// call serve
+//	// call internalServe
 //	//userResultsCh = append(userResultsCh, c.call(nCopy, in, ServeMethodName))
 //
 //
 //	return nil
 //}
 
-func (c *Cascade) serve(v *structures.Vertex, in []reflect.Value) *result {
+func (c *Cascade) internalServe(v *structures.Vertex, in []reflect.Value) *result {
 	m, _ := reflect.TypeOf(v.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
@@ -252,7 +252,7 @@ func (c *Cascade) serve(v *structures.Vertex, in []reflect.Value) *result {
 	return nil
 }
 
-func (c *Cascade) configure(n *structures.Vertex, in []reflect.Value) error {
+func (c *Cascade) internalConfigure(n *structures.Vertex, in []reflect.Value) error {
 	m, _ := reflect.TypeOf(n.Iface).MethodByName(ConfigureMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
