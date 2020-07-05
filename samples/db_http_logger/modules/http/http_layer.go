@@ -23,6 +23,7 @@ type Infrastructure struct {
 type middleware func(f http.HandlerFunc) http.HandlerFunc
 
 func (infra *Infrastructure) Init(db db.Repository, logger logger.SuperLogger) error {
+	logger.SuperLogToStdOut("initializing http")
 	tr := &http.Transport{
 		MaxIdleConns:       10,
 		IdleConnTimeout:    30 * time.Second,
@@ -39,6 +40,7 @@ func (infra *Infrastructure) Init(db db.Repository, logger logger.SuperLogger) e
 }
 
 func (infra *Infrastructure) Serve() chan error {
+	infra.logger.SuperLogToStdOut("serving http")
 	errCh := make(chan error, 1)
 
 	f := infra.server.Handler.ServeHTTP
@@ -68,6 +70,7 @@ func (infra *Infrastructure) Stop() error {
 }
 
 func (infra *Infrastructure) Configure() error {
+	infra.logger.SuperLogToStdOut("configuring http")
 	r := mux.NewRouter()
 
 	c := cors.New(cors.Options{

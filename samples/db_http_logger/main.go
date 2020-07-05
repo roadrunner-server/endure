@@ -27,17 +27,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	err = container.Register(&gzip.Gzip{})
 	if err != nil {
 		panic(err)
 	}
-
 	err = container.Register(&headers.Headers{})
 	if err != nil {
 		panic(err)
 	}
-
 	err = container.Init()
 	if err != nil {
 		panic(err)

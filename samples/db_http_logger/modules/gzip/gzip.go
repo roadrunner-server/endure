@@ -14,12 +14,14 @@ type Gzip struct {
 }
 
 func (gz *Gzip) Init(i *cascadeHttp.Infrastructure, logger logger.SuperLogger) error {
+	logger.SuperLogToStdOut("intializing Gzip")
 	gz.infra = i
 	gz.logger = logger
 	return nil
 }
 
 func (gz *Gzip) Serve() chan error {
+	gz.logger.SuperLogToStdOut("serving Gzip")
 	errCh := make(chan error)
 	return errCh
 }

@@ -19,8 +19,9 @@ type Repository interface {
 }
 
 func (db *DB) Init(logger logger.SuperLogger) error {
+	logger.SuperLogToStdOut("initializing DB")
 	db.logger = logger
-	db.path = "./samples/db_http_logger/modules/db/sample"
+	db.path = "./samples"
 	bdb, err := bolt.Open(db.path, 0666, nil)
 	if err != nil {
 		return err
@@ -32,11 +33,12 @@ func (db *DB) Init(logger logger.SuperLogger) error {
 
 func (db *DB) Serve() chan error {
 	errCh := make(chan error)
-	db.logger.SuperLogToStdOut("start serving DB")
+	db.logger.SuperLogToStdOut("serving DB")
 	return errCh
 }
 
 func (db *DB) Configure() error {
+	db.logger.SuperLogToStdOut("configuring DB")
 	return nil
 }
 

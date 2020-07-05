@@ -13,12 +13,14 @@ type Headers struct {
 }
 
 func (h *Headers) Init(i *cascadeHttp.Infrastructure, logger logger.SuperLogger) error {
+	logger.SuperLogToStdOut("configuring headers")
 	h.infra = i
 	h.logger = logger
 	return nil
 }
 
 func (h *Headers) Serve() chan error {
+	h.logger.SuperLogToStdOut("serving headers")
 	errCh := make(chan error)
 	return errCh
 }
