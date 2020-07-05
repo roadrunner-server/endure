@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/spiral/cascade/samples/db_http_logger/modules/logger"
+	"github.com/spiral/cascade/examples/db_http_logger/modules/logger"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -21,7 +21,7 @@ type Repository interface {
 func (db *DB) Init(logger logger.SuperLogger) error {
 	logger.SuperLogToStdOut("initializing DB")
 	db.logger = logger
-	db.path = "./samples"
+	db.path = "./examples"
 	bdb, err := bolt.Open(db.path, 0666, nil)
 	if err != nil {
 		return err

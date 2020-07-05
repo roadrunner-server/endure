@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/NYTimes/gziphandler"
-	cascadeHttp "github.com/spiral/cascade/samples/db_http_logger/modules/http"
-	"github.com/spiral/cascade/samples/db_http_logger/modules/logger"
+	cascadeHttp "github.com/spiral/cascade/examples/db_http_logger/modules/http"
+	"github.com/spiral/cascade/examples/db_http_logger/modules/logger"
 )
 
 type Gzip struct {

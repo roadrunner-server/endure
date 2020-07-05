@@ -19,7 +19,7 @@ func (c *Cascade) init(v *structures.Vertex) error {
 	// at this step absence of Init() is impoosssibruuu
 	init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
 
-	err := c.internalInit(init, v)
+	err := c.callInitFn(init, v)
 	if err != nil {
 		c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
 		return err
@@ -28,7 +28,7 @@ func (c *Cascade) init(v *structures.Vertex) error {
 	return nil
 }
 
-func (c *Cascade) internalInit(init reflect.Method, vertex *structures.Vertex) error {
+func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
 	in := c.findInitParameters(vertex)
 
 	// Iterate over dependencies
@@ -224,7 +224,7 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-func (c *Cascade) internalServe(vertex *structures.Vertex, in []reflect.Value) *result {
+func (c *Cascade) callServeFn(vertex *structures.Vertex, in []reflect.Value) *result {
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
@@ -243,9 +243,9 @@ func (c *Cascade) internalServe(vertex *structures.Vertex, in []reflect.Value) *
 }
 
 /*
-internalConfigure invoke Configure() error method
+callConfigureFn invoke Configure() error method
 */
-func (c *Cascade) internalConfigure(vertex *structures.Vertex, in []reflect.Value) error {
+func (c *Cascade) callConfigureFn(vertex *structures.Vertex, in []reflect.Value) error {
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ConfigureMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
@@ -258,7 +258,7 @@ func (c *Cascade) internalConfigure(vertex *structures.Vertex, in []reflect.Valu
 	return nil
 }
 
-func (c *Cascade) internalStop(vertex *structures.Vertex, in []reflect.Value) error {
+func (c *Cascade) callStopFn(vertex *structures.Vertex, in []reflect.Value) error {
 	// Call Stop() method, which returns only error (or nil)
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(StopMethodName)
 	ret := m.Func.Call(in)
@@ -281,7 +281,7 @@ func (c *Cascade) stop(vId string) error {
 	// add service itself
 	in = append(in, reflect.ValueOf(vertex.Iface))
 
-	err := c.internalStop(vertex, in)
+	err := c.callStopFn(vertex, in)
 	if err != nil {
 		c.logger.Error("error occurred during the stop", zap.String("vertex id", vertex.Id))
 	}
@@ -331,7 +331,9 @@ func (c *Cascade) sendExitSignal(sorted []*structures.Vertex) {
 func (c *Cascade) sendResultToUser(res *result) {
 	c.userResultsCh <- &Result{
 		Error: Error{
-			Err: res.err,
+			Err:   res.err,
+			Code:  0,
+			Stack: nil,
 		},
 		VertexID: res.vertexId,
 	}
@@ -356,14 +358,14 @@ func (c *Cascade) shutdown(n *structures.DllNode) {
 	}
 }
 
-// serve run configure (if exist) and internalServe for each node and put the results in the map
+// serve run configure (if exist) and callServeFn for each node and put the results in the map
 func (c *Cascade) serve(n *structures.DllNode) error {
 	// handle all configure
 	in := make([]reflect.Value, 0, 1)
 	// add service itself
 	in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-	res := c.internalServe(n.Vertex, in)
+	res := c.callServeFn(n.Vertex, in)
 	if res != nil {
 		c.results[res.vertexId] = res
 	} else {
@@ -416,11 +418,14 @@ func (c *Cascade) poll(r *result) {
 				}
 			// exit from the goroutine
 			case <-res.exit:
+				c.rwMutex.Lock()
 				c.logger.Info("got exit signal", zap.String("vertex id", res.vertexId))
 				err := c.stop(res.vertexId)
 				if err != nil {
 					c.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexId), zap.Error(err))
+					c.rwMutex.Unlock()
 				}
+				c.rwMutex.Unlock()
 				return
 			}
 		}
@@ -475,7 +480,7 @@ func (c *Cascade) backoffInit(v *structures.Vertex) func() error {
 		// at this step absence of Init() is impossible
 		init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
 
-		err := c.internalInit(init, v)
+		err := c.callInitFn(init, v)
 		if err != nil {
 			c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
 			return err
@@ -493,7 +498,7 @@ func (c *Cascade) configure(n *structures.DllNode) error {
 
 	//var res Result
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-		err := c.internalConfigure(n.Vertex, in)
+		err := c.callConfigureFn(n.Vertex, in)
 		if err != nil {
 			return err
 		}
@@ -511,7 +516,7 @@ func (c *Cascade) backoffConfigure(n *structures.DllNode) func() error {
 
 		//var res Result
 		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-			err := c.internalConfigure(n.Vertex, in)
+			err := c.callConfigureFn(n.Vertex, in)
 			if err != nil {
 				c.logger.Error("error configuring the vertex", zap.String("vertex id", n.Vertex.Id), zap.Error(err))
 				return err
@@ -522,6 +527,7 @@ func (c *Cascade) backoffConfigure(n *structures.DllNode) func() error {
 	}
 }
 
+// TODO move to the interface?
 func (c *Cascade) restart() error {
 	c.handleErrorCh <- &result{
 		internalExit: true,
