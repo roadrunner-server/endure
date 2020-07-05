@@ -6,6 +6,6 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/rs/cors v1.7.0
-	github.com/spiral/cascade v0.0.0-20200705221101-abf5bbd42a92
+	github.com/spiral/cascade v1.0.0-beta3
 	go.etcd.io/bbolt v1.3.5
 )
