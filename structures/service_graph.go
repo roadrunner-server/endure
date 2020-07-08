@@ -13,23 +13,13 @@ const (
 )
 
 // manages the set of services and their edges
-// type of the Graph: directed
+// type of the VerticesMap: directed
 type Graph struct {
-	// nodes, which can have values
-	// [a, b, c, etc..]5
-	//graph    map[string]*Vertex
-	Graph map[string]*Vertex
+	// Map with vertices to have an easy access to it
+	VerticesMap map[string]*Vertex
 	// List of all Vertices
 	Vertices []*Vertex
 }
-
-// it results in "RPC" --> S1, and at the end slice with deps will looks like:
-// []deps{Dep{"RPC", S1}, Dep{"RPC", S2"}..etc}
-// SHOULD BE IN GRAPH
-//type Dep struct {
-//	Id string      // for example rpc
-//	D  interface{} // S1
-//}
 
 // Meta information included into the Vertex
 // May include:
@@ -59,7 +49,7 @@ type DepsEntry struct {
 }
 
 // since we can have cyclic dependencies
-// when we traverse the Graph, we should mark nodes as Visited or not to detect cycle
+// when we traverse the VerticesMap, we should mark nodes as Visited or not to detect cycle
 type Vertex struct {
 	Id string
 	// Vertex
@@ -102,7 +92,7 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 	return nil
 }
 
-// NewAL initializes adjacency list to store the Graph
+// NewAL initializes adjacency list to store the VerticesMap
 // example
 // 1 -> 2 -> 4
 // 2 -> 5
@@ -111,7 +101,7 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 // 5 -> 4
 // 6 -> 6
 //
-// Graph from the AL:
+// VerticesMap from the AL:
 //
 //+---+          +---+               +---+
 //| 1 +--------->+ 2 |               | 3 |
@@ -132,12 +122,12 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 //
 func NewGraph() *Graph {
 	return &Graph{
-		Graph: make(map[string]*Vertex),
+		VerticesMap: make(map[string]*Vertex),
 	}
 }
 
 func (g *Graph) HasVertex(name string) bool {
-	_, ok := g.Graph[name]
+	_, ok := g.VerticesMap[name]
 	return ok
 }
 
@@ -201,17 +191,17 @@ func (g *Graph) AddDep(vertexID, depID string, method Kind, isRef bool, typeKind
 }
 
 func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
-	g.Graph[vertexId] = &Vertex{
+	g.VerticesMap[vertexId] = &Vertex{
 		Id:           vertexId,
 		Iface:        vertexIface,
 		Meta:         meta,
 		Dependencies: nil,
 	}
-	g.Vertices = append(g.Vertices, g.Graph[vertexId])
+	g.Vertices = append(g.Vertices, g.VerticesMap[vertexId])
 }
 
 func (g *Graph) GetVertex(id string) *Vertex {
-	return g.Graph[id]
+	return g.VerticesMap[id]
 }
 
 func (g *Graph) FindProviders(depId string) []*Vertex {

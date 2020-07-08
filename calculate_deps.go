@@ -63,7 +63,7 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 // addEdges calculates simple graph for the dependencies
 func (c *Cascade) addEdges() error {
 	// vertexID for example S2
-	for vertexID, vrtx := range c.graph.Graph {
+	for vertexID, vrtx := range c.graph.VerticesMap {
 		// we already checked the interface satisfaction
 		// and we can safely skip the OK parameter here
 		init, _ := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
