@@ -19,11 +19,9 @@ type Infrastructure struct {
 	logger logger.SuperLogger
 }
 
-// http middleware type.
-type middleware func(f http.HandlerFunc) http.HandlerFunc
-
+// Middleware interface
 type Middleware interface {
-	Middleware(f http.HandlerFunc) http.HandlerFunc
+	Middleware(f http.Handler) http.HandlerFunc
 }
 
 func (infra *Infrastructure) Init(db db.Repository, logger logger.SuperLogger) error {
@@ -47,13 +45,14 @@ func (infra *Infrastructure) Serve() chan error {
 	infra.logger.SuperLogToStdOut("serving http")
 	errCh := make(chan error, 1)
 
-	f := infra.server.Handler.ServeHTTP
+	f := infra.server.Handler
 
-	// chain middlewares
+	// chain middleware
 	for i := 0; i < len(infra.mdwr); i++ {
 		f = infra.mdwr[i].Middleware(f)
 	}
 
+	infra.server.Handler = f
 
 	go func() {
 		err := infra.server.ListenAndServe()
@@ -110,8 +109,9 @@ func (infra *Infrastructure) Depends() []interface{} {
 	}
 }
 
-func (infra *Infrastructure) AddMiddleware(m Middleware) {
+func (infra *Infrastructure) AddMiddleware(m Middleware) error {
 	infra.mdwr = append(infra.mdwr, m)
+	return nil
 }
 
 func (infra *Infrastructure) Close() error {

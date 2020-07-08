@@ -52,7 +52,7 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 			1. removePointerAsterisk to have uniform way of adding and searching the function args
 			2. if value already exists, AddProvider will replace it with new one
 		*/
-		err := vertex.AddProvider(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()))
+		err := vertex.AddProvider(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()), in[0].Kind())
 		if err != nil {
 			return err
 		}
@@ -68,7 +68,131 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 		return err
 	}
 
-	err = c.traverseCallDependers(vertex)
+	if len(vertex.Meta.DepsList) > 0 {
+		for i := 0; i < len(vertex.Meta.DepsList); i++ {
+			// Interface dependency
+			if vertex.Meta.DepsList[i].Kind == reflect.Interface {
+				err = c.traverseCallDependersInterface(vertex)
+				if err != nil {
+					return err
+				}
+			} else {
+				// structure dependence
+				err = c.traverseCallDependers(vertex)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (c *Cascade) traverseCallDependersInterface(vertex *structures.Vertex) error {
+	for i := 0; i < len(vertex.Meta.DepsList); i++ {
+		// get dependency id (vertex id)
+		depId := vertex.Meta.DepsList[i].Name
+		// find vertex which provides dependency
+		providers := c.graph.FindProviders(depId)
+
+		// Depend from interface
+		/*
+			In this case we need to be careful with IN parameters
+			1. We need to find type, which implements that interface
+			2. Calculate IN args
+			3. And invoke
+		*/
+
+		// search for providers
+		for j := 0; j < len(providers); j++ {
+			// vertexKey is for example foo.DB
+			// vertexValue is value for that key
+			for vertexKey, vertexVal := range providers[j].Provides {
+				if depId != vertexKey {
+					continue
+				}
+				// init
+				inInterface := make([]reflect.Value, 0, 2)
+				// add service itself
+				inInterface = append(inInterface, reflect.ValueOf(vertex.Iface))
+				// if type provides needed type
+				// value - reference and init dep also reference
+				if *vertexVal.IsReference == *vertex.Meta.DepsList[i].IsReference {
+					inInterface = append(inInterface, *vertexVal.Value)
+				} else if *vertexVal.IsReference {
+					// same type, but difference in the refs
+					// Init needs to be a value
+					// But Vertex provided reference
+					inInterface = append(inInterface, vertexVal.Value.Elem())
+				} else if !*vertexVal.IsReference {
+					// vice versa
+					// Vertex provided value
+					// but Init needs to be a reference
+					if vertexVal.Value.CanAddr() {
+						inInterface = append(inInterface, vertexVal.Value.Addr())
+					} else {
+						c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", vertexVal.Value.Type()), zap.String("type", vertexVal.Value.Type().String()))
+						c.logger.Warn("making a fresh pointer")
+						nt := reflect.New(vertexVal.Value.Type())
+						inInterface = append(inInterface, nt)
+					}
+				}
+
+				err := c.callDependerFns(vertex, inInterface)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *Cascade) traverseCallDependers(vertex *structures.Vertex) error {
+	in := make([]reflect.Value, 0, 2)
+	// add service itself
+	in = append(in, reflect.ValueOf(vertex.Iface))
+
+	for i := 0; i < len(vertex.Meta.DepsList); i++ {
+		// get dependency id (vertex id)
+		depId := vertex.Meta.DepsList[i].Name
+		// find vertex which provides dependency
+		providers := c.graph.FindProviders(depId)
+		// search for providers
+		for j := 0; j < len(providers); j++ {
+			for vertexId, val := range providers[j].Provides {
+				// if type provides needed type
+				if vertexId == depId {
+					// value - reference and init dep also reference
+					if *val.IsReference == *vertex.Meta.DepsList[i].IsReference {
+						in = append(in, *val.Value)
+					} else if *val.IsReference {
+						// same type, but difference in the refs
+						// Init needs to be a value
+						// But Vertex provided reference
+						in = append(in, val.Value.Elem())
+					} else if !*val.IsReference {
+						// vice versa
+						// Vertex provided value
+						// but Init needs to be a reference
+						if val.Value.CanAddr() {
+							in = append(in, val.Value.Addr())
+						} else {
+							c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type()), zap.String("type", val.Value.Type().String()))
+							c.logger.Warn("making a fresh pointer")
+							nt := reflect.New(val.Value.Type())
+							in = append(in, nt)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	err := c.callDependerFns(vertex, in)
 	if err != nil {
 		return err
 	}
@@ -76,40 +200,23 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 	return nil
 }
 
-func (c *Cascade) traverseCallDependers(vertex *structures.Vertex) error {
-	in := make([]reflect.Value, 0, 1)
-
-	// add service itself
-	in = append(in, reflect.ValueOf(vertex.Iface))
-
-	// add dependencies
-	if len(vertex.Meta.DepsList) > 0 {
-		for i := 0; i < len(vertex.Meta.DepsList); i++ {
-			// get dependency id (vertex id)
-			depId := vertex.Meta.DepsList[i].Name
-			// find vertex which provides dependency
-			v := c.graph.FindProvider(depId)
-
-			in = c.traverseProviders(vertex.Meta.DepsList, v, depId, i, in)
-		}
-	}
-
+func (c *Cascade) callDependerFns(vertex *structures.Vertex, in []reflect.Value) error {
 	//type implements Depender interface
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Depender)(nil)).Elem()) {
 		// if type implements Depender() it should has FnsProviderToInvoke
 		if vertex.Meta.DepsList != nil {
-			for i := 0; i < len(vertex.Meta.FnsDependerToInvoke); i++ {
-				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsDependerToInvoke[i])
+			for k := 0; k < len(vertex.Meta.FnsDependerToInvoke); k++ {
+				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsDependerToInvoke[k])
 				if !ok {
-					c.logger.Error("type has missing method in FnsDependerToInvoke", zap.String("vertex id", vertex.Id), zap.String("method", vertex.Meta.FnsDependerToInvoke[i]))
+					c.logger.Error("type has missing method in FnsDependerToInvoke", zap.String("vertex id", vertex.Id), zap.String("method", vertex.Meta.FnsDependerToInvoke[k]))
 					return errors.New("type has missing method in FnsDependerToInvoke")
 				}
 
 				ret := m.Func.Call(in)
 				// handle error
-				if len(ret) > 1 {
+				if len(ret) > 0 {
 					// error is the last return parameter
-					rErr := ret[len(ret) - 1].Interface()
+					rErr := ret[len(ret)-1].Interface()
 					if rErr != nil {
 						if e, ok := rErr.(error); ok && e != nil {
 							c.logger.Error("error calling Registers", zap.String("vertex id", vertex.Id), zap.Error(e))
@@ -137,9 +244,9 @@ func (c *Cascade) findInitParameters(vertex *structures.Vertex) []reflect.Value 
 	if len(vertex.Meta.InitDepsList) > 0 {
 		for i := 0; i < len(vertex.Meta.InitDepsList); i++ {
 			depId := vertex.Meta.InitDepsList[i].Name
-			v := c.graph.FindProvider(depId)
+			v := c.graph.FindProviders(depId)
 
-			in = c.traverseProviders(vertex.Meta.InitDepsList, v, depId, i, in)
+			in = c.traverseProviders(vertex.Meta.InitDepsList, v[0], depId, i, in)
 		}
 	}
 	return in
@@ -172,6 +279,12 @@ func (c *Cascade) traverseProviders(list []structures.DepsEntry, depVertex *stru
 			}
 		}
 	}
+
+	for _, vv := range in {
+		fff := vv.String()
+		_ = fff
+	}
+
 	return in
 }
 
@@ -203,7 +316,7 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value)
 					}
 
 					// add the value to the Providers
-					err := v.AddProvider(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()))
+					err := v.AddProvider(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()), in[0].Kind())
 					if err != nil {
 						return err
 					}
@@ -463,15 +576,19 @@ func (c *Cascade) dfs(deps []*structures.Vertex, tmp map[string]*structures.Vert
 	}
 }
 
-func (c *Cascade) register(name string, vertex interface{}) error {
+func (c *Cascade) register(name string, vertex interface{}, order int) error {
 	// check the vertex
 	if c.graph.HasVertex(name) {
 		return vertexAlreadyExists(name)
 	}
 
+	meta := structures.Meta{
+		Order: order,
+	}
+
 	// just push the vertex
 	// here we can append in future some meta information
-	c.graph.AddVertex(name, vertex, structures.Meta{})
+	c.graph.AddVertex(name, vertex, meta)
 	return nil
 }
 

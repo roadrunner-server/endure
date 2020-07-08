@@ -50,7 +50,7 @@ func main() {
 
 	// stop by CTRL+C
 	c := make(chan os.Signal)
-	signal.Notify(c)
+	signal.Notify(c, os.Interrupt)
 
 	for {
 		select {

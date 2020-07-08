@@ -14,6 +14,8 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+var order int = 1
+
 // A Level is a logging priority. Higher levels are more important.
 type Level int8
 
@@ -194,11 +196,11 @@ func (c *Cascade) Register(vertex interface{}) error {
 	2. Vertex structure value (interface)
 	And we fill vertex with this information
 	*/
-	err := c.register(vertexID, vertex)
+	err := c.register(vertexID, vertex, order)
 	if err != nil {
 		return err
 	}
-
+	order++
 	/* Add the types, which (if) current vertex provides
 	Information we know at this step is:
 	1. VertexId
@@ -289,7 +291,6 @@ func (c *Cascade) Stop() error {
 	c.shutdown(n)
 	return nil
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////// PRIVATE ///////////////////////////////////////////////////

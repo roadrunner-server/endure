@@ -9,3 +9,5 @@ require (
 	github.com/spiral/cascade v1.0.0-beta3
 	go.etcd.io/bbolt v1.3.5
 )
+
+replace github.com/spiral/cascade v1.0.0-beta3 => /home/valery/Projects/opensource/spiral/cascade

@@ -36,6 +36,8 @@ type Graph struct {
 // 1. Disabled info
 // 2. Relation status
 type Meta struct {
+	// Position in code while invoking Register
+	Order int
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
 	FnsProviderToInvoke []string
 	// FnsDependerToInvoke is the function names to invoke if type implements Register() interface
@@ -53,6 +55,7 @@ type Meta struct {
 type DepsEntry struct {
 	Name        string
 	IsReference *bool
+	Kind        reflect.Kind
 }
 
 // since we can have cyclic dependencies
@@ -78,19 +81,23 @@ type Vertex struct {
 }
 
 type ProvidedEntry struct {
+	Str string
 	// we need to distinguish false (default bool value) and nil --> we don't know information about reference
 	IsReference *bool
 	Value       *reflect.Value
+	Kind        reflect.Kind
 }
 
-func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool) error {
+func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, kind reflect.Kind) error {
 	if v.Provides == nil {
 		v.Provides = make(map[string]ProvidedEntry)
 	}
 
 	v.Provides[valueKey] = ProvidedEntry{
+		Str:         valueKey,
 		IsReference: &isRef,
 		Value:       &value,
+		Kind:        kind,
 	}
 	return nil
 }
@@ -140,7 +147,7 @@ AddDepRev doing the following:
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
-func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) error {
+func (g *Graph) AddDep(vertexID, depID string, method Kind, isRef bool, typeKind reflect.Kind) error {
 	// vertex should always present
 	vertex := g.GetVertex(vertexID)
 	if vertex == nil {
@@ -149,7 +156,8 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) error {
 	// but depVertex can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
 	depVertex := g.GetVertex(depID)
 	if depVertex == nil {
-		depVertex = g.FindProvider(depID)
+		// here can be only 1 Dep or panic
+		depVertex = g.FindProviders(depID)[0]
 	}
 	if depVertex == nil {
 		return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID)
@@ -158,7 +166,7 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) error {
 	// add Dependency into the List
 	// to call later
 	// because we should know Init method parameters for every Vertex
-	switch kind {
+	switch method {
 	case Init:
 		if vertex.Meta.InitDepsList == nil {
 			vertex.Meta.InitDepsList = make([]DepsEntry, 0, 1)
@@ -166,6 +174,7 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) error {
 		vertex.Meta.InitDepsList = append(vertex.Meta.InitDepsList, DepsEntry{
 			Name:        depID,
 			IsReference: &isRef,
+			Kind:        typeKind,
 		})
 	case Depends:
 		if vertex.Meta.DepsList == nil {
@@ -174,6 +183,7 @@ func (g *Graph) AddDep(vertexID, depID string, kind Kind, isRef bool) error {
 		vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
 			Name:        depID,
 			IsReference: &isRef,
+			Kind:        typeKind,
 		})
 	}
 
@@ -204,15 +214,16 @@ func (g *Graph) GetVertex(id string) *Vertex {
 	return g.Graph[id]
 }
 
-func (g *Graph) FindProvider(depId string) *Vertex {
+func (g *Graph) FindProviders(depId string) []*Vertex {
+	ret := make([]*Vertex, 0, 2)
 	for i := 0; i < len(g.Vertices); i++ {
 		for providerId := range g.Vertices[i].Provides {
 			if depId == providerId {
-				return g.Vertices[i]
+				ret = append(ret, g.Vertices[i])
 			}
 		}
 	}
-	return nil
+	return ret
 }
 
 func TopologicalSort(vertices []*Vertex) []*Vertex {

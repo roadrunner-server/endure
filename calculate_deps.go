@@ -77,7 +77,7 @@ func (c *Cascade) addEdges() error {
 		5. Name of the dependencies which we should found
 		We add 3 and 4 points to the Vertex
 		*/
-		err := c.addRegisterDeps(vertexID, vrtx.Iface)
+		err := c.addDependersDeps(vertexID, vrtx.Iface)
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func (c *Cascade) addEdges() error {
 	return nil
 }
 
-func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
+func (c *Cascade) addDependersDeps(vertexID string, vertex interface{}) error {
 	if register, ok := vertex.(Depender); ok {
 		for _, fn := range register.Depends() {
 			// what type it might depend on?
@@ -117,13 +117,33 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 				if vertexID == atStr {
 					continue
 				}
+				// depends at interface via Dependers
+				/*
+					In this case we should do the following:
+					1. Find all types, which implement this interface
+					2. Make this type depend from all these types
+					3.
+				*/
+				if at.Kind() == reflect.Interface {
+					// go over all dependencies
+					for i := 0; i < len(c.graph.Vertices); i++ {
+						if reflect.TypeOf(c.graph.Vertices[i].Iface).Implements(at) {
+							tmpIsRef := isReference(at)
+							tmpValue := reflect.ValueOf(c.graph.Vertices[i].Iface)
+							err = c.graph.Vertices[i].AddProvider(removePointerAsterisk(atStr), tmpValue, tmpIsRef, at.Kind())
+							if err != nil {
+								return err
+							}
+						}
+					}
+				}
 				// if we found, that some structure depends on some type
 				// we also save it in the `depends` section
 				// name s1 (for example)
 				// vertex - S4 func
 
 				// we store pointer in the Deps structure in the isRef field
-				err = c.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at))
+				err = c.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at), at.Kind())
 				if err != nil {
 					return err
 				}
@@ -176,23 +196,15 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 					}
 					tmpIsRef := isReference(initArg)
 					tmpValue := reflect.ValueOf(c.graph.Vertices[i].Iface)
-					if c.graph.Vertices[i].Provides != nil {
-						c.graph.Vertices[i].Provides[removePointerAsterisk(initArg.String())] = structures.ProvidedEntry{
-							IsReference: &tmpIsRef,
-							Value:       &tmpValue,
-						}
-					} else {
-						c.graph.Vertices[i].Provides = make(map[string]structures.ProvidedEntry)
-						c.graph.Vertices[i].Provides[removePointerAsterisk(initArg.String())] = structures.ProvidedEntry{
-							IsReference: &tmpIsRef,
-							Value:       &tmpValue,
-						}
+					err = c.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
+					if err != nil {
+						return err
 					}
 				}
 			}
 		}
 
-		err = c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg))
+		err = c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg), initArg.Kind())
 		if err != nil {
 			return err
 		}

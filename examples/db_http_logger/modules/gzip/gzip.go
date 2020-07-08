@@ -24,8 +24,12 @@ func (gz *Gzip) Stop() error {
 }
 
 
-func (gz *Gzip) Middleware(f http.HandlerFunc) http.HandlerFunc {
+func (gz *Gzip) Middleware(f http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte("GZIP"))
+		if err != nil {
+			panic(err)
+		}
 		gziphandler.GzipHandler(f).ServeHTTP(w, r)
 	}
 }
