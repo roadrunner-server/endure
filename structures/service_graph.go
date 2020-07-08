@@ -38,8 +38,8 @@ type Graph struct {
 type Meta struct {
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
 	FnsProviderToInvoke []string
-	// FnsRegisterToInvoke is the function names to invoke if type implements Register() interface
-	FnsRegisterToInvoke []string
+	// FnsDependerToInvoke is the function names to invoke if type implements Register() interface
+	FnsDependerToInvoke []string
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method

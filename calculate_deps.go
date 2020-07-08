@@ -98,7 +98,7 @@ func (c *Cascade) addEdges() error {
 }
 
 func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
-	if register, ok := vertex.(Register); ok {
+	if register, ok := vertex.(Depender); ok {
 		for _, fn := range register.Depends() {
 			// what type it might depend on?
 			argsTypes, err := argType(fn)
@@ -136,13 +136,13 @@ func (c *Cascade) addRegisterDeps(vertexID string, vertex interface{}) error {
 				gVertex.Provides = make(map[string]structures.ProvidedEntry)
 			}
 
-			if gVertex.Meta.FnsRegisterToInvoke == nil {
-				gVertex.Meta.FnsRegisterToInvoke = make([]string, 0, 5)
+			if gVertex.Meta.FnsDependerToInvoke == nil {
+				gVertex.Meta.FnsDependerToInvoke = make([]string, 0, 5)
 			}
 
-			c.logger.Debug("appending register function to invoke later", zap.String("vertex id", vertexID), zap.String("function name", getFunctionName(fn)))
+			c.logger.Debug("appending depender function to invoke later", zap.String("vertex id", vertexID), zap.String("function name", getFunctionName(fn)))
 
-			gVertex.Meta.FnsRegisterToInvoke = append(gVertex.Meta.FnsRegisterToInvoke, getFunctionName(fn))
+			gVertex.Meta.FnsDependerToInvoke = append(gVertex.Meta.FnsDependerToInvoke, getFunctionName(fn))
 		}
 	}
 

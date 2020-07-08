@@ -172,7 +172,7 @@ func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) O
 	}
 }
 
-// Register depends the dependencies
+// Depender depends the dependencies
 // name is a name of the dependency, for example - S2
 // vertex is a value -> pointer to the structure
 func (c *Cascade) Register(vertex interface{}) error {
@@ -188,7 +188,7 @@ func (c *Cascade) Register(vertex interface{}) error {
 		return typeNotImplementError
 	}
 
-	/* Register the type
+	/* Depender the type
 	Information we know at this step is:
 	1. VertexId
 	2. Vertex structure value (interface)

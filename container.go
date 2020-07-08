@@ -61,8 +61,8 @@ type (
 		Provides() []interface{}
 	}
 
-	// Register declares the ability to accept the plugins which match the provided method signature.
-	Register interface {
+	// Depender declares the ability to accept the plugins which match the provided method signature.
+	Depender interface {
 		Depends() []interface{}
 	}
 )

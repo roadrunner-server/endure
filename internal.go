@@ -94,15 +94,15 @@ func (c *Cascade) traverseCallRegisters(vertex *structures.Vertex) error {
 		}
 	}
 
-	//type implements Register interface
-	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Register)(nil)).Elem()) {
-		// if type implements Register() it should has FnsProviderToInvoke
+	//type implements Depender interface
+	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Depender)(nil)).Elem()) {
+		// if type implements Depender() it should has FnsProviderToInvoke
 		if vertex.Meta.DepsList != nil {
-			for i := 0; i < len(vertex.Meta.FnsRegisterToInvoke); i++ {
-				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsRegisterToInvoke[i])
+			for i := 0; i < len(vertex.Meta.FnsDependerToInvoke); i++ {
+				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsDependerToInvoke[i])
 				if !ok {
-					c.logger.Error("type has missing method in FnsRegisterToInvoke", zap.String("vertex id", vertex.Id), zap.String("method", vertex.Meta.FnsRegisterToInvoke[i]))
-					return errors.New("type has missing method in FnsRegisterToInvoke")
+					c.logger.Error("type has missing method in FnsDependerToInvoke", zap.String("vertex id", vertex.Id), zap.String("method", vertex.Meta.FnsDependerToInvoke[i]))
+					return errors.New("type has missing method in FnsDependerToInvoke")
 				}
 
 				ret := m.Func.Call(in)
@@ -118,7 +118,7 @@ func (c *Cascade) traverseCallRegisters(vertex *structures.Vertex) error {
 						}
 					}
 				} else {
-					return errors.New("register should return Value and error types")
+					return errors.New("depender should return Value and error types")
 				}
 			}
 		}
