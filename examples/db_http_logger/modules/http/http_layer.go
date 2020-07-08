@@ -14,13 +14,17 @@ import (
 type Infrastructure struct {
 	client http.Client
 	server *http.Server
-	mdwr   []middleware
+	mdwr   []Middleware
 	db     db.Repository
 	logger logger.SuperLogger
 }
 
 // http middleware type.
 type middleware func(f http.HandlerFunc) http.HandlerFunc
+
+type Middleware interface {
+	Middleware(f http.HandlerFunc) http.HandlerFunc
+}
 
 func (infra *Infrastructure) Init(db db.Repository, logger logger.SuperLogger) error {
 	logger.SuperLogToStdOut("initializing http")
@@ -47,8 +51,9 @@ func (infra *Infrastructure) Serve() chan error {
 
 	// chain middlewares
 	for i := 0; i < len(infra.mdwr); i++ {
-		infra.mdwr[i](f)
+		f = infra.mdwr[i].Middleware(f)
 	}
+
 
 	go func() {
 		err := infra.server.ListenAndServe()
@@ -99,7 +104,13 @@ func (infra *Infrastructure) Configure() error {
 	return nil
 }
 
-func (infra *Infrastructure) AddMiddleware(m middleware) {
+func (infra *Infrastructure) Depends() []interface{} {
+	return []interface{}{
+		infra.AddMiddleware,
+	}
+}
+
+func (infra *Infrastructure) AddMiddleware(m Middleware) {
 	infra.mdwr = append(infra.mdwr, m)
 }
 
