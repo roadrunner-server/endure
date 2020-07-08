@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func providersReturnType(m interface{}) (reflect.Type, error) {
+func dependersReturnType(m interface{}) (reflect.Type, error) {
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
 		return nil, fmt.Errorf("unable to reflect `%s`, expected func", r.String())

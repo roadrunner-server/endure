@@ -68,7 +68,7 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 		return err
 	}
 
-	err = c.traverseCallRegisters(vertex)
+	err = c.traverseCallDependers(vertex)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 	return nil
 }
 
-func (c *Cascade) traverseCallRegisters(vertex *structures.Vertex) error {
+func (c *Cascade) traverseCallDependers(vertex *structures.Vertex) error {
 	in := make([]reflect.Value, 0, 1)
 
 	// add service itself
@@ -107,8 +107,9 @@ func (c *Cascade) traverseCallRegisters(vertex *structures.Vertex) error {
 
 				ret := m.Func.Call(in)
 				// handle error
-				if len(ret) > 0 {
-					rErr := ret[0].Interface()
+				if len(ret) > 1 {
+					// error is the last return parameter
+					rErr := ret[len(ret) - 1].Interface()
 					if rErr != nil {
 						if e, ok := rErr.(error); ok && e != nil {
 							c.logger.Error("error calling Registers", zap.String("vertex id", vertex.Id), zap.Error(e))

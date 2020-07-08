@@ -17,7 +17,7 @@ actual type after FnsProviderToInvoke will be invoked
 func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 	if provider, ok := vertex.(Provider); ok {
 		for _, fn := range provider.Provides() {
-			ret, err := providersReturnType(fn)
+			ret, err := dependersReturnType(fn)
 			if err != nil {
 				return err
 			}
