@@ -135,6 +135,11 @@ func (infra *Infrastructure) ddelete(writer http.ResponseWriter, request *http.R
 func (infra *Infrastructure) sselect(writer http.ResponseWriter, request *http.Request) {
 	infra.db.Select()
 	writer.WriteHeader(http.StatusOK)
+
+	for i := 0; i < 10000; i++ {
+		writer.Write([]byte("TEST_GZIP_HEADERS"))
+	}
+
 }
 func (infra *Infrastructure) insert(writer http.ResponseWriter, request *http.Request) {
 	infra.db.Insert()

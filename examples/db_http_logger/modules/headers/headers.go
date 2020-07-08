@@ -31,10 +31,6 @@ func (h *Headers) Close() error {
 func (h *Headers) Middleware(f http.Handler) http.HandlerFunc {
 	// Define the http.HandlerFunc
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("HEADERS --> "))
-		if err != nil {
-			panic(err)
-		}
 		f.ServeHTTP(w, r)
 	}
 }
