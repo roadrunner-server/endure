@@ -3,7 +3,6 @@ package structures
 import (
 	"fmt"
 	"reflect"
-	"sort"
 )
 
 type Kind int
@@ -175,7 +174,7 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 		// because we should know Init method parameters for every Vertex
 		// for example, we should know http.Middleware dependency and later invoke all types which it implement
 		// OR know Depends methods to invoke
-		g.addToList(method, vertex, depID, isRef)
+		g.addToList(method, vertex, depID, isRef, reflect.Interface)
 
 		//append depID vertex
 		for j := 0; j < len(depVertices[i].Dependencies); j++ {
@@ -192,7 +191,7 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 }
 
 // Add meta information to the InitDepsList or DepsList
-func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool) {
+func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool, kind reflect.Kind) {
 	switch method {
 	case Init:
 		if vertex.Meta.InitDepsList == nil {
@@ -201,7 +200,7 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool)
 		vertex.Meta.InitDepsList = append(vertex.Meta.InitDepsList, DepsEntry{
 			Name:        depID,
 			IsReference: &isRef,
-			Kind:        reflect.Interface,
+			Kind:        kind,
 		})
 	case Depends:
 		if vertex.Meta.DepsList == nil {
@@ -209,7 +208,7 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool)
 			vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
 				Name:        depID,
 				IsReference: &isRef,
-				Kind:        reflect.Interface,
+				Kind:        kind,
 			})
 		} else {
 			// search if DepsList already contains interface dep
@@ -217,9 +216,14 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool)
 				if v.Name == depID {
 					continue
 				}
+
+				vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
+					Name:        depID,
+					IsReference: &isRef,
+					Kind:        kind,
+				})
 			}
 		}
-
 	}
 }
 
@@ -242,7 +246,7 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 	// add Dependency into the List
 	// to call later
 	// because we should know Init method parameters for every Vertex
-	g.addToList(method, vertex, depID, isRef)
+	g.addToList(method, vertex, depID, isRef, reflect.Struct)
 
 	// append depID vertex
 	for i := 0; i < len(depVertex.Dependencies); i++ {
@@ -307,15 +311,6 @@ func TopologicalSort(vertices []*Vertex) []*Vertex {
 			return nil
 		}
 	}
-	var tmpZeroDeps Vertices
-
-	for _, v := range ord {
-		if len(v.Dependencies) == 0 {
-			tmpZeroDeps = append(tmpZeroDeps, v)
-		}
-	}
-
-	sort.Sort(tmpZeroDeps)
 
 	return ord
 }

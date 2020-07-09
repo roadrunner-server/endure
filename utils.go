@@ -22,4 +22,3 @@ func isPrimitive(str string) bool {
 		return false
 	}
 }
-
