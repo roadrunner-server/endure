@@ -3,6 +3,7 @@ package structures
 import (
 	"fmt"
 	"reflect"
+	"sort"
 )
 
 type Kind int
@@ -138,6 +139,91 @@ AddDepRev doing the following:
 3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
 func (g *Graph) AddDep(vertexID, depID string, method Kind, isRef bool, typeKind reflect.Kind) error {
+	switch typeKind {
+	case reflect.Interface:
+		err := g.addInterfaceDep(vertexID, depID, method, isRef)
+		if err != nil {
+			return err
+		}
+	default:
+		err := g.addStructDep(vertexID, depID, method, isRef)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool) error {
+	// vertex should always present
+	vertex := g.GetVertex(vertexID)
+	if vertex == nil {
+		panic("vertex should be in the graph")
+	}
+
+	// here can be a lot of deps
+	depVertices := g.FindProviders(depID)
+
+	if depVertices == nil {
+		return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID)
+	}
+
+	for i := 0; i < len(depVertices); i++ {
+		// add Dependency into the List
+		// to call later
+		// because we should know Init method parameters for every Vertex
+		// for example, we should know http.Middleware dependency and later invoke all types which it implement
+		// OR know Depends methods to invoke
+		g.addToList(method, vertex, depID, isRef)
+
+		//append depID vertex
+		for j := 0; j < len(depVertices[i].Dependencies); j++ {
+			tmpId := depVertices[i].Dependencies[i].Id
+			if tmpId == vertex.Id {
+				return nil
+			}
+		}
+
+		depVertices[i].NumOfDeps++
+		depVertices[i].Dependencies = append(depVertices[i].Dependencies, vertex)
+	}
+	return nil
+}
+
+// Add meta information to the InitDepsList or DepsList
+func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool) {
+	switch method {
+	case Init:
+		if vertex.Meta.InitDepsList == nil {
+			vertex.Meta.InitDepsList = make([]DepsEntry, 0, 1)
+		}
+		vertex.Meta.InitDepsList = append(vertex.Meta.InitDepsList, DepsEntry{
+			Name:        depID,
+			IsReference: &isRef,
+			Kind:        reflect.Interface,
+		})
+	case Depends:
+		if vertex.Meta.DepsList == nil {
+			vertex.Meta.DepsList = make([]DepsEntry, 0, 1)
+			vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
+				Name:        depID,
+				IsReference: &isRef,
+				Kind:        reflect.Interface,
+			})
+		} else {
+			// search if DepsList already contains interface dep
+			for _, v := range vertex.Meta.DepsList {
+				if v.Name == depID {
+					continue
+				}
+			}
+		}
+
+	}
+}
+
+func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) error {
 	// vertex should always present
 	vertex := g.GetVertex(vertexID)
 	if vertex == nil {
@@ -146,7 +232,7 @@ func (g *Graph) AddDep(vertexID, depID string, method Kind, isRef bool, typeKind
 	// but depVertex can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
 	depVertex := g.GetVertex(depID)
 	if depVertex == nil {
-		// here can be only 1 Dep or panic
+		// here can be only 1 Dep for the struct, or PANIC!!!
 		depVertex = g.FindProviders(depID)[0]
 	}
 	if depVertex == nil {
@@ -156,26 +242,7 @@ func (g *Graph) AddDep(vertexID, depID string, method Kind, isRef bool, typeKind
 	// add Dependency into the List
 	// to call later
 	// because we should know Init method parameters for every Vertex
-	switch method {
-	case Init:
-		if vertex.Meta.InitDepsList == nil {
-			vertex.Meta.InitDepsList = make([]DepsEntry, 0, 1)
-		}
-		vertex.Meta.InitDepsList = append(vertex.Meta.InitDepsList, DepsEntry{
-			Name:        depID,
-			IsReference: &isRef,
-			Kind:        typeKind,
-		})
-	case Depends:
-		if vertex.Meta.DepsList == nil {
-			vertex.Meta.DepsList = make([]DepsEntry, 0, 1)
-		}
-		vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
-			Name:        depID,
-			IsReference: &isRef,
-			Kind:        typeKind,
-		})
-	}
+	g.addToList(method, vertex, depID, isRef)
 
 	// append depID vertex
 	for i := 0; i < len(depVertex.Dependencies); i++ {
@@ -216,8 +283,20 @@ func (g *Graph) FindProviders(depId string) []*Vertex {
 	return ret
 }
 
+type Vertices []*Vertex
+
+func (v Vertices) Len() int {
+	return len(v)
+}
+func (v Vertices) Less(i, j int) bool {
+	return v[i].Meta.Order < v[j].Meta.Order
+}
+func (v Vertices) Swap(i, j int) {
+	v[i], v[j] = v[j], v[i]
+}
+
 func TopologicalSort(vertices []*Vertex) []*Vertex {
-	var ord []*Vertex
+	var ord Vertices
 	verticesCopy := vertices
 
 	for len(verticesCopy) != 0 {
@@ -228,11 +307,20 @@ func TopologicalSort(vertices []*Vertex) []*Vertex {
 			return nil
 		}
 	}
+	var tmpZeroDeps Vertices
+
+	for _, v := range ord {
+		if len(v.Dependencies) == 0 {
+			tmpZeroDeps = append(tmpZeroDeps, v)
+		}
+	}
+
+	sort.Sort(tmpZeroDeps)
 
 	return ord
 }
 
-func dfs(vertex *Vertex, ordered *[]*Vertex) bool {
+func dfs(vertex *Vertex, ordered *Vertices) bool {
 	if vertex.Visited {
 		return false
 	} else if vertex.Visiting {

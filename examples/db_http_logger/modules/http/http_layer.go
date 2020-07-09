@@ -11,7 +11,7 @@ import (
 	"github.com/spiral/cascade/examples/db_http_logger/modules/logger"
 )
 
-type Infrastructure struct {
+type Http struct {
 	client http.Client
 	server *http.Server
 	mdwr   []Middleware
@@ -24,7 +24,7 @@ type Middleware interface {
 	Middleware(f http.Handler) http.HandlerFunc
 }
 
-func (infra *Infrastructure) Init(db db.Repository, logger logger.SuperLogger) error {
+func (h *Http) Init(db db.Repository, logger logger.SuperLogger) error {
 	logger.SuperLogToStdOut("initializing http")
 	tr := &http.Transport{
 		MaxIdleConns:       10,
@@ -35,27 +35,27 @@ func (infra *Infrastructure) Init(db db.Repository, logger logger.SuperLogger) e
 		Transport: tr,
 		Timeout:   60,
 	}
-	infra.client = client
-	infra.db = db
-	infra.logger = logger
+	h.client = client
+	h.db = db
+	h.logger = logger
 	return nil
 }
 
-func (infra *Infrastructure) Serve() chan error {
-	infra.logger.SuperLogToStdOut("serving http")
+func (h *Http) Serve() chan error {
+	h.logger.SuperLogToStdOut("serving http")
 	errCh := make(chan error, 1)
 
-	f := infra.server.Handler
+	f := h.server.Handler
 
 	// chain middleware
-	for i := 0; i < len(infra.mdwr); i++ {
-		f = infra.mdwr[i].Middleware(f)
+	for i := 0; i < len(h.mdwr); i++ {
+		f = h.mdwr[i].Middleware(f)
 	}
 
-	infra.server.Handler = f
+	h.server.Handler = f
 
 	go func() {
-		err := infra.server.ListenAndServe()
+		err := h.server.ListenAndServe()
 		if err == http.ErrServerClosed {
 			return
 		} else {
@@ -65,16 +65,16 @@ func (infra *Infrastructure) Serve() chan error {
 	return errCh
 }
 
-func (infra *Infrastructure) Stop() error {
-	err := infra.server.Shutdown(context.Background())
+func (h *Http) Stop() error {
+	err := h.server.Shutdown(context.Background())
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (infra *Infrastructure) Configure() error {
-	infra.logger.SuperLogToStdOut("configuring http")
+func (h *Http) Configure() error {
+	h.logger.SuperLogToStdOut("configuring http")
 	r := mux.NewRouter()
 
 	c := cors.New(cors.Options{
@@ -84,10 +84,10 @@ func (infra *Infrastructure) Configure() error {
 		AllowedHeaders:   []string{"*"},
 	})
 
-	r.Methods("POST").HandlerFunc(infra.update).Path("/update")
-	r.Methods("POST").HandlerFunc(infra.ddelete).Path("/delete")
-	r.Methods("GET").HandlerFunc(infra.sselect).Path("/select")
-	r.Methods("POST").HandlerFunc(infra.insert).Path("/insert")
+	r.Methods("POST").HandlerFunc(h.update).Path("/update")
+	r.Methods("POST").HandlerFunc(h.ddelete).Path("/delete")
+	r.Methods("GET").HandlerFunc(h.sselect).Path("/select")
+	r.Methods("POST").HandlerFunc(h.insert).Path("/insert")
 
 	// just as sample, we put server here
 	server := &http.Server{
@@ -98,42 +98,42 @@ func (infra *Infrastructure) Configure() error {
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	infra.server = server
+	h.server = server
 
 	return nil
 }
 
-func (infra *Infrastructure) Depends() []interface{} {
+func (h *Http) Depends() []interface{} {
 	return []interface{}{
-		infra.AddMiddleware,
+		h.AddMiddleware,
 	}
 }
 
-func (infra *Infrastructure) AddMiddleware(m Middleware) error {
-	infra.mdwr = append(infra.mdwr, m)
+func (h *Http) AddMiddleware(m Middleware) error {
+	h.mdwr = append(h.mdwr, m)
 	return nil
 }
 
-func (infra *Infrastructure) Close() error {
+func (h *Http) Close() error {
 	return nil
 }
 
 ///////////////// INFRA HANDLERS //////////////////////////////
 
-func (infra *Infrastructure) update(writer http.ResponseWriter, request *http.Request) {
-	infra.db.Update()
+func (h *Http) update(writer http.ResponseWriter, request *http.Request) {
+	h.db.Update()
 	writer.WriteHeader(http.StatusOK)
 }
 
 // ddelete just to not collide with delete keyword
-func (infra *Infrastructure) ddelete(writer http.ResponseWriter, request *http.Request) {
-	infra.db.Delete()
+func (h *Http) ddelete(writer http.ResponseWriter, request *http.Request) {
+	h.db.Delete()
 	writer.WriteHeader(http.StatusOK)
 }
 
 // sselect just to not collide with select keyword
-func (infra *Infrastructure) sselect(writer http.ResponseWriter, request *http.Request) {
-	infra.db.Select()
+func (h *Http) sselect(writer http.ResponseWriter, request *http.Request) {
+	h.db.Select()
 	writer.WriteHeader(http.StatusOK)
 
 	for i := 0; i < 10000; i++ {
@@ -141,7 +141,7 @@ func (infra *Infrastructure) sselect(writer http.ResponseWriter, request *http.R
 	}
 
 }
-func (infra *Infrastructure) insert(writer http.ResponseWriter, request *http.Request) {
-	infra.db.Insert()
+func (h *Http) insert(writer http.ResponseWriter, request *http.Request) {
+	h.db.Insert()
 	writer.WriteHeader(http.StatusOK)
 }

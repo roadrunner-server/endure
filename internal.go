@@ -84,9 +84,7 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 				}
 			}
 		}
-
 	}
-
 	return nil
 }
 

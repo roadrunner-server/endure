@@ -18,7 +18,7 @@ func main() {
 		panic(err)
 	}
 
-	err = container.Register(&http.Infrastructure{})
+	err = container.Register(&http.Http{})
 	if err != nil {
 		panic(err)
 	}

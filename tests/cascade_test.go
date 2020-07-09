@@ -7,6 +7,9 @@ import (
 
 	"github.com/spiral/cascade/tests/foo5"
 	"github.com/spiral/cascade/tests/foo6"
+	"github.com/spiral/cascade/tests/foo7"
+	"github.com/spiral/cascade/tests/foo8"
+	"github.com/spiral/cascade/tests/foo9"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/spiral/cascade"
@@ -333,5 +336,23 @@ func TestCascade_PrimitiveType_Err(t *testing.T) {
 
 	assert.NoError(t, c.Register(&foo1.S1Pr{}))
 	assert.Error(t, c.Init())
+	assert.NoError(t, c.Stop())
+}
+
+
+func TestCascade_InterfacesDepends_Ok(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&foo7.Foo7{}))
+	assert.NoError(t, c.Register(&foo8.Foo8{}))
+	assert.NoError(t, c.Register(&foo9.Foo9{}))
+
+	assert.NoError(t, c.Init())
+
+	err, _ = c.Serve()
+	assert.NoError(t, err)
+
+
 	assert.NoError(t, c.Stop())
 }
