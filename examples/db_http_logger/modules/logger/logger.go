@@ -28,3 +28,4 @@ func (l *Logger) Serve() chan error {
 func (l *Logger) Stop() error {
 	return nil
 }
+
