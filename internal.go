@@ -282,6 +282,13 @@ func (c *Cascade) traverseProviders(list []structures.DepsEntry, depVertex *stru
 }
 
 func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value) error {
+	// to index function name in defer
+	i := 0
+	defer func() {
+		if r := recover(); r != nil {
+			c.logger.Fatal("error during the function call", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
+		}
+	}()
 	// type implements Provider interface
 	if reflect.TypeOf(v.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
 		// if type implements Provider() it should has FnsProviderToInvoke
@@ -289,7 +296,7 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value)
 			// go over all function to invoke
 			// invoke it
 			// and save its return values
-			for i := 0; i < len(v.Meta.FnsProviderToInvoke); i++ {
+			for i = 0; i < len(v.Meta.FnsProviderToInvoke); i++ {
 				m, ok := reflect.TypeOf(v.Iface).MethodByName(v.Meta.FnsProviderToInvoke[i])
 				if !ok {
 					panic("method Provides should be")
@@ -537,36 +544,6 @@ func (c *Cascade) poll(r *result) {
 			}
 		}
 	}(rr)
-}
-
-// TODO graph responsibility, not Cascade
-func (c *Cascade) resetVertices(vertex *structures.Vertex) []*structures.Vertex {
-	// restore number of dependencies for the root
-	vertex.NumOfDeps = len(vertex.Dependencies)
-	vertex.Visiting = false
-	vertex.Visited = false
-	vertices := make([]*structures.Vertex, 0, 5)
-	vertices = append(vertices, vertex)
-
-	tmp := make(map[string]*structures.Vertex)
-
-	c.dfs(vertex.Dependencies, tmp)
-
-	for _, v := range tmp {
-		vertices = append(vertices, v)
-	}
-	return vertices
-}
-
-// TODO graph responsibility, not Cascade
-func (c *Cascade) dfs(deps []*structures.Vertex, tmp map[string]*structures.Vertex) {
-	for i := 0; i < len(deps); i++ {
-		deps[i].Visited = false
-		deps[i].Visiting = false
-		deps[i].NumOfDeps = len(deps)
-		tmp[deps[i].Id] = deps[i]
-		c.dfs(deps[i].Dependencies, tmp)
-	}
 }
 
 func (c *Cascade) register(name string, vertex interface{}, order int) error {

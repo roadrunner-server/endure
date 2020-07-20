@@ -4,7 +4,8 @@ type Foo10 struct {
 
 }
 
-func (f *Foo10) Init() error {
+func (f *Foo10) Init(db DB) error {
+	println(db.Name)
 	return nil
 }
 
@@ -17,3 +18,7 @@ func (f *Foo10) Stop() error {
 	return nil
 }
 
+
+func (f *Foo10) Name() string{
+	return "FOOOOO10"
+}

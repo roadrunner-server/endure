@@ -34,13 +34,14 @@ type result struct {
 }
 
 type (
-	// TODO namings
+	// used to gracefully stop and configure the plugins
 	Graceful interface {
 		// Configure is used when we need to make preparation and wait for all services till Serve
 		Configure() error
 		// Close frees resources allocated by the service
 		Close() error
 	}
+	// this is the main service interface with should implement every plugin
 	Service interface {
 		// Serve
 		Serve() chan error
@@ -48,7 +49,13 @@ type (
 		Stop() error
 	}
 
-	Container interface {
+	// Name of the service
+	Named interface {
+		Name() string
+	}
+
+	// internal container interface
+	container interface {
 		Serve() (error, <-chan *Result)
 		Stop() error
 		restart() error

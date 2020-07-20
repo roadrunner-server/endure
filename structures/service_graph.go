@@ -261,6 +261,36 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 	return nil
 }
 
+// reset vertices to initial state
+func (g *Graph) Reset(vertex *Vertex) []*Vertex {
+	// restore number of dependencies for the root
+	vertex.NumOfDeps = len(vertex.Dependencies)
+	vertex.Visiting = false
+	vertex.Visited = false
+	vertices := make([]*Vertex, 0, 5)
+	vertices = append(vertices, vertex)
+
+	tmp := make(map[string]*Vertex)
+
+	g.depthFirstSearch(vertex.Dependencies, tmp)
+
+	for _, v := range tmp {
+		vertices = append(vertices, v)
+	}
+	return vertices
+}
+
+// actually this is DFS just to reset all vertices to initial state after topological sort
+func (g *Graph) depthFirstSearch(deps []*Vertex, tmp map[string]*Vertex) {
+	for i := 0; i < len(deps); i++ {
+		deps[i].Visited = false
+		deps[i].Visiting = false
+		deps[i].NumOfDeps = len(deps)
+		tmp[deps[i].Id] = deps[i]
+		g.depthFirstSearch(deps[i].Dependencies, tmp)
+	}
+}
+
 func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
 	g.VerticesMap[vertexId] = &Vertex{
 		Id:           vertexId,

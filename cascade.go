@@ -341,7 +341,7 @@ func (c *Cascade) startMainThread() {
 
 				// reset vertex and dependencies to the initial state
 				// NumOfDeps and Visited/Visiting
-				vertices := c.resetVertices(vertex)
+				vertices := c.graph.Reset(vertex)
 
 				// Topologically sort the graph
 				sorted := structures.TopologicalSort(vertices)
