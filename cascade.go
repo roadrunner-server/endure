@@ -96,7 +96,7 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	case DebugLevel:
 		lvl = zap.NewAtomicLevelAt(zap.DebugLevel)
 		// start pprof
-		startPprof()
+		pprof()
 	case InfoLevel:
 		lvl = zap.NewAtomicLevelAt(zap.InfoLevel)
 	case WarnLevel:
@@ -155,7 +155,7 @@ func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
 	return c, nil
 }
 
-func startPprof() {
+func pprof() {
 	go func() {
 		_ = http.ListenAndServe("0.0.0.0:6061", nil)
 	}()
