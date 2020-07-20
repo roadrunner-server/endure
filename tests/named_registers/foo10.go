@@ -4,8 +4,9 @@ type Foo10 struct {
 
 }
 
-func (f *Foo10) Init(db DB) error {
+func (f *Foo10) Init(db DB, db2 DB2) error {
 	println(db.Name)
+	println(db2.Name)
 	return nil
 }
 

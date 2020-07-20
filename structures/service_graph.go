@@ -237,11 +237,13 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 	// but depVertex can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
 	depVertex := g.GetVertex(depID)
 	if depVertex == nil {
-		// here can be only 1 Dep for the struct, or PANIC!!!
-		depVertex = g.FindProviders(depID)[0]
-	}
-	if depVertex == nil {
-		return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID)
+		tmp := g.FindProviders(depID)
+		if len(tmp) > 0 {
+			// here can be only 1 Dep for the struct, or PANIC!!!
+			depVertex = g.FindProviders(depID)[0]
+		} else {
+			return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID)
+		}
 	}
 
 	// add Dependency into the List

@@ -301,7 +301,7 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value,
 	i := 0
 	defer func() {
 		if r := recover(); r != nil {
-			c.logger.Fatal("panic during the function call", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
+			c.logger.Fatal("panic during the function call", zap.String("function name", v.Meta.FnsProviderToInvoke[i]), zap.String("error", fmt.Sprint(r)))
 		}
 	}()
 	// type implements Provider interface
@@ -318,14 +318,21 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value,
 				}
 
 				/*
-				cases when func NumIn can be more than one
-				is that function accepts some other type except of receiver
-				at the moment we assume, that this "other type" is Name interface
-				 */
+				   think about better solution here TODO
+				   We copy IN params here because only in slice is constant
+				*/
+				inCopy := make([]reflect.Value, len(in))
+				copy(inCopy, in)
+
+				/*
+					cases when func NumIn can be more than one
+					is that function accepts some other type except of receiver
+					at the moment we assume, that this "other type" is Name interface
+				*/
 				if m.Func.Type().NumIn() > 1 {
 					/*
-					here we should add type which implement Named interface
-					at the moment we seek for implementation in the calleeVertex only
+						here we should add type which implement Named interface
+						at the moment we seek for implementation in the calleeVertex only
 					*/
 
 					calleeV := c.graph.GetVertex(calleeVertex)
@@ -335,19 +342,19 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value,
 
 					// check for interface implementation
 					if reflect.TypeOf(calleeV.Iface).Implements(reflect.TypeOf((*Named)(nil)).Elem()) {
-						in = append(in, reflect.ValueOf(calleeV.Iface))
+						inCopy = append(inCopy, reflect.ValueOf(calleeV.Iface))
 					} else {
 						// if NumIn parameters is exactly 2 (receiver and Named interface)
 						// but callee does not implement Named interface, we construct such interface
 						// and provide VertexId as Name
-						if m.Func.Type().NumIn() == 2  && m.Func.Type().In(1) == reflect.TypeOf((*Named)(nil)).Elem() {
+						if m.Func.Type().NumIn() == 2 && m.Func.Type().In(1) == reflect.TypeOf((*Named)(nil)).Elem() {
 							// temporary struct
 							s := TmpStr{
 								N: calleeV.Id,
 							}
 
 							// append temporary struct with Named interface implementation and with VertexId as a Name() string
-							in = append(in, reflect.ValueOf(s))
+							inCopy = append(inCopy, reflect.ValueOf(s))
 						} else {
 							// Unknown type here
 							return errors.New("unknown type in the function")
@@ -355,7 +362,7 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value,
 					}
 				}
 
-				ret := m.Func.Call(in)
+				ret := m.Func.Call(inCopy)
 				// handle error
 				if len(ret) > 1 {
 					rErr := ret[1].Interface()
