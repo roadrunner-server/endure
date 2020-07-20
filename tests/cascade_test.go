@@ -11,6 +11,8 @@ import (
 	"github.com/spiral/cascade/tests/foo8"
 	"github.com/spiral/cascade/tests/foo9"
 	"github.com/spiral/cascade/tests/named_registers"
+	"github.com/spiral/cascade/tests/named_registers_fail"
+	"github.com/spiral/cascade/tests/named_registers_not_implement"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/spiral/cascade"
@@ -367,6 +369,38 @@ func TestCascade_NamedProvides_Ok(t *testing.T) {
 	assert.NoError(t, c.Register(&named_registers.Foo10{}))
 
 	assert.NoError(t, c.Init())
+
+	err, _ = c.Serve()
+	assert.NoError(t, err)
+
+
+	assert.NoError(t, c.Stop())
+}
+
+func TestCascade_NamedProvides_NotImplement_Ok(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&named_registers_not_implement.Foo1{}))
+	assert.NoError(t, c.Register(&named_registers_not_implement.Foo{}))
+
+	assert.NoError(t, c.Init())
+
+	err, _ = c.Serve()
+	assert.NoError(t, err)
+
+
+	assert.NoError(t, c.Stop())
+}
+
+func TestCascade_NamedProvides_WrongType_Fail(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&named_registers_fail.Foo1{}))
+	assert.NoError(t, c.Register(&named_registers_fail.Foo{}))
+
+	assert.Error(t, c.Init())
 
 	err, _ = c.Serve()
 	assert.NoError(t, err)

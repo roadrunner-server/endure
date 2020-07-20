@@ -1,6 +1,7 @@
 package structures
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 )
@@ -231,7 +232,7 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 	// vertex should always present
 	vertex := g.GetVertex(vertexID)
 	if vertex == nil {
-		panic("vertex should be in the graph")
+		return errors.New("vertex should be in the graph")
 	}
 	// but depVertex can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
 	depVertex := g.GetVertex(depID)

@@ -14,14 +14,14 @@ import (
    Traverse the DLL in the forward direction
 
 */
-func (c *Cascade) init(v *structures.Vertex) error {
+func (c *Cascade) init(vertex *structures.Vertex) error {
 	// we already checked the Interface satisfaction
 	// at this step absence of Init() is impoosssibruuu
-	init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
+	initMethod, _ := reflect.TypeOf(vertex.Iface).MethodByName(InitMethodName)
 
-	err := c.callInitFn(init, v)
+	err := c.callInitFn(initMethod, vertex)
 	if err != nil {
-		c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
+		c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", vertex.Id), zap.Error(err))
 		return err
 	}
 
@@ -29,8 +29,10 @@ func (c *Cascade) init(v *structures.Vertex) error {
 }
 
 func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
-	in := c.findInitParameters(vertex)
-
+	in, err := c.findInitParameters(vertex)
+	if err != nil {
+		return err
+	}
 	// Iterate over dependencies
 	// And search in Vertices for the provided types
 	ret := init.Func.Call(in)
@@ -54,31 +56,25 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 		*/
 		err := vertex.AddProvider(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()), in[0].Kind())
 		if err != nil {
+			c.logger.Debug("value added successfully", zap.String("vertex id", vertex.Id), zap.String("parameter", in[0].Type().String()))
 			return err
 		}
-		c.logger.Debug("value added successfully", zap.String("vertex id", vertex.Id), zap.String("parameter", in[0].Type().String()))
-
 	} else {
 		c.logger.Error("0 or less parameters for Init", zap.String("vertex id", vertex.Id))
 		return errors.New("0 or less parameters for Init")
-	}
-
-	err := c.traverseCallProvider(vertex, []reflect.Value{reflect.ValueOf(vertex.Iface)})
-	if err != nil {
-		return err
 	}
 
 	if len(vertex.Meta.DepsList) > 0 {
 		for i := 0; i < len(vertex.Meta.DepsList); i++ {
 			// Interface dependency
 			if vertex.Meta.DepsList[i].Kind == reflect.Interface {
-				err = c.traverseCallDependersInterface(vertex)
+				err := c.traverseCallDependersInterface(vertex)
 				if err != nil {
 					return err
 				}
 			} else {
 				// structure dependence
-				err = c.traverseCallDependers(vertex)
+				err := c.traverseCallDependers(vertex)
 				if err != nil {
 					return err
 				}
@@ -232,7 +228,7 @@ func (c *Cascade) callDependerFns(vertex *structures.Vertex, in []reflect.Value)
 	return nil
 }
 
-func (c *Cascade) findInitParameters(vertex *structures.Vertex) []reflect.Value {
+func (c *Cascade) findInitParameters(vertex *structures.Vertex) ([]reflect.Value, error) {
 	in := make([]reflect.Value, 0, 2)
 
 	// add service itself
@@ -243,18 +239,29 @@ func (c *Cascade) findInitParameters(vertex *structures.Vertex) []reflect.Value 
 		for i := 0; i < len(vertex.Meta.InitDepsList); i++ {
 			depId := vertex.Meta.InitDepsList[i].Name
 			v := c.graph.FindProviders(depId)
-
-			in = c.traverseProviders(vertex.Meta.InitDepsList, v[0], depId, i, in)
+			var err error
+			in, err = c.traverseProviders(vertex.Meta.InitDepsList[i], v[0], depId, vertex.Id, in)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-	return in
+	return in, nil
 }
 
-func (c *Cascade) traverseProviders(list []structures.DepsEntry, depVertex *structures.Vertex, depId string, i int, in []reflect.Value) []reflect.Value {
-	for vertexId, val := range depVertex.Provides {
-		if vertexId == depId {
+func (c *Cascade) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depId string, callVertexId string, in []reflect.Value) ([]reflect.Value, error) {
+
+	// we need to call all providers first
+	err := c.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, callVertexId)
+	if err != nil {
+		return nil, err
+	}
+
+	// to index function name in defer
+	for providerId, val := range depVertex.Provides {
+		if providerId == depId {
 			// value - reference and init dep also reference
-			if *val.IsReference == *list[i].IsReference {
+			if *val.IsReference == *depsEntry.IsReference {
 				in = append(in, *val.Value)
 			} else if *val.IsReference {
 				// same type, but difference in the refs
@@ -278,15 +285,23 @@ func (c *Cascade) traverseProviders(list []structures.DepsEntry, depVertex *stru
 		}
 	}
 
-	return in
+	return in, nil
 }
 
-func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value) error {
+type TmpStr struct {
+	N string
+}
+
+func (t TmpStr) Name() string {
+	return t.N
+}
+
+func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value, calleeVertex string) error {
 	// to index function name in defer
 	i := 0
 	defer func() {
 		if r := recover(); r != nil {
-			c.logger.Fatal("error during the function call", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
+			c.logger.Fatal("panic during the function call", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
 		}
 	}()
 	// type implements Provider interface
@@ -299,7 +314,45 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value)
 			for i = 0; i < len(v.Meta.FnsProviderToInvoke); i++ {
 				m, ok := reflect.TypeOf(v.Iface).MethodByName(v.Meta.FnsProviderToInvoke[i])
 				if !ok {
-					panic("method Provides should be")
+					c.logger.Fatal("should implement the Provider interface", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
+				}
+
+				/*
+				cases when func NumIn can be more than one
+				is that function accepts some other type except of receiver
+				at the moment we assume, that this "other type" is Name interface
+				 */
+				if m.Func.Type().NumIn() > 1 {
+					/*
+					here we should add type which implement Named interface
+					at the moment we seek for implementation in the calleeVertex only
+					*/
+
+					calleeV := c.graph.GetVertex(calleeVertex)
+					if calleeV == nil {
+						return errors.New("callee vertex is nil")
+					}
+
+					// check for interface implementation
+					if reflect.TypeOf(calleeV.Iface).Implements(reflect.TypeOf((*Named)(nil)).Elem()) {
+						in = append(in, reflect.ValueOf(calleeV.Iface))
+					} else {
+						// if NumIn parameters is exactly 2 (receiver and Named interface)
+						// but callee does not implement Named interface, we construct such interface
+						// and provide VertexId as Name
+						if m.Func.Type().NumIn() == 2  && m.Func.Type().In(1) == reflect.TypeOf((*Named)(nil)).Elem() {
+							// temporary struct
+							s := TmpStr{
+								N: calleeV.Id,
+							}
+
+							// append temporary struct with Named interface implementation and with VertexId as a Name() string
+							in = append(in, reflect.ValueOf(s))
+						} else {
+							// Unknown type here
+							return errors.New("unknown type in the function")
+						}
+					}
 				}
 
 				ret := m.Func.Call(in)

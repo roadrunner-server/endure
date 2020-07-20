@@ -18,7 +18,6 @@ func (f *Foo10) Stop() error {
 	return nil
 }
 
-
 func (f *Foo10) Name() string{
-	return "FOOOOO10"
+	return "My name is Foo10, friend!"
 }
