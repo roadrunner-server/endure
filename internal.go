@@ -278,11 +278,6 @@ func (c *Cascade) traverseProviders(list []structures.DepsEntry, depVertex *stru
 		}
 	}
 
-	for _, vv := range in {
-		fff := vv.String()
-		_ = fff
-	}
-
 	return in
 }
 
