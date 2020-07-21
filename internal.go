@@ -21,7 +21,7 @@ func (c *Cascade) init(vertex *structures.Vertex) error {
 
 	err := c.callInitFn(initMethod, vertex)
 	if err != nil {
-		c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", vertex.Id), zap.Error(err))
+		c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", vertex.ID), zap.Error(err))
 		return err
 	}
 
@@ -39,11 +39,10 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 	rErr := ret[0].Interface()
 	if rErr != nil {
 		if e, ok := rErr.(error); ok && e != nil {
-			c.logger.Error("error calling init", zap.String("vertex id", vertex.Id), zap.Error(e))
+			c.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(e))
 			return e
-		} else {
-			return unknownErrorOccurred
 		}
+		return errUnknownErrorOccurred
 	}
 
 	// just to be safe here
@@ -56,11 +55,11 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 		*/
 		err := vertex.AddProvider(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()), in[0].Kind())
 		if err != nil {
-			c.logger.Debug("value added successfully", zap.String("vertex id", vertex.Id), zap.String("parameter", in[0].Type().String()))
+			c.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("parameter", in[0].Type().String()))
 			return err
 		}
 	} else {
-		c.logger.Error("0 or less parameters for Init", zap.String("vertex id", vertex.Id))
+		c.logger.Error("0 or less parameters for Init", zap.String("vertex id", vertex.ID))
 		return errors.New("0 or less parameters for Init")
 	}
 
@@ -87,9 +86,9 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 func (c *Cascade) traverseCallDependersInterface(vertex *structures.Vertex) error {
 	for i := 0; i < len(vertex.Meta.DepsList); i++ {
 		// get dependency id (vertex id)
-		depId := vertex.Meta.DepsList[i].Name
+		depID := vertex.Meta.DepsList[i].Name
 		// find vertex which provides dependency
-		providers := c.graph.FindProviders(depId)
+		providers := c.graph.FindProviders(depID)
 
 		// Depend from interface
 		/*
@@ -104,7 +103,7 @@ func (c *Cascade) traverseCallDependersInterface(vertex *structures.Vertex) erro
 			// vertexKey is for example foo.DB
 			// vertexValue is value for that key
 			for vertexKey, vertexVal := range providers[j].Provides {
-				if depId != vertexKey {
+				if depID != vertexKey {
 					continue
 				}
 				// init
@@ -113,14 +112,16 @@ func (c *Cascade) traverseCallDependersInterface(vertex *structures.Vertex) erro
 				inInterface = append(inInterface, reflect.ValueOf(vertex.Iface))
 				// if type provides needed type
 				// value - reference and init dep also reference
-				if *vertexVal.IsReference == *vertex.Meta.DepsList[i].IsReference {
+
+				switch {
+				case *vertexVal.IsReference == *vertex.Meta.DepsList[i].IsReference:
 					inInterface = append(inInterface, *vertexVal.Value)
-				} else if *vertexVal.IsReference {
+				case *vertexVal.IsReference:
 					// same type, but difference in the refs
 					// Init needs to be a value
 					// But Vertex provided reference
 					inInterface = append(inInterface, vertexVal.Value.Elem())
-				} else if !*vertexVal.IsReference {
+				case !*vertexVal.IsReference:
 					// vice versa
 					// Vertex provided value
 					// but Init needs to be a reference
@@ -152,23 +153,23 @@ func (c *Cascade) traverseCallDependers(vertex *structures.Vertex) error {
 
 	for i := 0; i < len(vertex.Meta.DepsList); i++ {
 		// get dependency id (vertex id)
-		depId := vertex.Meta.DepsList[i].Name
+		depID := vertex.Meta.DepsList[i].Name
 		// find vertex which provides dependency
-		providers := c.graph.FindProviders(depId)
+		providers := c.graph.FindProviders(depID)
 		// search for providers
 		for j := 0; j < len(providers); j++ {
-			for vertexId, val := range providers[j].Provides {
+			for vertexID, val := range providers[j].Provides {
 				// if type provides needed type
-				if vertexId == depId {
-					// value - reference and init dep also reference
-					if *val.IsReference == *vertex.Meta.DepsList[i].IsReference {
+				if vertexID == depID {
+					switch {
+					case *val.IsReference == *vertex.Meta.DepsList[i].IsReference:
 						in = append(in, *val.Value)
-					} else if *val.IsReference {
+					case *val.IsReference:
 						// same type, but difference in the refs
 						// Init needs to be a value
 						// But Vertex provided reference
 						in = append(in, val.Value.Elem())
-					} else if !*val.IsReference {
+					case !*val.IsReference:
 						// vice versa
 						// Vertex provided value
 						// but Init needs to be a reference
@@ -202,7 +203,7 @@ func (c *Cascade) callDependerFns(vertex *structures.Vertex, in []reflect.Value)
 			for k := 0; k < len(vertex.Meta.FnsDependerToInvoke); k++ {
 				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsDependerToInvoke[k])
 				if !ok {
-					c.logger.Error("type has missing method in FnsDependerToInvoke", zap.String("vertex id", vertex.Id), zap.String("method", vertex.Meta.FnsDependerToInvoke[k]))
+					c.logger.Error("type has missing method in FnsDependerToInvoke", zap.String("vertex id", vertex.ID), zap.String("method", vertex.Meta.FnsDependerToInvoke[k]))
 					return errors.New("type has missing method in FnsDependerToInvoke")
 				}
 
@@ -213,11 +214,10 @@ func (c *Cascade) callDependerFns(vertex *structures.Vertex, in []reflect.Value)
 					rErr := ret[len(ret)-1].Interface()
 					if rErr != nil {
 						if e, ok := rErr.(error); ok && e != nil {
-							c.logger.Error("error calling Registers", zap.String("vertex id", vertex.Id), zap.Error(e))
+							c.logger.Error("error calling Registers", zap.String("vertex id", vertex.ID), zap.Error(e))
 							return e
-						} else {
-							return unknownErrorOccurred
 						}
+						return errUnknownErrorOccurred
 					}
 				} else {
 					return errors.New("depender should return Value and error types")
@@ -237,10 +237,10 @@ func (c *Cascade) findInitParameters(vertex *structures.Vertex) ([]reflect.Value
 	// add dependencies
 	if len(vertex.Meta.InitDepsList) > 0 {
 		for i := 0; i < len(vertex.Meta.InitDepsList); i++ {
-			depId := vertex.Meta.InitDepsList[i].Name
-			v := c.graph.FindProviders(depId)
+			depID := vertex.Meta.InitDepsList[i].Name
+			v := c.graph.FindProviders(depID)
 			var err error
-			in, err = c.traverseProviders(vertex.Meta.InitDepsList[i], v[0], depId, vertex.Id, in)
+			in, err = c.traverseProviders(vertex.Meta.InitDepsList[i], v[0], depID, vertex.ID, in)
 			if err != nil {
 				return nil, err
 			}
@@ -249,27 +249,25 @@ func (c *Cascade) findInitParameters(vertex *structures.Vertex) ([]reflect.Value
 	return in, nil
 }
 
-func (c *Cascade) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depId string, callVertexId string, in []reflect.Value) ([]reflect.Value, error) {
-
+func (c *Cascade) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
 	// we need to call all providers first
-	err := c.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, callVertexId)
+	err := c.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID)
 	if err != nil {
 		return nil, err
 	}
 
 	// to index function name in defer
-	for providerId, val := range depVertex.Provides {
-		if providerId == depId {
-			// value - reference and init dep also reference
-			if *val.IsReference == *depsEntry.IsReference {
+	for providerID, val := range depVertex.Provides {
+		if providerID == depID {
+			switch {
+			case *val.IsReference == *depsEntry.IsReference:
 				in = append(in, *val.Value)
-			} else if *val.IsReference {
+			case *val.IsReference:
 				// same type, but difference in the refs
 				// Init needs to be a value
 				// But Vertex provided reference
-
 				in = append(in, val.Value.Elem())
-			} else if !*val.IsReference {
+			case !*val.IsReference:
 				// vice versa
 				// Vertex provided value
 				// but Init needs to be a reference
@@ -346,17 +344,16 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value,
 					} else {
 						// if NumIn parameters is exactly 2 (receiver and Named interface)
 						// but callee does not implement Named interface, we construct such interface
-						// and provide VertexId as Name
+						// and provide vertexID as Name
 						if m.Func.Type().NumIn() == 2 && m.Func.Type().In(1) == reflect.TypeOf((*Named)(nil)).Elem() {
 							// temporary struct
 							s := TmpStr{
-								N: calleeV.Id,
+								N: calleeV.ID,
 							}
 
-							// append temporary struct with Named interface implementation and with VertexId as a Name() string
+							// append temporary struct with Named interface implementation and with vertexID as a Name() string
 							inCopy = append(inCopy, reflect.ValueOf(s))
 						} else {
-							// Unknown type here
 							return errors.New("unknown type in the function")
 						}
 					}
@@ -368,11 +365,10 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value,
 					rErr := ret[1].Interface()
 					if rErr != nil {
 						if e, ok := rErr.(error); ok && e != nil {
-							c.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", v.Id))
+							c.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", v.ID))
 							return e
-						} else {
-							return unknownErrorOccurred
 						}
+						return errUnknownErrorOccurred
 					}
 
 					// add the value to the Providers
@@ -407,7 +403,7 @@ func (c *Cascade) callServeFn(vertex *structures.Vertex, in []reflect.Value) *re
 			return &result{
 				errCh:    e,
 				exit:     make(chan struct{}, 2),
-				vertexId: vertex.Id,
+				vertexID: vertex.ID,
 			}
 		}
 	}
@@ -427,7 +423,7 @@ func (c *Cascade) callConfigureFn(vertex *structures.Vertex, in []reflect.Value)
 		if e, ok := res.(error); ok && e != nil {
 			return e
 		}
-		return unknownErrorOccurred
+		return errUnknownErrorOccurred
 	}
 	return nil
 }
@@ -440,16 +436,14 @@ func (c *Cascade) callStopFn(vertex *structures.Vertex, in []reflect.Value) erro
 	if rErr != nil {
 		if e, ok := rErr.(error); ok && e != nil {
 			return e
-		} else {
-			return unknownErrorOccurred
 		}
+		return errUnknownErrorOccurred
 	}
 	return nil
-
 }
 
-func (c *Cascade) stop(vId string) error {
-	vertex := c.graph.GetVertex(vId)
+func (c *Cascade) stop(vID string) error {
+	vertex := c.graph.GetVertex(vID)
 
 	in := make([]reflect.Value, 0, 1)
 	// add service itself
@@ -457,13 +451,15 @@ func (c *Cascade) stop(vId string) error {
 
 	err := c.callStopFn(vertex, in)
 	if err != nil {
-		c.logger.Error("error occurred during the stop", zap.String("vertex id", vertex.Id))
+		c.logger.Error("error occurred during the stop", zap.String("vertex id", vertex.ID))
+		return err
 	}
 
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-		err = c.close(vertex.Id, in)
+		err = c.close(vertex.ID, in)
 		if err != nil {
-			c.logger.Error("error occurred during the close", zap.String("vertex id", vertex.Id))
+			c.logger.Error("error occurred during the close", zap.String("vertex id", vertex.ID))
+			return err
 		}
 	}
 
@@ -471,8 +467,8 @@ func (c *Cascade) stop(vId string) error {
 }
 
 // TODO add stack to the all of the log events
-func (c *Cascade) close(vId string, in []reflect.Value) error {
-	v := c.graph.GetVertex(vId)
+func (c *Cascade) close(vID string, in []reflect.Value) error {
+	v := c.graph.GetVertex(vID)
 	// Call Close() method, which returns only error (or nil)
 	m, _ := reflect.TypeOf(v.Iface).MethodByName(CloseMethodName)
 	ret := m.Func.Call(in)
@@ -480,9 +476,8 @@ func (c *Cascade) close(vId string, in []reflect.Value) error {
 	if rErr != nil {
 		if e, ok := rErr.(error); ok && e != nil {
 			return e
-		} else {
-			return unknownErrorOccurred
 		}
+		return errUnknownErrorOccurred
 	}
 	return nil
 }
@@ -490,15 +485,15 @@ func (c *Cascade) close(vId string, in []reflect.Value) error {
 func (c *Cascade) sendExitSignal(sorted []*structures.Vertex) {
 	for _, v := range sorted {
 		// get result by vertex ID
-		tmp := c.results[v.Id]
+		tmp := c.results[v.ID]
 		if tmp == nil {
 			continue
 		}
 		// send exit signal to the goroutine in sorted order
-		c.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", tmp.vertexId))
+		c.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", tmp.vertexID))
 		tmp.exit <- struct{}{}
 
-		c.results[v.Id] = nil
+		c.results[v.ID] = nil
 	}
 }
 
@@ -509,21 +504,21 @@ func (c *Cascade) sendResultToUser(res *result) {
 			Code:  0,
 			Stack: nil,
 		},
-		VertexID: res.vertexId,
+		VertexID: res.vertexID,
 	}
 }
 
 func (c *Cascade) shutdown(n *structures.DllNode) {
 	nCopy := n
 	for nCopy != nil {
-		err := c.stop(nCopy.Vertex.Id)
+		err := c.stop(nCopy.Vertex.ID)
 		if err != nil {
 			// TODO do not return until finished
 			// just log the errors
 			// stack it in slice and if slice is not empty, print it ??
-			c.logger.Error("error occurred during the services stopping", zap.String("vertex id", nCopy.Vertex.Id), zap.Error(err))
+			c.logger.Error("error occurred during the services stopping", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
 		}
-		if channel, ok := c.results[nCopy.Vertex.Id]; ok && channel != nil {
+		if channel, ok := c.results[nCopy.Vertex.ID]; ok && channel != nil {
 			channel.exit <- struct{}{}
 		}
 
@@ -541,25 +536,25 @@ func (c *Cascade) serve(n *structures.DllNode) error {
 
 	res := c.callServeFn(n.Vertex, in)
 	if res != nil {
-		c.results[res.vertexId] = res
+		c.results[res.vertexID] = res
 	} else {
-		c.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.Id))
-		return errors.New(fmt.Sprintf("nil result returned from the vertex, vertex id: %s", n.Vertex.Id))
+		c.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID))
+		return fmt.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID)
 	}
 
 	c.poll(res)
-	if c.restartedTime[n.Vertex.Id] != nil {
-		*c.restartedTime[n.Vertex.Id] = time.Now()
+	if c.restartedTime[n.Vertex.ID] != nil {
+		*c.restartedTime[n.Vertex.ID] = time.Now()
 	} else {
 		tmp := time.Now()
-		c.restartedTime[n.Vertex.Id] = &tmp
+		c.restartedTime[n.Vertex.ID] = &tmp
 	}
 
 	return nil
 }
 
 func (c *Cascade) checkLeafErrorTime(res *result) bool {
-	return c.restartedTime[res.vertexId] != nil && (*c.restartedTime[res.vertexId]).After(*c.errorTime[res.vertexId])
+	return c.restartedTime[res.vertexID] != nil && c.restartedTime[res.vertexID].After(*c.errorTime[res.vertexID])
 }
 
 // poll is used to poll the errors from the vertex
@@ -574,15 +569,15 @@ func (c *Cascade) poll(r *result) {
 				if e != nil {
 					// set error time
 					c.rwMutex.Lock()
-					if c.errorTime[res.vertexId] != nil {
-						*c.errorTime[res.vertexId] = time.Now()
+					if c.errorTime[res.vertexID] != nil {
+						*c.errorTime[res.vertexID] = time.Now()
 					} else {
 						tmp := time.Now()
-						c.errorTime[res.vertexId] = &tmp
+						c.errorTime[res.vertexID] = &tmp
 					}
 					c.rwMutex.Unlock()
 
-					c.logger.Error("error processed in poll", zap.String("vertex id", res.vertexId), zap.Error(e))
+					c.logger.Error("error processed in poll", zap.String("vertex id", res.vertexID), zap.Error(e))
 
 					// set the error
 					res.err = e
@@ -593,10 +588,10 @@ func (c *Cascade) poll(r *result) {
 			// exit from the goroutine
 			case <-res.exit:
 				c.rwMutex.Lock()
-				c.logger.Info("got exit signal", zap.String("vertex id", res.vertexId))
-				err := c.stop(res.vertexId)
+				c.logger.Info("got exit signal", zap.String("vertex id", res.vertexID))
+				err := c.stop(res.vertexID)
 				if err != nil {
-					c.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexId), zap.Error(err))
+					c.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexID), zap.Error(err))
 					c.rwMutex.Unlock()
 				}
 				c.rwMutex.Unlock()
@@ -609,7 +604,7 @@ func (c *Cascade) poll(r *result) {
 func (c *Cascade) register(name string, vertex interface{}, order int) error {
 	// check the vertex
 	if c.graph.HasVertex(name) {
-		return vertexAlreadyExists(name)
+		return errVertexAlreadyExists(name)
 	}
 
 	meta := structures.Meta{
@@ -630,7 +625,7 @@ func (c *Cascade) backoffInit(v *structures.Vertex) func() error {
 
 		err := c.callInitFn(init, v)
 		if err != nil {
-			c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.Id), zap.Error(err))
+			c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.ID), zap.Error(err))
 			return err
 		}
 
@@ -666,7 +661,7 @@ func (c *Cascade) backoffConfigure(n *structures.DllNode) func() error {
 		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
 			err := c.callConfigureFn(n.Vertex, in)
 			if err != nil {
-				c.logger.Error("error configuring the vertex", zap.String("vertex id", n.Vertex.Id), zap.Error(err))
+				c.logger.Error("error configuring the vertex", zap.String("vertex id", n.Vertex.ID), zap.Error(err))
 				return err
 			}
 		}
@@ -707,7 +702,7 @@ func (c *Cascade) restart() error {
 	for nCopy != nil {
 		err := c.configure(nCopy)
 		if err != nil {
-			c.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.Id), zap.Error(err))
+			c.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
 			return err
 		}
 

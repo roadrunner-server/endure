@@ -1,7 +1,6 @@
-package named_registers
+package registers
 
 type Foo10 struct {
-
 }
 
 func (f *Foo10) Init(db DB, db2 DB2) error {
@@ -19,6 +18,6 @@ func (f *Foo10) Stop() error {
 	return nil
 }
 
-func (f *Foo10) Name() string{
+func (f *Foo10) Name() string {
 	return "My name is Foo10, friend!"
 }

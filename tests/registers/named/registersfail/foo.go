@@ -1,7 +1,6 @@
-package named_registers_fail
+package registersfail
 
 type Foo struct {
-
 }
 
 func (f *Foo) Init(db DB) error {
@@ -17,4 +16,3 @@ func (f *Foo) Serve() chan error {
 func (f *Foo) Stop() error {
 	return nil
 }
-

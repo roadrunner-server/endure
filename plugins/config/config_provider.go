@@ -1,7 +1,6 @@
 package config
 
 type Provider struct {
-
 }
 
 func (p *Provider) Init() error {

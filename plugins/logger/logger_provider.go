@@ -1,8 +1,6 @@
 package logger
 
-
 type Provider struct {
-
 }
 
 func (p *Provider) Init() error {

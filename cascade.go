@@ -3,7 +3,10 @@ package cascade
 import (
 	"errors"
 	"net/http"
+
+	// pprof enabled in debug mode
 	_ "net/http/pprof"
+
 	"reflect"
 	"sync"
 	"time"
@@ -187,12 +190,12 @@ func (c *Cascade) Register(vertex interface{}) error {
 
 	ok := t.Implements(reflect.TypeOf((*Service)(nil)).Elem())
 	if !ok {
-		return typeNotImplementError
+		return errTypeNotImplementError
 	}
 
 	/* Depender the type
 	Information we know at this step is:
-	1. VertexId
+	1. vertexID
 	2. Vertex structure value (interface)
 	And we fill vertex with this information
 	*/
@@ -203,7 +206,7 @@ func (c *Cascade) Register(vertex interface{}) error {
 	order++
 	/* Add the types, which (if) current vertex provides
 	Information we know at this step is:
-	1. VertexId
+	1. vertexID
 	2. Vertex structure value (interface)
 	3. Provided type
 	4. Provided type String name
@@ -254,7 +257,7 @@ func (c *Cascade) Init() error {
 	return nil
 }
 
-func (c *Cascade) Serve() (error, <-chan *Result) {
+func (c *Cascade) Serve() (<-chan *Result, error) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 	c.startMainThread()
@@ -264,8 +267,8 @@ func (c *Cascade) Serve() (error, <-chan *Result) {
 	for nCopy != nil {
 		err := c.configure(nCopy)
 		if err != nil {
-			c.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.Id), zap.Error(err))
-			return err, nil
+			c.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
+			return nil, err
 		}
 
 		nCopy = nCopy.Next
@@ -275,11 +278,11 @@ func (c *Cascade) Serve() (error, <-chan *Result) {
 	for nCopy != nil {
 		err := c.serve(nCopy)
 		if err != nil {
-			return err, nil
+			return nil, err
 		}
 		nCopy = nCopy.Next
 	}
-	return nil, c.userResultsCh
+	return c.userResultsCh, nil
 }
 
 func (c *Cascade) Stop() error {
@@ -319,18 +322,18 @@ func (c *Cascade) startMainThread() {
 					return
 				}
 
-				c.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexId))
+				c.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexID))
 				if c.checkLeafErrorTime(res) {
-					c.logger.Debug("error processing skipped because vertex already restartedTime by the root", zap.String("vertex id", res.vertexId))
+					c.logger.Debug("error processing skipped because vertex already restartedTime by the root", zap.String("vertex id", res.vertexID))
 					c.sendResultToUser(res)
 					c.rwMutex.Unlock()
 					continue
 				}
 
 				// get vertex from the graph
-				vertex := c.graph.GetVertex(res.vertexId)
+				vertex := c.graph.GetVertex(res.vertexID)
 				if vertex == nil {
-					c.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexId))
+					c.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
 					c.userResultsCh <- &Result{
 						Error:    FailedToGetTheVertex,
 						VertexID: "",
@@ -346,7 +349,7 @@ func (c *Cascade) startMainThread() {
 				// Topologically sort the graph
 				sorted := structures.TopologicalSort(vertices)
 				if sorted == nil {
-					c.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexId))
+					c.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
 					c.userResultsCh <- &Result{
 						Error:    FailedToSortTheGraph,
 						VertexID: "",
@@ -377,10 +380,10 @@ func (c *Cascade) startMainThread() {
 					for headCopy != nil {
 						berr := backoff.Retry(c.backoffInit(headCopy.Vertex), b)
 						if berr != nil {
-							c.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.Id), zap.Error(berr))
+							c.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
 							c.userResultsCh <- &Result{
 								Error:    ErrorDuringInit,
-								VertexID: headCopy.Vertex.Id,
+								VertexID: headCopy.Vertex.ID,
 							}
 							c.rwMutex.Unlock()
 							return
@@ -396,9 +399,9 @@ func (c *Cascade) startMainThread() {
 						if berr != nil {
 							c.userResultsCh <- &Result{
 								Error:    ErrorDuringInit,
-								VertexID: headCopy.Vertex.Id,
+								VertexID: headCopy.Vertex.ID,
 							}
-							c.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.Id), zap.Error(berr))
+							c.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
 							c.rwMutex.Unlock()
 							return
 						}
@@ -413,9 +416,9 @@ func (c *Cascade) startMainThread() {
 						if err != nil {
 							c.userResultsCh <- &Result{
 								Error:    ErrorDuringServe,
-								VertexID: headCopy.Vertex.Id,
+								VertexID: headCopy.Vertex.ID,
 							}
-							c.logger.Error("fatal error during the serve in the main thread", zap.String("vertex id", headCopy.Vertex.Id), zap.Error(err))
+							c.logger.Error("fatal error during the serve in the main thread", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(err))
 							c.rwMutex.Unlock()
 							return
 						}

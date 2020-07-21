@@ -26,7 +26,7 @@ type result struct {
 	// error from the channel
 	err error
 	// unique vertex id
-	vertexId string
+	vertexID string
 	// signal to the vertex goroutine to exit
 	exit chan struct{}
 	// internal exit, used to notify main thread to release resources
@@ -56,7 +56,7 @@ type (
 
 	// internal container interface
 	container interface {
-		Serve() (error, <-chan *Result)
+		Serve() (<-chan *Result, error)
 		Stop() error
 		restart() error
 		Register(service interface{}) error

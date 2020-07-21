@@ -52,7 +52,7 @@ type DepsEntry struct {
 // since we can have cyclic dependencies
 // when we traverse the VerticesMap, we should mark nodes as Visited or not to detect cycle
 type Vertex struct {
-	Id string
+	ID string
 	// Vertex
 	Iface interface{}
 	// Meta information about current Vertex
@@ -136,7 +136,7 @@ func (g *Graph) HasVertex(name string) bool {
 AddDepRev doing the following:
 1. Get a vertexID (foo2.S2 for example)
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
-3. Need to find VertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
+3. Need to find vertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
 func (g *Graph) AddDep(vertexID, depID string, method Kind, isRef bool, typeKind reflect.Kind) error {
 	switch typeKind {
@@ -179,8 +179,8 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 
 		//append depID vertex
 		for j := 0; j < len(depVertices[i].Dependencies); j++ {
-			tmpId := depVertices[i].Dependencies[i].Id
-			if tmpId == vertex.Id {
+			tmpID := depVertices[i].Dependencies[i].ID
+			if tmpID == vertex.ID {
 				return nil
 			}
 		}
@@ -253,8 +253,8 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 
 	// append depID vertex
 	for i := 0; i < len(depVertex.Dependencies); i++ {
-		tmpId := depVertex.Dependencies[i].Id
-		if tmpId == vertex.Id {
+		tmpID := depVertex.Dependencies[i].ID
+		if tmpID == vertex.ID {
 			return nil
 		}
 	}
@@ -289,30 +289,30 @@ func (g *Graph) depthFirstSearch(deps []*Vertex, tmp map[string]*Vertex) {
 		deps[i].Visited = false
 		deps[i].Visiting = false
 		deps[i].NumOfDeps = len(deps)
-		tmp[deps[i].Id] = deps[i]
+		tmp[deps[i].ID] = deps[i]
 		g.depthFirstSearch(deps[i].Dependencies, tmp)
 	}
 }
 
-func (g *Graph) AddVertex(vertexId string, vertexIface interface{}, meta Meta) {
-	g.VerticesMap[vertexId] = &Vertex{
-		Id:           vertexId,
+func (g *Graph) AddVertex(vertexID string, vertexIface interface{}, meta Meta) {
+	g.VerticesMap[vertexID] = &Vertex{
+		ID:           vertexID,
 		Iface:        vertexIface,
 		Meta:         meta,
 		Dependencies: nil,
 	}
-	g.Vertices = append(g.Vertices, g.VerticesMap[vertexId])
+	g.Vertices = append(g.Vertices, g.VerticesMap[vertexID])
 }
 
 func (g *Graph) GetVertex(id string) *Vertex {
 	return g.VerticesMap[id]
 }
 
-func (g *Graph) FindProviders(depId string) []*Vertex {
+func (g *Graph) FindProviders(depID string) []*Vertex {
 	ret := make([]*Vertex, 0, 2)
 	for i := 0; i < len(g.Vertices); i++ {
-		for providerId := range g.Vertices[i].Provides {
-			if depId == providerId {
+		for providerID := range g.Vertices[i].Provides {
+			if depID == providerID {
 				ret = append(ret, g.Vertices[i])
 			}
 		}

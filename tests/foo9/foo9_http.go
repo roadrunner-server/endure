@@ -5,10 +5,10 @@ import (
 )
 
 type Foo9 struct {
-	mdwr []HttpMiddleware
+	mdwr []HTTPMiddleware
 }
 
-type HttpMiddleware interface {
+type HTTPMiddleware interface {
 	AddMiddleware(h http.Handler) http.HandlerFunc
 }
 
@@ -36,7 +36,7 @@ func (f9 *Foo9) Depends() []interface{} {
 	}
 }
 
-func (f9 *Foo9) AddMiddleware(m HttpMiddleware) error {
+func (f9 *Foo9) AddMiddleware(m HTTPMiddleware) error {
 	f9.mdwr = append(f9.mdwr, m)
 	return nil
 }

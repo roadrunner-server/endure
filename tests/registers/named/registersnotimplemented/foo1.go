@@ -1,11 +1,8 @@
-package named_registers_fail
+package registersnotimplemented
+
+import "github.com/spiral/cascade"
 
 type Foo1 struct {
-
-}
-
-type S struct {
-
 }
 
 type DB struct {
@@ -35,8 +32,8 @@ func (f *Foo1) Provides() []interface{} {
 // this is the same type but different packages
 // foo10 invokes foo11
 // foo11 should get the foo10 name or provide vertex id
-func (f *Foo1) ProvideDB(s S) (*DB, error) {
+func (f *Foo1) ProvideDB(name cascade.Named) (*DB, error) {
 	return &DB{
-		Name: "",
+		Name: name.Name(),
 	}, nil
 }

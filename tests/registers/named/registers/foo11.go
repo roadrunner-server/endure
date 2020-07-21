@@ -1,9 +1,8 @@
-package named_registers
+package registers
 
 import "github.com/spiral/cascade"
 
 type Foo11 struct {
-
 }
 
 type DB struct {
@@ -13,7 +12,6 @@ type DB struct {
 type DB2 struct {
 	Name string
 }
-
 
 func (f *Foo11) Init() error {
 	return nil
