@@ -11,8 +11,6 @@ func (s *S5Interface) Init(fooer foo6.FooReader) error {
 	return nil
 }
 
-
-
 func (s *S5Interface) Configure() error {
 	return nil
 }

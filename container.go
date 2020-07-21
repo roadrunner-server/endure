@@ -26,7 +26,7 @@ type result struct {
 	// error from the channel
 	err error
 	// unique vertex id
-	vertexId string
+	vertexID string
 	// signal to the vertex goroutine to exit
 	exit chan struct{}
 	// internal exit, used to notify main thread to release resources
@@ -34,13 +34,14 @@ type result struct {
 }
 
 type (
-	// TODO namings
+	// used to gracefully stop and configure the plugins
 	Graceful interface {
 		// Configure is used when we need to make preparation and wait for all services till Serve
 		Configure() error
 		// Close frees resources allocated by the service
 		Close() error
 	}
+	// this is the main service interface with should implement every plugin
 	Service interface {
 		// Serve
 		Serve() chan error
@@ -48,8 +49,14 @@ type (
 		Stop() error
 	}
 
-	Container interface {
-		Serve() (error, <-chan *Result)
+	// Name of the service
+	Named interface {
+		Name() string
+	}
+
+	// internal container interface
+	container interface {
+		Serve() (<-chan *Result, error)
 		Stop() error
 		restart() error
 		Register(service interface{}) error

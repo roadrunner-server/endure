@@ -29,3 +29,7 @@ func (gz *Gzip) Middleware(f http.Handler) http.HandlerFunc {
 		gziphandler.GzipHandler(f).ServeHTTP(w, r)
 	}
 }
+
+func (gz *Gzip) Name() string {
+	return "super Gzip middleware"
+}

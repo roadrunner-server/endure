@@ -39,7 +39,7 @@ func argType(m interface{}) ([]reflect.Type, error) {
 	return out, nil
 }
 
-func functionParameters(r reflect.Method) ([]reflect.Type, error) {
+func functionParameters(r reflect.Method) []reflect.Type {
 	args := make([]reflect.Type, 0)
 	// NumIn returns a function type's input parameter count.
 	// It panics if the type's Kind is not Func.
@@ -50,7 +50,7 @@ func functionParameters(r reflect.Method) ([]reflect.Type, error) {
 		args = append(args, r.Type.In(i))
 	}
 
-	return args, nil
+	return args
 }
 
 func getFunctionName(i interface{}) string {

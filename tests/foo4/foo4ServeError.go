@@ -10,7 +10,6 @@ import (
 type S4ServeError struct {
 }
 
-
 // No deps
 func (s *S4ServeError) Init(s5 foo5.S5) error {
 	return nil
@@ -19,12 +18,12 @@ func (s *S4ServeError) Init(s5 foo5.S5) error {
 // But provide some
 func (s *S4ServeError) Provides() []interface{} {
 	return []interface{}{
-		s.CreateAnotherDb,
+		s.CreateAnotherDB,
 	}
 }
 
 // this is the same type but different packages
-func (s *S4ServeError) CreateAnotherDb() (*DB, error) {
+func (s *S4ServeError) CreateAnotherDB() (*DB, error) {
 	return &DB{
 		Name: "",
 	}, nil

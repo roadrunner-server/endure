@@ -15,12 +15,12 @@ func (s *S4V) Init() error {
 // But provide some
 func (s *S4V) Provides() []interface{} {
 	return []interface{}{
-		s.CreateAnotherDb,
+		s.CreateAnotherDB,
 	}
 }
 
 // this is the same type but different packages
-func (s *S4V) CreateAnotherDb() (DBV, error) {
+func (s *S4V) CreateAnotherDB() (DBV, error) {
 	return DBV{
 		Name: "",
 	}, nil

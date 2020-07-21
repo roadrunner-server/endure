@@ -50,6 +50,10 @@ func (db *DB) Stop() error {
 	return nil
 }
 
+func (db *DB) Name() string {
+	return "super DATABASE service"
+}
+
 /////////////// DB LAYER /////////////////
 
 

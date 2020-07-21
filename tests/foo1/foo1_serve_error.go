@@ -8,7 +8,6 @@ import (
 type S1ServeErr struct {
 }
 
-
 // No deps
 func (s *S1ServeErr) Init(s2 *foo2.S2, db *foo4.DB) error {
 	return nil

@@ -70,7 +70,7 @@ func (c *Cascade) addEdges() error {
 
 		/* Add the dependencies (if) which this vertex needs to init
 		Information we know at this step is:
-		1. VertexId
+		1. vertexID
 		2. Vertex structure value (interface)
 		3. Provided type
 		4. Provided type String name
@@ -171,10 +171,7 @@ func (c *Cascade) addDependersDeps(vertexID string, vertex interface{}) error {
 
 func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error {
 	// S2 init args
-	initArgs, err := functionParameters(initMethod)
-	if err != nil {
-		return err
-	}
+	initArgs := functionParameters(initMethod)
 
 	// iterate over all function parameters
 	for _, initArg := range initArgs {
@@ -196,7 +193,7 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 					}
 					tmpIsRef := isReference(initArg)
 					tmpValue := reflect.ValueOf(c.graph.Vertices[i].Iface)
-					err = c.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
+					err := c.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
 					if err != nil {
 						return err
 					}
@@ -204,7 +201,7 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 			}
 		}
 
-		err = c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg), initArg.Kind())
+		err := c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg), initArg.Kind())
 		if err != nil {
 			return err
 		}

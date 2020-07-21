@@ -89,7 +89,6 @@ func (dll *DoublyLinkedList) InsertAfter(node, nodeToInsert *DllNode) {
 	node.Next = nodeToInsert
 }
 
-
 func (dll *DoublyLinkedList) Remove(node *DllNode) {
 	if node == dll.Head {
 		dll.Head = dll.Head.Next

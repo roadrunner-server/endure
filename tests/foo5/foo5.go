@@ -12,8 +12,6 @@ func (s *S5) Init() error {
 	return nil
 }
 
-
-
 func (s *S5) Configure() error {
 	return nil
 }

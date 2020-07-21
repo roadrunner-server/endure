@@ -10,6 +10,9 @@ import (
 	"github.com/spiral/cascade/tests/foo7"
 	"github.com/spiral/cascade/tests/foo8"
 	"github.com/spiral/cascade/tests/foo9"
+	"github.com/spiral/cascade/tests/registers/named/randominterface"
+	"github.com/spiral/cascade/tests/registers/named/registers"
+	"github.com/spiral/cascade/tests/registers/named/registersfail"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/spiral/cascade"
@@ -31,7 +34,7 @@ func TestCascade_Init_OK(t *testing.T) {
 	assert.NoError(t, c.Register(&foo6.S6Interface{}))
 	assert.NoError(t, c.Init())
 
-	err, res := c.Serve()
+	res, err := c.Serve()
 	assert.NoError(t, err)
 
 	go func() {
@@ -60,7 +63,7 @@ func TestCascade_Interfaces_OK(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err, res := c.Serve()
+	res, err := c.Serve()
 	assert.NoError(t, err)
 
 	go func() {
@@ -85,7 +88,7 @@ func TestCascade_Init_1_Element(t *testing.T) {
 	assert.NoError(t, c.Register(&foo1.S1One{}))
 	assert.NoError(t, c.Init())
 
-	err, res := c.Serve()
+	res, err := c.Serve()
 	assert.NoError(t, err)
 
 	go func() {
@@ -111,7 +114,7 @@ func TestCascade_ProvidedValueButNeedPointer(t *testing.T) {
 	assert.NoError(t, c.Register(&foo4.S4V{}))
 	assert.NoError(t, c.Init())
 
-	err, res := c.Serve()
+	res, err := c.Serve()
 	assert.NoError(t, err)
 
 	go func() {
@@ -152,7 +155,7 @@ func TestCascade_Serve_Err(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err, res := c.Serve()
+	res, err := c.Serve()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +195,7 @@ func TestCascade_Serve_Retry_Err(t *testing.T) {
 	assert.NoError(t, c.Register(&foo1.S1ServeErr{})) // should produce an error during the Serve
 	assert.NoError(t, c.Init())
 
-	err, res := c.Serve()
+	res, err := c.Serve()
 	assert.NoError(t, err)
 
 	// we can't be sure, what node will be processed first
@@ -243,7 +246,7 @@ func TestCascade_Serve_Retry_100_Err(t *testing.T) {
 	assert.NoError(t, c.Register(&foo1.S1ServeErr{})) // should produce an error during the Serve
 	assert.NoError(t, c.Init())
 
-	err, res := c.Serve()
+	res, err := c.Serve()
 	assert.NoError(t, err)
 
 	// we can't be sure, what node will be processed first
@@ -291,7 +294,7 @@ func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
 	assert.NoError(t, c.Register(&foo1.S1ServeErr{})) // should produce an error during the Serve
 	assert.NoError(t, c.Init())
 
-	err, res := c.Serve()
+	res, err := c.Serve()
 	assert.NoError(t, err)
 
 	// we can't be sure, what node will be processed first
@@ -339,7 +342,6 @@ func TestCascade_PrimitiveType_Err(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-
 func TestCascade_InterfacesDepends_Ok(t *testing.T) {
 	c, err := cascade.NewContainer(cascade.DebugLevel)
 	assert.NoError(t, err)
@@ -350,9 +352,58 @@ func TestCascade_InterfacesDepends_Ok(t *testing.T) {
 
 	assert.NoError(t, c.Init())
 
-	err, _ = c.Serve()
+	_, err = c.Serve()
 	assert.NoError(t, err)
 
+	assert.NoError(t, c.Stop())
+}
+
+func TestCascade_NamedProvides_Ok(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&registers.Foo11{}))
+	assert.NoError(t, c.Register(&registers.Foo10{}))
+
+	assert.NoError(t, c.Init())
+
+	_, err = c.Serve()
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Stop())
+}
+
+func TestCascade_NamedProvides_NotImplement_Ok(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&randominterface.Foo1{}))
+	assert.NoError(t, c.Register(&randominterface.Foo{}))
+
+	assert.NoError(t, c.Init())
+
+	_, err = c.Serve()
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Stop())
+}
+
+func TestCascade_NamedProvides_WrongType_Fail(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			println("test should panic")
+		}
+	}()
+	c, err := cascade.NewContainer(cascade.DebugLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&registersfail.Foo1{}))
+	assert.NoError(t, c.Register(&registersfail.Foo{}))
+
+	assert.Error(t, c.Init())
+
+	_, err = c.Serve()
+	assert.NoError(t, err)
 
 	assert.NoError(t, c.Stop())
 }

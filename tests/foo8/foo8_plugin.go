@@ -3,7 +3,6 @@ package foo8
 import "net/http"
 
 type Foo8 struct {
-
 }
 
 func (f8 *Foo8) Init() error {

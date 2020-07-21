@@ -19,12 +19,12 @@ func (s *S4) Init(foo5 foo5.S5) error {
 // But provide some
 func (s *S4) Provides() []interface{} {
 	return []interface{}{
-		s.CreateAnotherDb,
+		s.CreateAnotherDB,
 	}
 }
 
 // this is the same type but different packages
-func (s *S4) CreateAnotherDb() (*DB, error) {
+func (s *S4) CreateAnotherDB() (*DB, error) {
 	return &DB{
 		Name: "",
 	}, nil
