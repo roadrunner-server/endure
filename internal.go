@@ -294,12 +294,12 @@ func (t TmpStr) Name() string {
 	return t.N
 }
 
-func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value, calleeVertex string) error {
+func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value, callerID string) error {
 	// to index function name in defer
 	i := 0
 	defer func() {
 		if r := recover(); r != nil {
-			c.logger.Fatal("panic during the function call", zap.String("function name", v.Meta.FnsProviderToInvoke[i]), zap.String("error", fmt.Sprint(r)))
+			c.logger.Error("panic during the function call", zap.String("function name", v.Meta.FnsProviderToInvoke[i]), zap.String("error", fmt.Sprint(r)))
 		}
 	}()
 	// type implements Provider interface
@@ -312,7 +312,7 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value,
 			for i = 0; i < len(v.Meta.FnsProviderToInvoke); i++ {
 				m, ok := reflect.TypeOf(v.Iface).MethodByName(v.Meta.FnsProviderToInvoke[i])
 				if !ok {
-					c.logger.Fatal("should implement the Provider interface", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
+					c.logger.Panic("should implement the Provider interface", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
 				}
 
 				/*
@@ -330,32 +330,29 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value,
 				if m.Func.Type().NumIn() > 1 {
 					/*
 						here we should add type which implement Named interface
-						at the moment we seek for implementation in the calleeVertex only
+						at the moment we seek for implementation in the callerID only
 					*/
 
-					calleeV := c.graph.GetVertex(calleeVertex)
-					if calleeV == nil {
-						return errors.New("callee vertex is nil")
+					callerV := c.graph.GetVertex(callerID)
+					if callerV == nil {
+						return errors.New("caller vertex is nil")
 					}
 
-					// check for interface implementation
-					if reflect.TypeOf(calleeV.Iface).Implements(reflect.TypeOf((*Named)(nil)).Elem()) {
-						inCopy = append(inCopy, reflect.ValueOf(calleeV.Iface))
-					} else {
-						// if NumIn parameters is exactly 2 (receiver and Named interface)
-						// but callee does not implement Named interface, we construct such interface
-						// and provide vertexID as Name
-						if m.Func.Type().NumIn() == 2 && m.Func.Type().In(1) == reflect.TypeOf((*Named)(nil)).Elem() {
-							// temporary struct
-							s := TmpStr{
-								N: calleeV.ID,
-							}
-
-							// append temporary struct with Named interface implementation and with vertexID as a Name() string
-							inCopy = append(inCopy, reflect.ValueOf(s))
-						} else {
-							return errors.New("unknown type in the function")
+					// skip function receiver
+					for j := 1; j < m.Func.Type().NumIn(); j++ {
+						// current function IN type (interface)
+						t := m.Func.Type().In(j)
+						if t.Kind() != reflect.Interface {
+							c.logger.Panic("Provider accepts only interfaces", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
 						}
+
+						// if Caller struct implements interface -- ok, add it to the inCopy list
+						// else panic
+						if reflect.TypeOf(callerV.Iface).Implements(t) == false {
+							c.logger.Panic("Caller should implement callee interface", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
+						}
+
+						inCopy = append(inCopy, reflect.ValueOf(callerV.Iface))
 					}
 				}
 

@@ -10,9 +10,9 @@ import (
 	"github.com/spiral/cascade/tests/foo7"
 	"github.com/spiral/cascade/tests/foo8"
 	"github.com/spiral/cascade/tests/foo9"
+	"github.com/spiral/cascade/tests/registers/named/randominterface"
 	"github.com/spiral/cascade/tests/registers/named/registers"
 	"github.com/spiral/cascade/tests/registers/named/registersfail"
-	"github.com/spiral/cascade/tests/registers/named/registersnotimplemented"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/spiral/cascade"
@@ -377,8 +377,8 @@ func TestCascade_NamedProvides_NotImplement_Ok(t *testing.T) {
 	c, err := cascade.NewContainer(cascade.DebugLevel)
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&registersnotimplemented.Foo1{}))
-	assert.NoError(t, c.Register(&registersnotimplemented.Foo{}))
+	assert.NoError(t, c.Register(&randominterface.Foo1{}))
+	assert.NoError(t, c.Register(&randominterface.Foo{}))
 
 	assert.NoError(t, c.Init())
 
@@ -389,6 +389,11 @@ func TestCascade_NamedProvides_NotImplement_Ok(t *testing.T) {
 }
 
 func TestCascade_NamedProvides_WrongType_Fail(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			println("test should panic")
+		}
+	}()
 	c, err := cascade.NewContainer(cascade.DebugLevel)
 	assert.NoError(t, err)
 

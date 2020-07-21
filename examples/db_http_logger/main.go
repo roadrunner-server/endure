@@ -43,7 +43,7 @@ func main() {
 		panic(err)
 	}
 
-	err, errCh := container.Serve()
+	errCh, err := container.Serve()
 	if err != nil {
 		panic(err)
 	}

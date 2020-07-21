@@ -145,3 +145,7 @@ func (h *Http) insert(writer http.ResponseWriter, request *http.Request) {
 	h.db.Insert()
 	writer.WriteHeader(http.StatusOK)
 }
+
+func (h *Http) Name() string {
+	return "super http service"
+}

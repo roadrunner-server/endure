@@ -2,6 +2,8 @@ package logger
 
 import (
 	"fmt"
+
+	"github.com/spiral/cascade"
 )
 
 type Logger struct {
@@ -29,3 +31,13 @@ func (l *Logger) Stop() error {
 	return nil
 }
 
+func (l *Logger) Provides() []interface{} {
+	return []interface{}{
+		l.LoggerInstance,
+	}
+}
+
+func (l *Logger) LoggerInstance(name cascade.Named) (*Logger, error) {
+	println(name.Name() + " invoke " + "logger")
+	return l, nil
+}

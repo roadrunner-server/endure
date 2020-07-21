@@ -34,3 +34,7 @@ func (h *Headers) Middleware(f http.Handler) http.HandlerFunc {
 		f.ServeHTTP(w, r)
 	}
 }
+
+func (h *Headers) Name() string {
+	return "super Headers middleware"
+}
