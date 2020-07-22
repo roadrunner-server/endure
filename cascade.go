@@ -232,7 +232,8 @@ func (c *Cascade) Init() error {
 	sortedVertices := structures.TopologicalSort(c.graph.Vertices)
 
 	if len(sortedVertices) == 0 {
-		c.logger.Panic("graph should contain at least 1 vertex")
+		c.logger.Error("graph should contain at least 1 vertex, might be you forget to invoke Registers?")
+		return errors.New("graph should contain at least 1 vertex, might be you forget to invoke registers")
 	}
 	// 0 element is the HEAD
 	c.runList.SetHead(&structures.DllNode{

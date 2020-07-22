@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spiral/cascade/tests/backofftimertest"
+	"github.com/spiral/cascade/tests/dependers/returnerr"
 	"github.com/spiral/cascade/tests/foo5"
 	"github.com/spiral/cascade/tests/foo6"
 	"github.com/spiral/cascade/tests/foo7"
@@ -22,6 +24,45 @@ import (
 	"github.com/spiral/cascade/tests/foo3"
 	"github.com/spiral/cascade/tests/foo4"
 )
+
+func TestCascade_NoRegisterInvoke(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+	assert.NoError(t, err)
+
+	assert.Error(t, c.Init())
+
+	_, _ = c.Serve()
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Stop())
+}
+
+func TestCascade_DependerFuncReturnError(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&returnerr.FooDep{}))
+	assert.NoError(t, c.Register(&returnerr.FooDep2{}))
+	assert.Error(t, c.Init())
+
+	_, _ = c.Serve()
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Stop())
+}
+
+func TestCascade_BackoffTimers(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true), cascade.SetBackoffTimes(time.Second, time.Second * 5))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&backofftimertest.Foo{}))
+	assert.Error(t, c.Init())
+
+	_, _ = c.Serve()
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Stop())
+}
 
 func TestCascade_PrimitiveTypes(t *testing.T) {
 	defer func() {

@@ -158,7 +158,7 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 	// vertex should always present
 	vertex := g.GetVertex(vertexID)
 	if vertex == nil {
-		panic("vertex should be in the graph")
+		return errors.New("vertex should be in the graph")
 	}
 
 	// here can be a lot of deps

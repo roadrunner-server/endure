@@ -64,13 +64,13 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 		for i := 0; i < len(vertex.Meta.DepsList); i++ {
 			// Interface dependency
 			if vertex.Meta.DepsList[i].Kind == reflect.Interface {
-				err := c.traverseCallDependersInterface(vertex)
+				err = c.traverseCallDependersInterface(vertex)
 				if err != nil {
 					return err
 				}
 			} else {
 				// structure dependence
-				err := c.traverseCallDependers(vertex)
+				err = c.traverseCallDependers(vertex)
 				if err != nil {
 					return err
 				}
@@ -206,11 +206,11 @@ func (c *Cascade) callDependerFns(vertex *structures.Vertex, in []reflect.Value)
 				ret := m.Func.Call(in)
 				// handle error
 				if len(ret) > 0 {
-					// error is the last return parameter
+					// error is the last return parameter in line
 					rErr := ret[len(ret)-1].Interface()
 					if rErr != nil {
 						if e, ok := rErr.(error); ok && e != nil {
-							c.logger.Error("error calling Registers", zap.String("vertex id", vertex.ID), zap.Error(e))
+							c.logger.Error("error calling DependerFns", zap.String("vertex id", vertex.ID), zap.Error(e))
 							return e
 						}
 						return errUnknownErrorOccurred
