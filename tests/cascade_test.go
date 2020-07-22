@@ -52,7 +52,7 @@ func TestCascade_DependerFuncReturnError(t *testing.T) {
 }
 
 func TestCascade_BackoffTimers(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true), cascade.SetBackoffTimes(time.Second, time.Second * 5))
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true), cascade.SetBackoffTimes(time.Second, time.Second*5))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&backofftimertest.Foo{}))

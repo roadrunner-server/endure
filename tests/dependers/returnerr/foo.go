@@ -29,7 +29,6 @@ func (f *FooDep) AddService(dep2 FooDep2) error {
 	return errors.New("test dependers error")
 }
 
-
 type FooDep2 struct {
 }
 
