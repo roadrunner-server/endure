@@ -53,11 +53,8 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 			1. removePointerAsterisk to have uniform way of adding and searching the function args
 			2. if value already exists, AddProvider will replace it with new one
 		*/
-		err := vertex.AddProvider(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()), in[0].Kind())
-		if err != nil {
-			c.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("parameter", in[0].Type().String()))
-			return err
-		}
+		vertex.AddProvider(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()), in[0].Kind())
+		c.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("parameter", in[0].Type().String()))
 	} else {
 		c.logger.Error("0 or less parameters for Init", zap.String("vertex id", vertex.ID))
 		return errors.New("0 or less parameters for Init")
@@ -112,7 +109,6 @@ func (c *Cascade) traverseCallDependersInterface(vertex *structures.Vertex) erro
 				inInterface = append(inInterface, reflect.ValueOf(vertex.Iface))
 				// if type provides needed type
 				// value - reference and init dep also reference
-
 				switch {
 				case *vertexVal.IsReference == *vertex.Meta.DepsList[i].IsReference:
 					inInterface = append(inInterface, *vertexVal.Value)
@@ -257,62 +253,59 @@ func (c *Cascade) traverseProviders(depsEntry structures.DepsEntry, depVertex *s
 	}
 
 	// to index function name in defer
-	for providerID, val := range depVertex.Provides {
+	for providerID, providedEntry := range depVertex.Provides {
 		if providerID == depID {
-			switch {
-			case *val.IsReference == *depsEntry.IsReference:
-				in = append(in, *val.Value)
-			case *val.IsReference:
-				// same type, but difference in the refs
-				// Init needs to be a value
-				// But Vertex provided reference
-				in = append(in, val.Value.Elem())
-			case !*val.IsReference:
-				// vice versa
-				// Vertex provided value
-				// but Init needs to be a reference
-				if val.Value.CanAddr() {
-					in = append(in, val.Value.Addr())
-				} else {
-					c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type()), zap.String("type", val.Value.Type().String()))
-					c.logger.Warn("making a fresh pointer")
-					nt := reflect.New(val.Value.Type())
-					in = append(in, nt)
-				}
-			}
+			in = c.appendProviderFuncArgs(depsEntry, providedEntry, in)
 		}
 	}
 
 	return in, nil
 }
 
-type TmpStr struct {
-	N string
+func (c *Cascade) appendProviderFuncArgs(depsEntry structures.DepsEntry, providedEntry structures.ProvidedEntry, in []reflect.Value) []reflect.Value {
+	switch {
+	case *providedEntry.IsReference == *depsEntry.IsReference:
+		in = append(in, *providedEntry.Value)
+	case *providedEntry.IsReference:
+		// same type, but difference in the refs
+		// Init needs to be a value
+		// But Vertex provided reference
+		in = append(in, providedEntry.Value.Elem())
+	case !*providedEntry.IsReference:
+		// vice versa
+		// Vertex provided value
+		// but Init needs to be a reference
+		if providedEntry.Value.CanAddr() {
+			in = append(in, providedEntry.Value.Addr())
+		} else {
+			c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", providedEntry.Value.Type()), zap.String("type", providedEntry.Value.Type().String()))
+			c.logger.Warn("making a fresh pointer")
+			nt := reflect.New(providedEntry.Value.Type())
+			in = append(in, nt)
+		}
+	}
+	return in
 }
 
-func (t TmpStr) Name() string {
-	return t.N
-}
-
-func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value, callerID string) error {
+func (c *Cascade) traverseCallProvider(vertex *structures.Vertex, in []reflect.Value, callerID string) error {
 	// to index function name in defer
 	i := 0
 	defer func() {
 		if r := recover(); r != nil {
-			c.logger.Error("panic during the function call", zap.String("function name", v.Meta.FnsProviderToInvoke[i]), zap.String("error", fmt.Sprint(r)))
+			c.logger.Error("panic during the function call", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]), zap.String("error", fmt.Sprint(r)))
 		}
 	}()
 	// type implements Provider interface
-	if reflect.TypeOf(v.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
+	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
 		// if type implements Provider() it should has FnsProviderToInvoke
-		if v.Meta.FnsProviderToInvoke != nil {
+		if vertex.Meta.FnsProviderToInvoke != nil {
 			// go over all function to invoke
 			// invoke it
 			// and save its return values
-			for i = 0; i < len(v.Meta.FnsProviderToInvoke); i++ {
-				m, ok := reflect.TypeOf(v.Iface).MethodByName(v.Meta.FnsProviderToInvoke[i])
+			for i = 0; i < len(vertex.Meta.FnsProviderToInvoke); i++ {
+				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsProviderToInvoke[i])
 				if !ok {
-					c.logger.Panic("should implement the Provider interface", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
+					c.logger.Panic("should implement the Provider interface", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
 				}
 
 				/*
@@ -343,13 +336,13 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value,
 						// current function IN type (interface)
 						t := m.Func.Type().In(j)
 						if t.Kind() != reflect.Interface {
-							c.logger.Panic("Provider accepts only interfaces", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
+							c.logger.Panic("Provider accepts only interfaces", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
 						}
 
 						// if Caller struct implements interface -- ok, add it to the inCopy list
 						// else panic
 						if reflect.TypeOf(callerV.Iface).Implements(t) == false {
-							c.logger.Panic("Caller should implement callee interface", zap.String("function name", v.Meta.FnsProviderToInvoke[i]))
+							c.logger.Panic("Caller should implement callee interface", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
 						}
 
 						inCopy = append(inCopy, reflect.ValueOf(callerV.Iface))
@@ -362,17 +355,15 @@ func (c *Cascade) traverseCallProvider(v *structures.Vertex, in []reflect.Value,
 					rErr := ret[1].Interface()
 					if rErr != nil {
 						if e, ok := rErr.(error); ok && e != nil {
-							c.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", v.ID))
+							c.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
 							return e
 						}
 						return errUnknownErrorOccurred
 					}
 
 					// add the value to the Providers
-					err := v.AddProvider(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()), in[0].Kind())
-					if err != nil {
-						return err
-					}
+					c.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("caller id", callerID), zap.String("parameter", in[0].Type().String()))
+					vertex.AddProvider(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()), in[0].Kind())
 				} else {
 					return errors.New("provider should return Value and error types")
 				}

@@ -79,7 +79,7 @@ type ProvidedEntry struct {
 	Kind        reflect.Kind
 }
 
-func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, kind reflect.Kind) error {
+func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, kind reflect.Kind) {
 	if v.Provides == nil {
 		v.Provides = make(map[string]ProvidedEntry)
 	}
@@ -90,7 +90,6 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 		Value:       &value,
 		Kind:        kind,
 	}
-	return nil
 }
 
 // NewAL initializes adjacency list to store the VerticesMap

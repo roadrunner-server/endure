@@ -43,11 +43,6 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 						IsReference: &tmpIsRef,
 						Value:       &tmpValue,
 					}
-				} else {
-					gVertex.Provides[typeStr] = structures.ProvidedEntry{
-						IsReference: nil,
-						Value:       nil,
-					}
 				}
 			} else {
 				gVertex.Provides[typeStr] = structures.ProvidedEntry{
@@ -130,10 +125,7 @@ func (c *Cascade) addDependersDeps(vertexID string, vertex interface{}) error {
 						if reflect.TypeOf(c.graph.Vertices[i].Iface).Implements(at) {
 							tmpIsRef := isReference(at)
 							tmpValue := reflect.ValueOf(c.graph.Vertices[i].Iface)
-							err = c.graph.Vertices[i].AddProvider(removePointerAsterisk(atStr), tmpValue, tmpIsRef, at.Kind())
-							if err != nil {
-								return err
-							}
+							c.graph.Vertices[i].AddProvider(removePointerAsterisk(atStr), tmpValue, tmpIsRef, at.Kind())
 						}
 					}
 				}
@@ -193,10 +185,7 @@ func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error 
 					}
 					tmpIsRef := isReference(initArg)
 					tmpValue := reflect.ValueOf(c.graph.Vertices[i].Iface)
-					err := c.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
-					if err != nil {
-						return err
-					}
+					c.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
 				}
 			}
 		}

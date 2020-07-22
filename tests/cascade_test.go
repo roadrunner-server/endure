@@ -10,6 +10,7 @@ import (
 	"github.com/spiral/cascade/tests/foo7"
 	"github.com/spiral/cascade/tests/foo8"
 	"github.com/spiral/cascade/tests/foo9"
+	"github.com/spiral/cascade/tests/primitive"
 	"github.com/spiral/cascade/tests/registers/named/randominterface"
 	"github.com/spiral/cascade/tests/registers/named/registers"
 	"github.com/spiral/cascade/tests/registers/named/registersfail"
@@ -21,6 +22,24 @@ import (
 	"github.com/spiral/cascade/tests/foo3"
 	"github.com/spiral/cascade/tests/foo4"
 )
+
+func TestCascade_PrimitiveTypes(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			println("test should panic")
+		}
+	}()
+	c, err := cascade.NewContainer(cascade.DebugLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&primitive.Foo{}))
+	assert.NoError(t, c.Init())
+
+	_, _ = c.Serve()
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Stop())
+}
 
 func TestCascade_Init_OK(t *testing.T) {
 	c, err := cascade.NewContainer(cascade.DebugLevel)
@@ -326,20 +345,6 @@ func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
 	}()
 
 	wg.Wait()
-}
-
-func TestCascade_PrimitiveType_Err(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			println("test should panic")
-		}
-	}()
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(false))
-	assert.NoError(t, err)
-
-	assert.NoError(t, c.Register(&foo1.S1Pr{}))
-	assert.Error(t, c.Init())
-	assert.NoError(t, c.Stop())
 }
 
 func TestCascade_InterfacesDepends_Ok(t *testing.T) {
