@@ -317,11 +317,6 @@ func (c *Cascade) startMainThread() {
 					c.rwMutex.Unlock()
 					return
 				}
-				// received signal to exit from main goroutine
-				if res.internalExit == true {
-					c.rwMutex.Unlock()
-					return
-				}
 
 				c.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexID))
 				if c.checkLeafErrorTime(res) {
