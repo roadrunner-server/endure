@@ -78,3 +78,5 @@ Order is the following:
 1. `Init() error` - mandatory to implement. In your structure (which you pass to Cascade), you should have this method as receiver. It can accept as parameter any passed to cascade structure (see sample) or interface (with limitations).  
 2. `Graceful` - optional to implement. Used to configure a vertex before invoking `Serve` method. Has the `Confugure` method which will be invoked after `Init` and `Close` which will be invoked after `Stop` to free some resources for example.
 3. `Service` - mandatory to implement. Has 2 main methods - `Serve` which should return initialized golang channel with errors, and `Stop` to stop the shutdown the Cascade.
+4. `Provider` - optional to implement. Used to provide some dependency if you need to extend your struct.
+5. `Depender` - optional to implement. Used to mark structure (vertex) as some struct dependency. It can accept interfaces which implement caller.
