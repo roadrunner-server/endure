@@ -1,4 +1,4 @@
-# cascade
+# Cascade
 <p align="center">
 	<a href="https://pkg.go.dev/github.com/spiral/cascade?tab=doc"><img src="https://godoc.org/github.com/spiral/cascade?status.svg"></a>
 	<a href="https://github.com/spiral/cascade/actions"><img src="https://github.com/spiral/cascade/workflows/CI/badge.svg" alt=""></a>
@@ -20,21 +20,19 @@ Cascade is an open-source (MIT licensed) plugin container.
 - Automatically restart failing vertices
 
 
-##Installation
+Installation
 ```go
 go get -u github.com/spiral/cascade
 ```
 
-###God damn WHY?
-
+###God damn WHY?  
 Imagine you have an application in which you want to implement plugin system. These plugins can depend on each other (via interfaces or directly).
 For example, we have 3 plugins: HTTP (to communicate with world), DB (to save the world) and logger (to see the progress).  
 In this case, we can't start HTTP before we start all other parts. Also, we need to have logger first. So, the order will be the following:  
 1. Initialize the logger
 2. Initialize the DB
 3. Initialize the HTTP  
-Ok, next we need to start it, and in case of error - restart or stop in reverse order. All you need to do in Cascade is to pass HTTP, DB and logger structs to cascade and implement cascade interface. That's it. Cascade will take care of restarting failing vertices (structs, HTTP for example) with exponential backoff mechanism.
-
+Ok, next we need to start it, and in case of error - restart or stop in reverse order. All you need to do in Cascade is to pass HTTP, DB and logger structs to cascade and implement cascade interface. That's it. Cascade will take care of restarting failing vertices (structs, HTTP for example) with exponential backoff mechanism.  
 ##Cascade interface
 ```go
 package sample
@@ -69,7 +67,7 @@ type (
 	Depender interface {
 		Depends() []interface{}
 	}
-)
+)  
 ```
 Order is the following:
 1. `Init() error` - mandatory to implement. In your structure (which you pass to Cascade), you should have this method as receiver. It can accept as parameter any passed to cascade structure (see sample) or interface (with limitations).  
