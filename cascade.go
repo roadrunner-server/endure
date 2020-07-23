@@ -360,7 +360,7 @@ func (c *Cascade) startMainThread() {
 
 					// Init backoff
 					b := backoff.NewExponentialBackOff()
-					b.MaxInterval = c.maxInterval
+					b.MaxElapsedTime = c.maxInterval
 					b.InitialInterval = c.initialInterval
 
 					affectedRunList := structures.NewDoublyLinkedList()

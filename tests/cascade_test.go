@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spiral/cascade/tests/backofftimertest"
+	"github.com/spiral/cascade/tests/backofftimertest/mainthread"
 	"github.com/spiral/cascade/tests/dependers/returnerr"
 	"github.com/spiral/cascade/tests/foo5"
 	"github.com/spiral/cascade/tests/foo6"
@@ -24,6 +25,126 @@ import (
 	"github.com/spiral/cascade/tests/foo3"
 	"github.com/spiral/cascade/tests/foo4"
 )
+
+func TestCascade_DifferentLogLevels(t *testing.T) {
+	testLog(t, cascade.DebugLevel)
+	testLog(t, cascade.WarnLevel)
+	testLog(t, cascade.InfoLevel)
+	testLog(t, cascade.FatalLevel)
+	testLog(t, cascade.ErrorLevel)
+	testLog(t, cascade.DPanicLevel)
+	testLog(t, cascade.PanicLevel)
+}
+
+func testLog(t *testing.T, level cascade.Level) {
+	c, err := cascade.NewContainer(level)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&foo4.S4{}))
+	assert.NoError(t, c.Register(&foo2.S2{}))
+	assert.NoError(t, c.Register(&foo3.S3{}))
+	assert.NoError(t, c.Register(&foo1.S1{}))
+	assert.NoError(t, c.Register(&foo5.S5{}))
+	assert.NoError(t, c.Register(&foo6.S6Interface{}))
+	assert.NoError(t, c.Init())
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
+
+	go func() {
+		for r := range res {
+			if r.Error.Err != nil {
+				assert.NoError(t, r.Error.Err)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+	assert.NoError(t, c.Stop())
+}
+
+func TestCascade_MainThread_Serve_Backoff(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&mainthread.Foo3{}))
+	assert.NoError(t, c.Init())
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
+
+	wg := &sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+		for r := range res {
+			if r.Error.Err != nil {
+				assert.NoError(t, c.Stop())
+				wg.Done()
+			}
+		}
+	}()
+	wg.Wait()
+}
+
+func TestCascade_MainThread_Init_Backoff(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true), cascade.SetBackoffTimes(time.Second, time.Second*10))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&mainthread.Foo2{}))
+	assert.NoError(t, c.Init())
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
+
+	wg := &sync.WaitGroup{}
+
+	now := time.Now().Second()
+	wg.Add(1)
+	go func() {
+		for r := range res {
+			if r.Error.Err != nil {
+				assert.NoError(t, c.Stop())
+				wg.Done()
+			}
+		}
+	}()
+	wg.Wait()
+
+	after := time.Now().Second()
+	// after - now should not be more than 11 as we set in NewContainer
+	assert.Greater(t, 11, after-now)
+}
+
+func TestCascade_MainThread_Backoff(t *testing.T) {
+	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true), cascade.SetBackoffTimes(time.Second, time.Second*10))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&mainthread.Foo{}))
+	assert.NoError(t, c.Init())
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
+
+	wg := &sync.WaitGroup{}
+
+	now := time.Now().Second()
+	wg.Add(1)
+	go func() {
+		for r := range res {
+			if r.Error.Err != nil {
+				assert.NoError(t, c.Stop())
+				wg.Done()
+			}
+		}
+	}()
+	wg.Wait()
+
+	after := time.Now().Second()
+	// after - now should not be more than 11 as we set in NewContainer
+	assert.Greater(t, 11, after-now, "time")
+}
 
 func TestCascade_NoRegisterInvoke(t *testing.T) {
 	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
@@ -107,9 +228,7 @@ func TestCascade_Init_OK(t *testing.T) {
 	}()
 
 	time.Sleep(time.Second * 2)
-
 	assert.NoError(t, c.Stop())
-	time.Sleep(time.Second * 1)
 }
 
 func TestCascade_Interfaces_OK(t *testing.T) {

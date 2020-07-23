@@ -555,6 +555,8 @@ func (c *Cascade) poll(r *result) {
 			// error
 			case e := <-res.errCh:
 				if e != nil {
+					// log error message
+					c.logger.Error("vertex got an error", zap.String("vertex id", res.vertexID), zap.Error(e))
 					// set error time
 					c.rwMutex.Lock()
 					if c.errorTime[res.vertexID] != nil {
@@ -565,8 +567,6 @@ func (c *Cascade) poll(r *result) {
 					}
 					c.rwMutex.Unlock()
 
-					c.logger.Error("error processed in poll", zap.String("vertex id", res.vertexID), zap.Error(e))
-
 					// set the error
 					res.err = e
 
@@ -576,7 +576,7 @@ func (c *Cascade) poll(r *result) {
 			// exit from the goroutine
 			case <-res.exit:
 				c.rwMutex.Lock()
-				c.logger.Info("got exit signal", zap.String("vertex id", res.vertexID))
+				c.logger.Info("vertex got exit signal", zap.String("vertex id", res.vertexID))
 				err := c.stop(res.vertexID)
 				if err != nil {
 					c.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexID), zap.Error(err))
