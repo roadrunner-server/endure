@@ -80,3 +80,4 @@ Order is the following:
 3. `Service` - mandatory to implement. Has 2 main methods - `Serve` which should return initialized golang channel with errors, and `Stop` to stop the shutdown the Cascade.
 4. `Provider` - optional to implement. Used to provide some dependency if you need to extend your struct.
 5. `Depender` - optional to implement. Used to mark structure (vertex) as some struct dependency. It can accept interfaces which implement caller.
+6. `Named` - optional to implement. That is a special kind of interface to provide the name of the struct (plugin, vertex) to the caller. Useful in logger to know friendly plugin name.

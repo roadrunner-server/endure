@@ -20,14 +20,6 @@ func (h *Headers) Stop() error {
 	return nil
 }
 
-func (h *Headers) Configure() error {
-	return nil
-}
-
-func (h *Headers) Close() error {
-	return nil
-}
-
 func (h *Headers) Middleware(f http.Handler) http.HandlerFunc {
 	// Define the http.HandlerFunc
 	return func(w http.ResponseWriter, r *http.Request) {
