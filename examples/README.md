@@ -1,0 +1,2 @@
+Here located the general use cases for the Cascade.  
+1. `sample_1` folder contains example with 3 main modules (`HTTP transport plugin`, `logger` and `DataBase` (just emulates CRUD)) and 2 plugins for the HTTP transport layer (`gzip` and `headers`)

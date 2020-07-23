@@ -439,14 +439,14 @@ func (c *Cascade) stop(vID string) error {
 
 	err := c.callStopFn(vertex, in)
 	if err != nil {
-		c.logger.Error("error occurred during the stop", zap.String("vertex id", vertex.ID))
+		c.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vertex.ID))
 		return err
 	}
 
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-		err = c.close(vertex.ID, in)
+		err = c.callCloseFn(vertex.ID, in)
 		if err != nil {
-			c.logger.Error("error occurred during the close", zap.String("vertex id", vertex.ID))
+			c.logger.Error("error occurred during the callCloseFn", zap.String("vertex id", vertex.ID))
 			return err
 		}
 	}
@@ -455,7 +455,7 @@ func (c *Cascade) stop(vID string) error {
 }
 
 // TODO add stack to the all of the log events
-func (c *Cascade) close(vID string, in []reflect.Value) error {
+func (c *Cascade) callCloseFn(vID string, in []reflect.Value) error {
 	v := c.graph.GetVertex(vID)
 	// Call Close() method, which returns only error (or nil)
 	m, _ := reflect.TypeOf(v.Iface).MethodByName(CloseMethodName)
@@ -496,6 +496,7 @@ func (c *Cascade) sendResultToUser(res *result) {
 	}
 }
 
+// TODO implement fail tolerant mechanism to force shutdown if freezes
 func (c *Cascade) shutdown(n *structures.DllNode) {
 	nCopy := n
 	for nCopy != nil {
