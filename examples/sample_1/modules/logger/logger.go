@@ -3,7 +3,7 @@ package logger
 import (
 	"fmt"
 
-	"github.com/spiral/cascade"
+	"github.com/spiral/endure"
 )
 
 type Logger struct {
@@ -37,7 +37,7 @@ func (l *Logger) Provides() []interface{} {
 	}
 }
 
-func (l *Logger) LoggerInstance(name cascade.Named) (*Logger, error) {
+func (l *Logger) LoggerInstance(name endure.Named) (*Logger, error) {
 	println(name.Name() + " invoke " + "logger")
 	return l, nil
 }

@@ -1,4 +1,4 @@
-package cascade
+package endure
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/spiral/cascade/structures"
+	"github.com/spiral/endure/structures"
 	"go.uber.org/zap"
 )
 
@@ -14,7 +14,7 @@ import (
    Traverse the DLL in the forward direction
 
 */
-func (c *Cascade) init(vertex *structures.Vertex) error {
+func (c *Endure) init(vertex *structures.Vertex) error {
 	// we already checked the Interface satisfaction
 	// at this step absence of Init() is impoosssibruuu
 	initMethod, _ := reflect.TypeOf(vertex.Iface).MethodByName(InitMethodName)
@@ -28,7 +28,7 @@ func (c *Cascade) init(vertex *structures.Vertex) error {
 	return nil
 }
 
-func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
+func (c *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
 	in, err := c.findInitParameters(vertex)
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (c *Cascade) callInitFn(init reflect.Method, vertex *structures.Vertex) err
 	return nil
 }
 
-func (c *Cascade) traverseCallDependersInterface(vertex *structures.Vertex) error {
+func (c *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error {
 	for i := 0; i < len(vertex.Meta.DepsList); i++ {
 		// get dependency id (vertex id)
 		depID := vertex.Meta.DepsList[i].Name
@@ -142,7 +142,7 @@ func (c *Cascade) traverseCallDependersInterface(vertex *structures.Vertex) erro
 	return nil
 }
 
-func (c *Cascade) traverseCallDependers(vertex *structures.Vertex) error {
+func (c *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 	in := make([]reflect.Value, 0, 2)
 	// add service itself
 	in = append(in, reflect.ValueOf(vertex.Iface))
@@ -191,7 +191,7 @@ func (c *Cascade) traverseCallDependers(vertex *structures.Vertex) error {
 	return nil
 }
 
-func (c *Cascade) callDependerFns(vertex *structures.Vertex, in []reflect.Value) error {
+func (c *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) error {
 	//type implements Depender interface
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Depender)(nil)).Elem()) {
 		// if type implements Depender() it should has FnsProviderToInvoke
@@ -224,7 +224,7 @@ func (c *Cascade) callDependerFns(vertex *structures.Vertex, in []reflect.Value)
 	return nil
 }
 
-func (c *Cascade) findInitParameters(vertex *structures.Vertex) ([]reflect.Value, error) {
+func (c *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value, error) {
 	in := make([]reflect.Value, 0, 2)
 
 	// add service itself
@@ -245,7 +245,7 @@ func (c *Cascade) findInitParameters(vertex *structures.Vertex) ([]reflect.Value
 	return in, nil
 }
 
-func (c *Cascade) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
+func (c *Endure) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
 	// we need to call all providers first
 	err := c.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID)
 	if err != nil {
@@ -262,7 +262,7 @@ func (c *Cascade) traverseProviders(depsEntry structures.DepsEntry, depVertex *s
 	return in, nil
 }
 
-func (c *Cascade) appendProviderFuncArgs(depsEntry structures.DepsEntry, providedEntry structures.ProvidedEntry, in []reflect.Value) []reflect.Value {
+func (c *Endure) appendProviderFuncArgs(depsEntry structures.DepsEntry, providedEntry structures.ProvidedEntry, in []reflect.Value) []reflect.Value {
 	switch {
 	case *providedEntry.IsReference == *depsEntry.IsReference:
 		in = append(in, *providedEntry.Value)
@@ -287,7 +287,7 @@ func (c *Cascade) appendProviderFuncArgs(depsEntry structures.DepsEntry, provide
 	return in
 }
 
-func (c *Cascade) traverseCallProvider(vertex *structures.Vertex, in []reflect.Value, callerID string) error {
+func (c *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Value, callerID string) error {
 	// to index function name in defer
 	i := 0
 	defer func() {
@@ -382,7 +382,7 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-func (c *Cascade) callServeFn(vertex *structures.Vertex, in []reflect.Value) *result {
+func (c *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) *result {
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
@@ -403,7 +403,7 @@ func (c *Cascade) callServeFn(vertex *structures.Vertex, in []reflect.Value) *re
 /*
 callConfigureFn invoke Configure() error method
 */
-func (c *Cascade) callConfigureFn(vertex *structures.Vertex, in []reflect.Value) error {
+func (c *Endure) callConfigureFn(vertex *structures.Vertex, in []reflect.Value) error {
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ConfigureMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
@@ -416,7 +416,7 @@ func (c *Cascade) callConfigureFn(vertex *structures.Vertex, in []reflect.Value)
 	return nil
 }
 
-func (c *Cascade) callStopFn(vertex *structures.Vertex, in []reflect.Value) error {
+func (c *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error {
 	// Call Stop() method, which returns only error (or nil)
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(StopMethodName)
 	ret := m.Func.Call(in)
@@ -430,7 +430,7 @@ func (c *Cascade) callStopFn(vertex *structures.Vertex, in []reflect.Value) erro
 	return nil
 }
 
-func (c *Cascade) stop(vID string) error {
+func (c *Endure) stop(vID string) error {
 	vertex := c.graph.GetVertex(vID)
 
 	in := make([]reflect.Value, 0, 1)
@@ -455,7 +455,7 @@ func (c *Cascade) stop(vID string) error {
 }
 
 // TODO add stack to the all of the log events
-func (c *Cascade) callCloseFn(vID string, in []reflect.Value) error {
+func (c *Endure) callCloseFn(vID string, in []reflect.Value) error {
 	v := c.graph.GetVertex(vID)
 	// Call Close() method, which returns only error (or nil)
 	m, _ := reflect.TypeOf(v.Iface).MethodByName(CloseMethodName)
@@ -470,7 +470,7 @@ func (c *Cascade) callCloseFn(vID string, in []reflect.Value) error {
 	return nil
 }
 
-func (c *Cascade) sendExitSignal(sorted []*structures.Vertex) {
+func (c *Endure) sendExitSignal(sorted []*structures.Vertex) {
 	for _, v := range sorted {
 		// get result by vertex ID
 		tmp := c.results[v.ID]
@@ -485,7 +485,7 @@ func (c *Cascade) sendExitSignal(sorted []*structures.Vertex) {
 	}
 }
 
-func (c *Cascade) sendResultToUser(res *result) {
+func (c *Endure) sendResultToUser(res *result) {
 	c.userResultsCh <- &Result{
 		Error: Error{
 			Err:   res.err,
@@ -497,7 +497,7 @@ func (c *Cascade) sendResultToUser(res *result) {
 }
 
 // TODO implement fail tolerant mechanism to force shutdown if freezes
-func (c *Cascade) shutdown(n *structures.DllNode) {
+func (c *Endure) shutdown(n *structures.DllNode) {
 	nCopy := n
 	for nCopy != nil {
 		err := c.stop(nCopy.Vertex.ID)
@@ -517,7 +517,7 @@ func (c *Cascade) shutdown(n *structures.DllNode) {
 }
 
 // serve run configure (if exist) and callServeFn for each node and put the results in the map
-func (c *Cascade) serve(n *structures.DllNode) error {
+func (c *Endure) serve(n *structures.DllNode) error {
 	// handle all configure
 	in := make([]reflect.Value, 0, 1)
 	// add service itself
@@ -542,13 +542,13 @@ func (c *Cascade) serve(n *structures.DllNode) error {
 	return nil
 }
 
-func (c *Cascade) checkLeafErrorTime(res *result) bool {
+func (c *Endure) checkLeafErrorTime(res *result) bool {
 	return c.restartedTime[res.vertexID] != nil && c.restartedTime[res.vertexID].After(*c.errorTime[res.vertexID])
 }
 
 // poll is used to poll the errors from the vertex
 // and exit from it
-func (c *Cascade) poll(r *result) {
+func (c *Endure) poll(r *result) {
 	rr := r
 	go func(res *result) {
 		for {
@@ -590,7 +590,7 @@ func (c *Cascade) poll(r *result) {
 	}(rr)
 }
 
-func (c *Cascade) register(name string, vertex interface{}, order int) error {
+func (c *Endure) register(name string, vertex interface{}, order int) error {
 	// check the vertex
 	if c.graph.HasVertex(name) {
 		return errVertexAlreadyExists(name)
@@ -606,7 +606,7 @@ func (c *Cascade) register(name string, vertex interface{}, order int) error {
 	return nil
 }
 
-func (c *Cascade) backoffInit(v *structures.Vertex) func() error {
+func (c *Endure) backoffInit(v *structures.Vertex) func() error {
 	return func() error {
 		// we already checked the Interface satisfaction
 		// at this step absence of Init() is impossible
@@ -622,7 +622,7 @@ func (c *Cascade) backoffInit(v *structures.Vertex) func() error {
 	}
 }
 
-func (c *Cascade) configure(n *structures.DllNode) error {
+func (c *Endure) configure(n *structures.DllNode) error {
 	// handle all configure
 	in := make([]reflect.Value, 0, 1)
 	// add service itself
@@ -639,7 +639,7 @@ func (c *Cascade) configure(n *structures.DllNode) error {
 	return nil
 }
 
-func (c *Cascade) backoffConfigure(n *structures.DllNode) func() error {
+func (c *Endure) backoffConfigure(n *structures.DllNode) func() error {
 	return func() error {
 		// handle all configure
 		in := make([]reflect.Value, 0, 1)

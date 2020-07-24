@@ -1,43 +1,43 @@
-package cascade_test
+package endure_test
 
 import (
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/spiral/cascade/tests/backofftimertest"
-	"github.com/spiral/cascade/tests/backofftimertest/mainthread"
-	"github.com/spiral/cascade/tests/dependers/returnerr"
-	"github.com/spiral/cascade/tests/foo5"
-	"github.com/spiral/cascade/tests/foo6"
-	"github.com/spiral/cascade/tests/foo7"
-	"github.com/spiral/cascade/tests/foo8"
-	"github.com/spiral/cascade/tests/foo9"
-	"github.com/spiral/cascade/tests/primitive"
-	"github.com/spiral/cascade/tests/registers/named/randominterface"
-	"github.com/spiral/cascade/tests/registers/named/registers"
-	"github.com/spiral/cascade/tests/registers/named/registersfail"
+	"github.com/spiral/endure/tests/backofftimertest"
+	"github.com/spiral/endure/tests/backofftimertest/mainthread"
+	"github.com/spiral/endure/tests/dependers/returnerr"
+	"github.com/spiral/endure/tests/foo5"
+	"github.com/spiral/endure/tests/foo6"
+	"github.com/spiral/endure/tests/foo7"
+	"github.com/spiral/endure/tests/foo8"
+	"github.com/spiral/endure/tests/foo9"
+	"github.com/spiral/endure/tests/primitive"
+	"github.com/spiral/endure/tests/registers/named/randominterface"
+	"github.com/spiral/endure/tests/registers/named/registers"
+	"github.com/spiral/endure/tests/registers/named/registersfail"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/spiral/cascade"
-	"github.com/spiral/cascade/tests/foo1"
-	"github.com/spiral/cascade/tests/foo2"
-	"github.com/spiral/cascade/tests/foo3"
-	"github.com/spiral/cascade/tests/foo4"
+	"github.com/spiral/endure"
+	"github.com/spiral/endure/tests/foo1"
+	"github.com/spiral/endure/tests/foo2"
+	"github.com/spiral/endure/tests/foo3"
+	"github.com/spiral/endure/tests/foo4"
 )
 
-func TestCascade_DifferentLogLevels(t *testing.T) {
-	testLog(t, cascade.DebugLevel)
-	testLog(t, cascade.WarnLevel)
-	testLog(t, cascade.InfoLevel)
-	testLog(t, cascade.FatalLevel)
-	testLog(t, cascade.ErrorLevel)
-	testLog(t, cascade.DPanicLevel)
-	testLog(t, cascade.PanicLevel)
+func TestEndure_DifferentLogLevels(t *testing.T) {
+	testLog(t, endure.DebugLevel)
+	testLog(t, endure.WarnLevel)
+	testLog(t, endure.InfoLevel)
+	testLog(t, endure.FatalLevel)
+	testLog(t, endure.ErrorLevel)
+	testLog(t, endure.DPanicLevel)
+	testLog(t, endure.PanicLevel)
 }
 
-func testLog(t *testing.T, level cascade.Level) {
-	c, err := cascade.NewContainer(level)
+func testLog(t *testing.T, level endure.Level) {
+	c, err := endure.NewContainer(level)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
@@ -64,8 +64,8 @@ func testLog(t *testing.T, level cascade.Level) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestCascade_MainThread_Serve_Backoff(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+func TestEndure_MainThread_Serve_Backoff(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&mainthread.Foo3{}))
@@ -88,8 +88,8 @@ func TestCascade_MainThread_Serve_Backoff(t *testing.T) {
 	wg.Wait()
 }
 
-func TestCascade_MainThread_Init_Backoff(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true), cascade.SetBackoffTimes(time.Second, time.Second*10))
+func TestEndure_MainThread_Init_Backoff(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true), endure.SetBackoffTimes(time.Second, time.Second*10))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&mainthread.Foo2{}))
@@ -117,8 +117,8 @@ func TestCascade_MainThread_Init_Backoff(t *testing.T) {
 	assert.Greater(t, 11, after-now)
 }
 
-func TestCascade_MainThread_Backoff(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true), cascade.SetBackoffTimes(time.Second, time.Second*10))
+func TestEndure_MainThread_Backoff(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true), endure.SetBackoffTimes(time.Second, time.Second*10))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&mainthread.Foo{}))
@@ -146,8 +146,8 @@ func TestCascade_MainThread_Backoff(t *testing.T) {
 	assert.Greater(t, 11, after-now, "time")
 }
 
-func TestCascade_NoRegisterInvoke(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+func TestEndure_NoRegisterInvoke(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.Error(t, c.Init())
@@ -158,8 +158,8 @@ func TestCascade_NoRegisterInvoke(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestCascade_DependerFuncReturnError(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+func TestEndure_DependerFuncReturnError(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&returnerr.FooDep{}))
@@ -172,8 +172,8 @@ func TestCascade_DependerFuncReturnError(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestCascade_BackoffTimers(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true), cascade.SetBackoffTimes(time.Second, time.Second*5))
+func TestEndure_BackoffTimers(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true), endure.SetBackoffTimes(time.Second, time.Second*5))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&backofftimertest.Foo{}))
@@ -185,13 +185,13 @@ func TestCascade_BackoffTimers(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestCascade_PrimitiveTypes(t *testing.T) {
+func TestEndure_PrimitiveTypes(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 			println("test should panic")
 		}
 	}()
-	c, err := cascade.NewContainer(cascade.DebugLevel)
+	c, err := endure.NewContainer(endure.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&primitive.Foo{}))
@@ -203,8 +203,8 @@ func TestCascade_PrimitiveTypes(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestCascade_Init_OK(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel)
+func TestEndure_Init_OK(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
@@ -231,8 +231,8 @@ func TestCascade_Init_OK(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestCascade_Interfaces_OK(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel)
+func TestEndure_Interfaces_OK(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo5.S5Interface{}))
@@ -260,8 +260,8 @@ func TestCascade_Interfaces_OK(t *testing.T) {
 	time.Sleep(time.Second * 1)
 }
 
-func TestCascade_Init_1_Element(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel)
+func TestEndure_Init_1_Element(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo1.S1One{}))
@@ -285,8 +285,8 @@ func TestCascade_Init_1_Element(t *testing.T) {
 	time.Sleep(time.Second * 1)
 }
 
-func TestCascade_ProvidedValueButNeedPointer(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel)
+func TestEndure_ProvidedValueButNeedPointer(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo2.S2V{}))
@@ -311,8 +311,8 @@ func TestCascade_ProvidedValueButNeedPointer(t *testing.T) {
 	time.Sleep(time.Second * 1)
 }
 
-func TestCascade_Init_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(false))
+func TestEndure_Init_Err(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo1.S1Err{}))
@@ -320,8 +320,8 @@ func TestCascade_Init_Err(t *testing.T) {
 	assert.Error(t, c.Init())
 }
 
-func TestCascade_Serve_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(false))
+func TestEndure_Serve_Err(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4ServeError{}))
@@ -362,8 +362,8 @@ time X is 0s
 3. In case of S2ServeErr vertices S5 and S4V should be restarted
 4. In case of S1Err vertices S5 -> S4V -> S2ServeErr (with error in Serve in X+5s) -> S1Err should be restarted
 */
-func TestCascade_Serve_Retry_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+func TestEndure_Serve_Retry_Err(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
@@ -413,8 +413,8 @@ time X is 0s
 4. In case of S1Err vertices S5 -> S4V -> S2ServeErr (with error in Serve in X+5s) -> S1Err should be restarted
 5. Test should receive at least 100 errors
 */
-func TestCascade_Serve_Retry_100_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+func TestEndure_Serve_Retry_100_Err(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
@@ -461,8 +461,8 @@ func TestCascade_Serve_Retry_100_Err(t *testing.T) {
 	wg.Wait()
 }
 
-func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo4.S4{}))
@@ -507,8 +507,8 @@ func TestCascade_Serve_Retry_100_With_Random_Err(t *testing.T) {
 	wg.Wait()
 }
 
-func TestCascade_InterfacesDepends_Ok(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel)
+func TestEndure_InterfacesDepends_Ok(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&foo7.Foo7{}))
@@ -523,8 +523,8 @@ func TestCascade_InterfacesDepends_Ok(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestCascade_NamedProvides_Ok(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel)
+func TestEndure_NamedProvides_Ok(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&registers.Foo11{}))
@@ -538,8 +538,8 @@ func TestCascade_NamedProvides_Ok(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestCascade_NamedProvides_NotImplement_Ok(t *testing.T) {
-	c, err := cascade.NewContainer(cascade.DebugLevel)
+func TestEndure_NamedProvides_NotImplement_Ok(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&randominterface.Foo1{}))
@@ -553,13 +553,13 @@ func TestCascade_NamedProvides_NotImplement_Ok(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestCascade_NamedProvides_WrongType_Fail(t *testing.T) {
+func TestEndure_NamedProvides_WrongType_Fail(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 			println("test should panic")
 		}
 	}()
-	c, err := cascade.NewContainer(cascade.DebugLevel)
+	c, err := endure.NewContainer(endure.DebugLevel)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&registersfail.Foo1{}))

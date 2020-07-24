@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/spiral/cascade/tests/foo4"
+	"github.com/spiral/endure/tests/foo4"
 )
 
 type DBServeErr struct {

@@ -1,4 +1,4 @@
-module github.com/spiral/cascade
+module github.com/spiral/endure
 
 go 1.14
 

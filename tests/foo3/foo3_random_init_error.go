@@ -4,8 +4,8 @@ import (
 	"errors"
 	"math/rand"
 
-	"github.com/spiral/cascade/tests/foo2"
-	"github.com/spiral/cascade/tests/foo4"
+	"github.com/spiral/endure/tests/foo2"
+	"github.com/spiral/endure/tests/foo4"
 )
 
 type S3Init struct {

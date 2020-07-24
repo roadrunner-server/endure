@@ -1,4 +1,4 @@
-package cascade
+package endure
 
 // InitMethodName is the function name for the reflection
 const InitMethodName = "Init"

@@ -4,16 +4,16 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/spiral/cascade"
-	"github.com/spiral/cascade/examples/db_http_logger/modules/db"
-	"github.com/spiral/cascade/examples/db_http_logger/modules/gzip"
-	"github.com/spiral/cascade/examples/db_http_logger/modules/headers"
-	"github.com/spiral/cascade/examples/db_http_logger/modules/http"
-	"github.com/spiral/cascade/examples/db_http_logger/modules/logger"
+	"github.com/spiral/endure"
+	"github.com/spiral/endure/examples/db_http_logger/modules/db"
+	"github.com/spiral/endure/examples/db_http_logger/modules/gzip"
+	"github.com/spiral/endure/examples/db_http_logger/modules/headers"
+	"github.com/spiral/endure/examples/db_http_logger/modules/http"
+	"github.com/spiral/endure/examples/db_http_logger/modules/logger"
 )
 
 func main() {
-	container, err := cascade.NewContainer(cascade.DebugLevel, cascade.RetryOnFail(true))
+	container, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	if err != nil {
 		panic(err)
 	}

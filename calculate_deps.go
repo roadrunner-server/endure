@@ -1,9 +1,9 @@
-package cascade
+package endure
 
 import (
 	"reflect"
 
-	"github.com/spiral/cascade/structures"
+	"github.com/spiral/endure/structures"
 	"go.uber.org/zap"
 )
 
@@ -14,7 +14,7 @@ Adds a provided type via the Provider interface. And adding:
 actual type after FnsProviderToInvoke will be invoked
 2. FnsProviderToInvoke --> is the list of the Provided function to invoke via the reflection
 */
-func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
+func (c *Endure) addProviders(vertexID string, vertex interface{}) error {
 	if provider, ok := vertex.(Provider); ok {
 		for _, fn := range provider.Provides() {
 			ret, err := dependersReturnType(fn)
@@ -56,7 +56,7 @@ func (c *Cascade) addProviders(vertexID string, vertex interface{}) error {
 }
 
 // addEdges calculates simple graph for the dependencies
-func (c *Cascade) addEdges() error {
+func (c *Endure) addEdges() error {
 	// vertexID for example S2
 	for vertexID, vrtx := range c.graph.VerticesMap {
 		// we already checked the interface satisfaction
@@ -92,7 +92,7 @@ func (c *Cascade) addEdges() error {
 	return nil
 }
 
-func (c *Cascade) addDependersDeps(vertexID string, vertex interface{}) error {
+func (c *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 	if register, ok := vertex.(Depender); ok {
 		for _, fn := range register.Depends() {
 			// what type it might depend on?
@@ -161,7 +161,7 @@ func (c *Cascade) addDependersDeps(vertexID string, vertex interface{}) error {
 	return nil
 }
 
-func (c *Cascade) addInitDeps(vertexID string, initMethod reflect.Method) error {
+func (c *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
 	// S2 init args
 	initArgs := functionParameters(initMethod)
 

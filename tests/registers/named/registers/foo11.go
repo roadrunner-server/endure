@@ -1,6 +1,6 @@
 package registers
 
-import "github.com/spiral/cascade"
+import "github.com/spiral/endure"
 
 type Foo11 struct {
 }
@@ -37,7 +37,7 @@ func (f *Foo11) Provides() []interface{} {
 // this is the same type but different packages
 // foo10 invokes foo11
 // foo11 should get the foo10 name or provide vertex id
-func (f *Foo11) ProvideDB(name cascade.Named) (*DB, error) {
+func (f *Foo11) ProvideDB(name endure.Named) (*DB, error) {
 	return &DB{
 		Name: name.Name(),
 	}, nil
@@ -46,7 +46,7 @@ func (f *Foo11) ProvideDB(name cascade.Named) (*DB, error) {
 // this is the same type but different packages
 // foo10 invokes foo11
 // foo11 should get the foo10 name or provide vertex id
-func (f *Foo11) ProvideDB2(name cascade.Named, name2 cascade.Named) (*DB2, error) {
+func (f *Foo11) ProvideDB2(name endure.Named, name2 endure.Named) (*DB2, error) {
 	return &DB2{
 		Name: name.Name() + "; " + name2.Name(),
 	}, nil

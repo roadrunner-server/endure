@@ -1,4 +1,4 @@
-package cascade
+package endure
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/spiral/cascade/structures"
+	"github.com/spiral/endure/structures"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -43,7 +43,7 @@ const (
 	FatalLevel
 )
 
-type Cascade struct {
+type Endure struct {
 	// Dependency graph
 	graph *structures.Graph
 	// DLL used as run list to run in order
@@ -69,7 +69,7 @@ type Cascade struct {
 	restartedTime map[string]*time.Time
 }
 
-type Options func(cascade *Cascade)
+type Options func(endure *Endure)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////// PUBLIC ////////////////////////////////////////////////////
@@ -85,10 +85,10 @@ type Options func(cascade *Cascade)
    5 - PanicLevel defines panic log level.
    6 - NoLevel defines an absent log level.
    7 - Disabled disables the logger.
-   see the cascade.Level
+   see the endure.Level
 */
-func NewContainer(logLevel Level, options ...Options) (*Cascade, error) {
-	c := &Cascade{
+func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
+	c := &Endure{
 		rwMutex:         &sync.RWMutex{},
 		initialInterval: time.Second * 1,
 		maxInterval:     time.Second * 60,
@@ -165,22 +165,22 @@ func pprof() {
 }
 
 func RetryOnFail(set bool) Options {
-	return func(cascade *Cascade) {
-		cascade.retry = set
+	return func(endure *Endure) {
+		endure.retry = set
 	}
 }
 
 func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) Options {
-	return func(cascade *Cascade) {
-		cascade.maxInterval = maxInterval
-		cascade.initialInterval = initialInterval
+	return func(endure *Endure) {
+		endure.maxInterval = maxInterval
+		endure.initialInterval = initialInterval
 	}
 }
 
 // Depender depends the dependencies
 // name is a name of the dependency, for example - S2
 // vertex is a value -> pointer to the structure
-func (c *Cascade) Register(vertex interface{}) error {
+func (c *Endure) Register(vertex interface{}) error {
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
 
@@ -222,7 +222,7 @@ func (c *Cascade) Register(vertex interface{}) error {
 }
 
 // Init container and all service edges.
-func (c *Cascade) Init() error {
+func (c *Endure) Init() error {
 	// traverse the graph
 	if err := c.addEdges(); err != nil {
 		return err
@@ -258,7 +258,7 @@ func (c *Cascade) Init() error {
 	return nil
 }
 
-func (c *Cascade) Serve() (<-chan *Result, error) {
+func (c *Endure) Serve() (<-chan *Result, error) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 	c.startMainThread()
@@ -286,11 +286,11 @@ func (c *Cascade) Serve() (<-chan *Result, error) {
 	return c.userResultsCh, nil
 }
 
-func (c *Cascade) Stop() error {
+func (c *Endure) Stop() error {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	c.logger.Info("exiting from the Cascade")
+	c.logger.Info("exiting from the Endure")
 	n := c.runList.Head
 	c.shutdown(n)
 	return nil
@@ -300,7 +300,7 @@ func (c *Cascade) Stop() error {
 //////////////////////////////////////////// PRIVATE ///////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func (c *Cascade) startMainThread() {
+func (c *Endure) startMainThread() {
 	// handle error channel goroutine
 	/*
 		Used for handling error from the vertices

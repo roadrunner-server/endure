@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/spiral/cascade/tests/foo5"
+	"github.com/spiral/endure/tests/foo5"
 )
 
 type S4ServeError struct {

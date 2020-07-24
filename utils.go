@@ -1,4 +1,4 @@
-package cascade
+package endure
 
 import (
 	"reflect"

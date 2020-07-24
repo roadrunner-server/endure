@@ -1,6 +1,6 @@
 package foo5
 
-import "github.com/spiral/cascade/tests/foo6"
+import "github.com/spiral/endure/tests/foo6"
 
 type S5Interface struct {
 }

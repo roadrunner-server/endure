@@ -37,7 +37,7 @@ jobs:
 
       - name: Run golang tests
         run: |
-          go test -race -v -coverprofile=cascade.txt -covermode=atomic
+          go test -race -v -coverprofile=endure.txt -covermode=atomic
 
       - name: Run code coverage
         env:
@@ -46,7 +46,7 @@ jobs:
           if [[ "$CODECOV_TOKEN" != "" ]]; then
             curl https://codecov.io/bash -o codecov-bash
             chmod +x codecov-bash
-            ./codecov-bash -f cascade.txt
+            ./codecov-bash -f endure.txt
           fi
 
   golangci-check:

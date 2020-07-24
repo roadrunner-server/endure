@@ -3,7 +3,7 @@ package foo1
 import (
 	"errors"
 
-	"github.com/spiral/cascade/tests/foo2"
+	"github.com/spiral/endure/tests/foo2"
 )
 
 type S1Err struct {

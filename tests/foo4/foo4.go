@@ -1,7 +1,7 @@
 package foo4
 
 import (
-	"github.com/spiral/cascade/tests/foo5"
+	"github.com/spiral/endure/tests/foo5"
 )
 
 type S4 struct {
