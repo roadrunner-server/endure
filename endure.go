@@ -229,19 +229,16 @@ func (c *Endure) Init() error {
 	}
 
 	// we should build init list in the reverse order
-	sortedVertices := structures.TopologicalSort(c.graph.Vertices)
+	sorted := structures.TopologicalSort(c.graph.Vertices)
 
-	if len(sortedVertices) == 0 {
-		c.logger.Error("graph should contain at least 1 vertex, might be you forget to invoke Registers?")
-		return errors.New("graph should contain at least 1 vertex, might be you forget to invoke registers")
+	if len(sorted) == 0 {
+		c.logger.Error("initial graph should contain at least 1 vertex, possibly you forget to invoke Registers?")
+		return errors.New("graph should contain at least 1 vertex, possibly you forget to invoke registers")
 	}
-	// 0 element is the HEAD
-	c.runList.SetHead(&structures.DllNode{
-		Vertex: sortedVertices[0]})
 
-	// push elements to the list
-	for i := 1; i < len(sortedVertices); i++ {
-		c.runList.Push(sortedVertices[i])
+	c.runList = structures.NewDoublyLinkedList()
+	for i := 0; i <= len(sorted)-1; i++ {
+		c.runList.Push(sorted[i])
 	}
 
 	head := c.runList.Head
@@ -348,7 +345,7 @@ func (c *Endure) startMainThread() {
 					c.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
 					c.userResultsCh <- &Result{
 						Error:    FailedToSortTheGraph,
-						VertexID: "",
+						VertexID: res.vertexID,
 					}
 					c.rwMutex.Unlock()
 					return
@@ -364,10 +361,7 @@ func (c *Endure) startMainThread() {
 					b.InitialInterval = c.initialInterval
 
 					affectedRunList := structures.NewDoublyLinkedList()
-					affectedRunList.SetHead(&structures.DllNode{
-						Vertex: sorted[len(sorted)-1]})
-
-					for i := len(sorted) - 2; i >= 0; i-- {
+					for i := 0; i <= len(sorted)-1; i++ {
 						affectedRunList.Push(sorted[i])
 					}
 

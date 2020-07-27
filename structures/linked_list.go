@@ -29,6 +29,13 @@ func (dll *DoublyLinkedList) Push(vertex *Vertex) {
 	node := &DllNode{
 		Vertex: vertex,
 	}
+
+	if dll.Head == nil {
+		dll.Head = node
+		dll.Tail = node
+		return
+	}
+
 	node.Next = dll.Head
 	dll.Head.Prev = node
 

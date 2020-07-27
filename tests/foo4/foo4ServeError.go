@@ -2,7 +2,6 @@ package foo4
 
 import (
 	"errors"
-	"time"
 
 	"github.com/spiral/endure/tests/foo5"
 )
@@ -36,7 +35,6 @@ func (s *S4ServeError) Configure() error {
 func (s *S4ServeError) Serve() chan error {
 	errCh := make(chan error, 1)
 	go func() {
-		time.Sleep(time.Millisecond * 500)
 		errCh <- errors.New("s4 test error")
 	}()
 	return errCh

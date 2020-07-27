@@ -324,11 +324,11 @@ func TestEndure_Serve_Err(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&foo4.S4ServeError{}))
+	assert.NoError(t, c.Register(&foo4.S4ServeError{})) // should produce an error during the Serve
 	assert.NoError(t, c.Register(&foo2.S2{}))
 	assert.NoError(t, c.Register(&foo3.S3ServeError{}))
 	assert.NoError(t, c.Register(&foo5.S5{}))
-	assert.NoError(t, c.Register(&foo1.S1ServeErr{})) // should produce an error during the Serve
+	assert.NoError(t, c.Register(&foo1.S1ServeErr{}))
 	err = c.Init()
 	if err != nil {
 		t.Fatal(err)
