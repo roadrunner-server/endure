@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	// pprof enabled in debug mode
+	// pprof will be enabled in debug mode
 	_ "net/http/pprof"
 
 	"reflect"
