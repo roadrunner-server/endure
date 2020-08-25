@@ -1,4 +1,4 @@
-# Endure
+# Endure [currently in beta]
 <p align="center">
 	<a href="https://pkg.go.dev/github.com/spiral/Endure?tab=doc"><img src="https://godoc.org/github.com/spiral/Endure?status.svg"></a>
 	<a href="https://github.com/spiral/Endure/actions"><img src="https://github.com/spiral/Endure/workflows/CI/badge.svg" alt=""></a>
