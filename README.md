@@ -26,7 +26,7 @@ go get -u github.com/spiral/Endure
 ```  
 
 
-<h2>God damn WHY?</h2>  
+<h2>Why?</h2>  
 
 Imagine you have an application in which you want to implement plugin system. These plugins can depend on each other (via interfaces or directly).
 For example, we have 3 plugins: HTTP (to communicate with world), DB (to save the world) and logger (to see the progress).  
