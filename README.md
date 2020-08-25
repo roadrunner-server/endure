@@ -12,8 +12,8 @@ Endure is an open-source (MIT licensed) plugin container.
 <h2>Features</h2>
 
 - Supports structs and interfaces (see examples)
-- Use graph to topologically sort, run and stop dependent plugins
-- Algorithm used: graph and double-linked list
+- Use graph to topologically sort, run, stop and restart dependent plugins
+- Algorithms used: graph and double-linked list
 - Support easy to add Middleware plugins
 - Error reporting
 - Automatically restart failing vertices
@@ -30,11 +30,9 @@ go get -u github.com/spiral/Endure
 
 Imagine you have an application in which you want to implement plugin system. These plugins can depend on each other (via interfaces or directly).
 For example, we have 3 plugins: HTTP (to communicate with world), DB (to save the world) and logger (to see the progress).  
-In this case, we can't start HTTP before we start all other parts. Also, we need to have logger first. So, the order will be the following:  
-1. Initialize the logger
-2. Initialize the DB
-3. Initialize the HTTP  
-Ok, next we need to start it, and in case of error - restart or stop in reverse order. All you need to do in `Endure` is to pass HTTP, DB and logger structs to `Endure` and implement `Endure` interface. That's it. `Endure` will take care of restarting failing vertices (structs, HTTP for example) with exponential backoff mechanism.  
+In this particular case, we can't start HTTP before we start all other parts. Also, we need to have logger first, because all parts of our system needs logger. So, the dependency graph will be the following:
+
+Next we need to start all part, and in case of error - restart or stop in reverse order. All you need to do in `Endure` is to pass HTTP, DB and logger structs to `Endure` and implement `Endure` interface. That's it. `Endure` will take care of restarting failing vertices (structs, HTTP for example) with exponential backoff mechanism.  
 
 <h2>Endure main interface</h2>  
 
