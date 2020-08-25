@@ -30,9 +30,32 @@ go get -u github.com/spiral/Endure
 
 Imagine you have an application in which you want to implement plugin system. These plugins can depend on each other (via interfaces or directly).
 For example, we have 3 plugins: HTTP (to communicate with world), DB (to save the world) and logger (to see the progress).  
-In this particular case, we can't start HTTP before we start all other parts. Also, we need to have logger first, because all parts of our system needs logger. So, the dependency graph will be the following:
+In this particular case, we can't start HTTP before we start all other parts. Also, we have to initialize logger first, because all parts of our system needs logger. All you need to do in `Endure` is to pass `HTTP`, `DB` and `logger` structs to the `Endure` and implement `Endure` interface. So, the dependency graph will be the following:
+<p align="left">
+  <img src="https://github.com/spiral/endure/blob/master/images/graph.png" width="300" height="250" />
+</p>
 
-Next we need to start all part, and in case of error - restart or stop in reverse order. All you need to do in `Endure` is to pass HTTP, DB and logger structs to `Endure` and implement `Endure` interface. That's it. `Endure` will take care of restarting failing vertices (structs, HTTP for example) with exponential backoff mechanism.  
+Next we need to start all part:
+```go
+errCh, err := container.Serve()
+```
+`errCh` is the channel with error from the all `Vertices`. You can identify vertex by `vertexID` presented in errCh struct.
+And then just process the events from the `errCh`:
+```go
+	for {
+		select {
+		case e := <-errCh:
+			println(e.Error.Err.Error()) // just print the error
+			er := container.Stop()
+			if er != nil {
+				panic(er)
+			}
+			return
+		}
+	}
+```
+Also `Endure` will take care of restar failing vertices (structs, HTTP for example) with exponential backoff mechanism, star in topological order (`logger` -> `DB` -> `HTTP`) and stop in reverse-topological order automatically.
+
 
 <h2>Endure main interface</h2>  
 
