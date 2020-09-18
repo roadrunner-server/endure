@@ -24,7 +24,7 @@ func (s3 *S3Init) SomeOtherDep(svc *foo4.S4, svc2 foo2.S2) error {
 // Depends on S3
 func (s3 *S3Init) Init(svc foo2.S2) error {
 	s := rand.Intn(10)
-	// just random
+	// every 5th
 	if s == 5 {
 		return errors.New("random error during init from S3")
 	}

@@ -18,7 +18,7 @@ func (s2 *S2ServeErr) Init(db *foo4.DB) error {
 	s := rand.Intn(10)
 	// just random
 	if s == 5 {
-		return errors.New("random error during init from S3")
+		return errors.New("random error during init from S2")
 	}
 	return nil
 }

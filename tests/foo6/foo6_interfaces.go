@@ -8,7 +8,7 @@ type S6Interface struct {
 }
 
 func (s *S6Interface) Fooo() {
-	println("bueeeeeeeee")
+
 }
 
 // No deps

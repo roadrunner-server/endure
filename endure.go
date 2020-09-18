@@ -336,7 +336,7 @@ func (c *Endure) startMainThread() {
 				}
 
 				// reset vertex and dependencies to the initial state
-				// NumOfDeps and Visited/Visiting
+				// numOfDeps and visited/visiting
 				vertices := c.graph.Reset(vertex)
 
 				// Topologically sort the graph

@@ -109,9 +109,9 @@ func (dll *DoublyLinkedList) Remove(node *DllNode) {
 func (dll *DoublyLinkedList) Reset() {
 	cNode := dll.Head
 	for cNode != nil {
-		cNode.Vertex.NumOfDeps = len(cNode.Vertex.Dependencies)
-		cNode.Vertex.Visiting = false
-		cNode.Vertex.Visited = false
+		cNode.Vertex.numOfDeps = len(cNode.Vertex.Dependencies)
+		cNode.Vertex.visiting = false
+		cNode.Vertex.visited = false
 		cNode = cNode.Next
 	}
 }

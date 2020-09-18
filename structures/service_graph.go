@@ -31,7 +31,7 @@ type Meta struct {
 	Order int
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
 	FnsProviderToInvoke []string
-	// FnsDependerToInvoke is the function names to invoke if type implements Register() interface
+	// FnsDependerToInvoke is the function names to invoke if type implements Depender() interface
 	FnsDependerToInvoke []string
 
 	// List of the vertex deps
@@ -50,25 +50,24 @@ type DepsEntry struct {
 }
 
 // since we can have cyclic dependencies
-// when we traverse the VerticesMap, we should mark nodes as Visited or not to detect cycle
+// when we traverse the VerticesMap, we should mark nodes as visited or not to detect cycle
 type Vertex struct {
+	// ID of the vertex, currently string representation of the structure name
 	ID string
-	// Vertex
+	// Vertex (Registered structure)
 	Iface interface{}
 	// Meta information about current Vertex
 	Meta Meta
 	// Dependencies of the node
 	Dependencies []*Vertex
-
-	// Vertex foo4.S4 also provides (for example)
-	// foo4.DB
+	// Set of entries which can vertex provide (for example, foo4 vertex can provide DB instance and logger)
 	Provides map[string]ProvidedEntry
 
-	// for the toposort
-	NumOfDeps int
 
-	Visited  bool
-	Visiting bool
+	// for the topological sort, private
+	numOfDeps int
+	visited  bool
+	visiting bool
 }
 
 type ProvidedEntry struct {
@@ -184,7 +183,7 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 			}
 		}
 
-		depVertices[i].NumOfDeps++
+		depVertices[i].numOfDeps++
 		depVertices[i].Dependencies = append(depVertices[i].Dependencies, vertex)
 	}
 	return nil
@@ -258,7 +257,7 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 		}
 	}
 
-	depVertex.NumOfDeps++
+	depVertex.numOfDeps++
 	depVertex.Dependencies = append(depVertex.Dependencies, vertex)
 	return nil
 }
@@ -266,9 +265,9 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 // reset vertices to initial state
 func (g *Graph) Reset(vertex *Vertex) []*Vertex {
 	// restore number of dependencies for the root
-	vertex.NumOfDeps = len(vertex.Dependencies)
-	vertex.Visiting = false
-	vertex.Visited = false
+	vertex.numOfDeps = len(vertex.Dependencies)
+	vertex.visiting = false
+	vertex.visited = false
 	vertices := make([]*Vertex, 0, 5)
 	vertices = append(vertices, vertex)
 
@@ -285,9 +284,9 @@ func (g *Graph) Reset(vertex *Vertex) []*Vertex {
 // actually this is DFS just to reset all vertices to initial state after topological sort
 func (g *Graph) depthFirstSearch(deps []*Vertex, tmp map[string]*Vertex) {
 	for i := 0; i < len(deps); i++ {
-		deps[i].Visited = false
-		deps[i].Visiting = false
-		deps[i].NumOfDeps = len(deps)
+		deps[i].visited = false
+		deps[i].visiting = false
+		deps[i].numOfDeps = len(deps)
 		tmp[deps[i].ID] = deps[i]
 		g.depthFirstSearch(deps[i].Dependencies, tmp)
 	}
@@ -348,20 +347,20 @@ func TopologicalSort(vertices []*Vertex) []*Vertex {
 }
 
 func dfs(vertex *Vertex, ordered *Vertices) bool {
-	if vertex.Visited {
+	if vertex.visited {
 		return false
-	} else if vertex.Visiting {
+	} else if vertex.visiting {
 		return true
 	}
-	vertex.Visiting = true
+	vertex.visiting = true
 	for _, depV := range vertex.Dependencies {
 		containsCycle := dfs(depV, ordered)
 		if containsCycle {
 			return true
 		}
 	}
-	vertex.Visited = true
-	vertex.Visiting = false
+	vertex.visited = true
+	vertex.visiting = false
 	*ordered = append(*ordered, vertex)
 	return false
 }
