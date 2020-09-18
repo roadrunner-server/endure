@@ -14,6 +14,7 @@ import (
 	"github.com/spiral/endure/tests/foo8"
 	"github.com/spiral/endure/tests/foo9"
 	"github.com/spiral/endure/tests/primitive"
+	"github.com/spiral/endure/tests/provider/testcase33"
 	"github.com/spiral/endure/tests/registers/named/randominterface"
 	"github.com/spiral/endure/tests/registers/named/registers"
 	"github.com/spiral/endure/tests/registers/named/registersfail"
@@ -170,6 +171,15 @@ func TestEndure_DependerFuncReturnError(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Stop())
+}
+
+// Provided structure instead of function
+func TestEndure_Issue33(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	assert.NoError(t, err)
+
+	assert.Error(t, c.Register(&testcase33.FooDep{}))
+	assert.NoError(t, c.Register(&testcase33.FooDep2{}))
 }
 
 func TestEndure_BackoffTimers(t *testing.T) {
