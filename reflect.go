@@ -11,7 +11,7 @@ import (
 func dependersReturnType(m interface{}) (reflect.Type, error) {
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
-		return nil, fmt.Errorf("unable to reflect `%s`, expected func", r.String())
+		return nil, fmt.Errorf("unable to reflect `%s`, expected func. tip: provide function, not structre. for example v.Logger", r.String())
 	}
 
 	// should be at least 2 parameters
