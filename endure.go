@@ -317,7 +317,7 @@ func (c *Endure) startMainThread() {
 
 				c.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexID))
 				if c.checkLeafErrorTime(res) {
-					c.logger.Debug("error processing skipped because vertex already restartedTime by the root", zap.String("vertex id", res.vertexID))
+					c.logger.Debug("error processing skipped because vertex already restarted by the root", zap.String("vertex id", res.vertexID))
 					c.sendResultToUser(res)
 					c.rwMutex.Unlock()
 					continue
