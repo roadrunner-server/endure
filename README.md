@@ -22,7 +22,7 @@ Endure is an open-source (MIT licensed) plugin container.
 <h2>Installation</h2>  
 
 ```go
-go get -u github.com/spiral/Endure
+go get -u github.com/spiral/endure
 ```  
 
 
