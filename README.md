@@ -30,22 +30,22 @@ go get -u github.com/spiral/endure
 
 Imagine you have an application in which you want to implement plugin system. These plugins can depend on each other (via interfaces or directly).
 For example, we have 3 plugins: HTTP (to communicate with world), DB (to save the world) and logger (to see the progress).  
-In this particular case, we can't start HTTP before we start all other parts. Also, we have to initialize logger first, because all parts of our system needs logger. All you need to do in `Endure` is to pass `HTTP`, `DB` and `logger` structs to the `Endure` and implement `Endure` interface. So, the dependency graph will be the following:
+In this particular case, we can't start HTTP before we start all other parts. Also, we have to initialize logger first, because all parts of our system need logger. All you need to do in `Endure` is to pass `HTTP`, `DB` and `Logger` structs to the `Endure` and implement `Endure` interface. So, the dependency graph will be the following:
 <p align="left">
   <img src="https://github.com/spiral/endure/blob/master/images/graph.png" width="300" height="250" />
 </p>
 
-Next we need to start all part:
+Next we need to start serving all the parts:
 ```go
 errCh, err := container.Serve()
 ```
-`errCh` is the channel with error from the all `Vertices`. You can identify vertex by `vertexID` presented in errCh struct.
-And then just process the events from the `errCh`:
+`errCh` is the channel with errors from the all `Vertices`. You can identify vertex by `vertexID` which is presented in `errCh` struct.
+Then just process the events from the `errCh`:
 ```go
 	for {
 		select {
 		case e := <-errCh:
-			println(e.Error.Err.Error()) // just print the error
+			println(e.Error.Err.Error()) // just print the error, but actually error processing could be there
 			er := container.Stop()
 			if er != nil {
 				panic(er)
@@ -54,7 +54,8 @@ And then just process the events from the `errCh`:
 		}
 	}
 ```
-Also `Endure` will take care of restar failing vertices (structs, HTTP for example) with exponential backoff mechanism, star in topological order (`logger` -> `DB` -> `HTTP`) and stop in reverse-topological order automatically.
+Also `Endure` will take care of the restart failing vertices (HTTP, DB, Logger in example) with exponential backoff mechanism.   
+The start will proceed in topological order (`Logger` -> `DB` -> `HTTP`), and the stop in reverse-topological order automatically.
 
 
 <h2>Endure main interface</h2>  
@@ -95,9 +96,9 @@ type (
 )  
 ```
 Order is the following:
-1. `Init() error` - mandatory to implement. In your structure (which you pass to Endure), you should have this method as receiver. It can accept as parameter any passed to the `Endure` structure (see sample) or interface (with limitations).  
-2. `Graceful` - optional to implement. Used to configure a vertex before invoking `Serve` method. Has the `Confugure` method which will be invoked after `Init` and `Close` which will be invoked after `Stop` to free some resources for example.
-3. `Service` - mandatory to implement. Has 2 main methods - `Serve` which should return initialized golang channel with errors, and `Stop` to stop the shutdown the Endure.
-4. `Provider` - optional to implement. Used to provide some dependency if you need to extend your struct.
-5. `Depender` - optional to implement. Used to mark structure (vertex) as some struct dependency. It can accept interfaces which implement caller.
-6. `Named` - optional to implement. That is a special kind of interface to provide the name of the struct (plugin, vertex) to the caller. Useful in logger to know friendly plugin name.
+1. `Init() error` - is mandatory to implement. In your structure (which you pass to Endure), you should have this method as a receiver. It can accept as parameter any passed to the `Endure` structure (see samples) or interface (with limitations).  
+2. `Graceful` - is optional to implement. It is used for a configuration a vertex before invoking `Serve` method. `Graceful` interface has the `Confugure` method which will be invoked after `Init`. Also, it has a `Close` method which will be invoked after `Stop` to free some resources for example.
+3. `Service` - is mandatory to implement. It has 2 main methods - `Serve` which should run the plugin and return initialized golang channel with errors, and `Stop` to shut down the plugin.
+4. `Provider` - is optional to implement. It is used to provide some dependency if you need to extend your struct.
+5. `Depender` - is optional to implement. It is used to mark a structure (vertex) as some struct dependency. It can accept interfaces which implement the caller.
+6. `Named` - is optional to implement. This is a special kind of interface which provides the name of the struct (plugin, vertex) to the caller. Is useful in logger (for example) to know user-friendly plugin name.
