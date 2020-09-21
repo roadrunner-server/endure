@@ -527,7 +527,7 @@ func (c *Endure) serve(n *structures.DllNode) error {
 	if res != nil {
 		c.results[res.vertexID] = res
 	} else {
-		c.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID))
+		c.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serve function should return initialized channel with errors"))
 		return fmt.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID)
 	}
 
