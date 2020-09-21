@@ -7,7 +7,7 @@
 	<a href="https://discord.gg/TFeEmCs"><img src="https://img.shields.io/badge/discord-chat-magenta.svg"></a>
 </p>
 
-Endure is an open-source (MIT licensed) plugin container.
+Endure is an open-source (MIT licensed) plugin container with IoC and self-healing.
 
 <h2>Features</h2>
 
