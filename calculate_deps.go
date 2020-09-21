@@ -14,7 +14,7 @@ Adds a provided type via the Provider interface. And adding:
 actual type after FnsProviderToInvoke will be invoked
 2. FnsProviderToInvoke --> is the list of the Provided function to invoke via the reflection
 */
-func (c *Endure) addProviders(vertexID string, vertex interface{}) error {
+func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 	if provider, ok := vertex.(Provider); ok {
 		for _, fn := range provider.Provides() {
 			ret, err := dependersReturnType(fn)
@@ -24,7 +24,7 @@ func (c *Endure) addProviders(vertexID string, vertex interface{}) error {
 
 			typeStr := removePointerAsterisk(ret.String())
 			// get the Vertex from the graph (gVertex)
-			gVertex := c.graph.GetVertex(vertexID)
+			gVertex := e.graph.GetVertex(vertexID)
 			if gVertex.Provides == nil {
 				gVertex.Provides = make(map[string]structures.ProvidedEntry)
 			}
@@ -62,9 +62,9 @@ func (c *Endure) addProviders(vertexID string, vertex interface{}) error {
 }
 
 // addEdges calculates simple graph for the dependencies
-func (c *Endure) addEdges() error {
+func (e *Endure) addEdges() error {
 	// vertexID for example S2
-	for vertexID, vrtx := range c.graph.VerticesMap {
+	for vertexID, vrtx := range e.graph.VerticesMap {
 		// we already checked the interface satisfaction
 		// and we can safely skip the OK parameter here
 		init, _ := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
@@ -78,7 +78,7 @@ func (c *Endure) addEdges() error {
 		5. Name of the dependencies which we should found
 		We add 3 and 4 points to the Vertex
 		*/
-		err := c.addDependersDeps(vertexID, vrtx.Iface)
+		err := e.addDependersDeps(vertexID, vrtx.Iface)
 		if err != nil {
 			return err
 		}
@@ -89,7 +89,7 @@ func (c *Endure) addEdges() error {
 			The next step is to calculate dependencies provided by the Init() method
 			for example S1.Init(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
 		*/
-		err = c.addInitDeps(vertexID, init)
+		err = e.addInitDeps(vertexID, init)
 		if err != nil {
 			return err
 		}
@@ -98,7 +98,7 @@ func (c *Endure) addEdges() error {
 	return nil
 }
 
-func (c *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
+func (e *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 	if register, ok := vertex.(Depender); ok {
 		for _, fn := range register.Depends() {
 			// what type it might depend on?
@@ -112,7 +112,7 @@ func (c *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 			for _, at := range argsTypes {
 				// check if type is primitive type
 				if isPrimitive(at.String()) {
-					c.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", at.String()))
+					e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", at.String()))
 				}
 				atStr := at.String()
 				if vertexID == atStr {
@@ -127,11 +127,11 @@ func (c *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 				*/
 				if at.Kind() == reflect.Interface {
 					// go over all dependencies
-					for i := 0; i < len(c.graph.Vertices); i++ {
-						if reflect.TypeOf(c.graph.Vertices[i].Iface).Implements(at) {
+					for i := 0; i < len(e.graph.Vertices); i++ {
+						if reflect.TypeOf(e.graph.Vertices[i].Iface).Implements(at) {
 							tmpIsRef := isReference(at)
-							tmpValue := reflect.ValueOf(c.graph.Vertices[i].Iface)
-							c.graph.Vertices[i].AddProvider(removePointerAsterisk(atStr), tmpValue, tmpIsRef, at.Kind())
+							tmpValue := reflect.ValueOf(e.graph.Vertices[i].Iface)
+							e.graph.Vertices[i].AddProvider(removePointerAsterisk(atStr), tmpValue, tmpIsRef, at.Kind())
 						}
 					}
 				}
@@ -141,15 +141,15 @@ func (c *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 				// vertex - S4 func
 
 				// we store pointer in the Deps structure in the isRef field
-				err = c.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at), at.Kind())
+				err = e.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at), at.Kind())
 				if err != nil {
 					return err
 				}
-				c.logger.Debug("adding dependency via Depends()", zap.String("vertex id", vertexID), zap.String("depends", atStr))
+				e.logger.Debug("adding dependency via Depends()", zap.String("vertex id", vertexID), zap.String("depends", atStr))
 			}
 
 			// get the Vertex from the graph (gVertex)
-			gVertex := c.graph.GetVertex(vertexID)
+			gVertex := e.graph.GetVertex(vertexID)
 			if gVertex.Provides == nil {
 				gVertex.Provides = make(map[string]structures.ProvidedEntry)
 			}
@@ -158,7 +158,7 @@ func (c *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 				gVertex.Meta.FnsDependerToInvoke = make([]string, 0, 5)
 			}
 
-			c.logger.Debug("appending depender function to invoke later", zap.String("vertex id", vertexID), zap.String("function name", getFunctionName(fn)))
+			e.logger.Debug("appending depender function to invoke later", zap.String("vertex id", vertexID), zap.String("function name", getFunctionName(fn)))
 
 			gVertex.Meta.FnsDependerToInvoke = append(gVertex.Meta.FnsDependerToInvoke, getFunctionName(fn))
 		}
@@ -167,14 +167,14 @@ func (c *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 	return nil
 }
 
-func (c *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
+func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
 	// S2 init args
 	initArgs := functionParameters(initMethod)
 
 	// iterate over all function parameters
 	for _, initArg := range initArgs {
 		if isPrimitive(initArg.String()) {
-			c.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", initArg.String()))
+			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", initArg.String()))
 			continue
 		}
 		// receiver
@@ -182,25 +182,25 @@ func (c *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
 			continue
 		}
 		if initArg.Kind() == reflect.Interface {
-			for i := 0; i < len(c.graph.Vertices); i++ {
+			for i := 0; i < len(e.graph.Vertices); i++ {
 				// if type implements interface we should add this struct as provider of the interface
-				if reflect.TypeOf(c.graph.Vertices[i].Iface).Implements(initArg) {
+				if reflect.TypeOf(e.graph.Vertices[i].Iface).Implements(initArg) {
 					// skip double add
-					if _, ok := c.graph.Vertices[i].Provides[removePointerAsterisk(initArg.String())]; ok {
+					if _, ok := e.graph.Vertices[i].Provides[removePointerAsterisk(initArg.String())]; ok {
 						continue
 					}
 					tmpIsRef := isReference(initArg)
-					tmpValue := reflect.ValueOf(c.graph.Vertices[i].Iface)
-					c.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
+					tmpValue := reflect.ValueOf(e.graph.Vertices[i].Iface)
+					e.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
 				}
 			}
 		}
 
-		err := c.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg), initArg.Kind())
+		err := e.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg), initArg.Kind())
 		if err != nil {
 			return err
 		}
-		c.logger.Debug("adding dependency via Init()", zap.String("vertex id", vertexID), zap.String("depends", initArg.String()))
+		e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vertexID), zap.String("depends", initArg.String()))
 	}
 	return nil
 }

@@ -1,11 +1,13 @@
 package endure
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/endure/structures"
 	"go.uber.org/zap"
 )
@@ -14,22 +16,22 @@ import (
    Traverse the DLL in the forward direction
 
 */
-func (c *Endure) init(vertex *structures.Vertex) error {
+func (e *Endure) init(vertex *structures.Vertex) error {
 	// we already checked the Interface satisfaction
 	// at this step absence of Init() is impoosssibruuu
 	initMethod, _ := reflect.TypeOf(vertex.Iface).MethodByName(InitMethodName)
 
-	err := c.callInitFn(initMethod, vertex)
+	err := e.callInitFn(initMethod, vertex)
 	if err != nil {
-		c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", vertex.ID), zap.Error(err))
+		e.logger.Error("error occurred during the call INIT function", zap.String("vertex id", vertex.ID), zap.Error(err))
 		return err
 	}
 
 	return nil
 }
 
-func (c *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
-	in, err := c.findInitParameters(vertex)
+func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
+	in, err := e.findInitParameters(vertex)
 	if err != nil {
 		return err
 	}
@@ -38,9 +40,9 @@ func (c *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 	ret := init.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		if e, ok := rErr.(error); ok && e != nil {
-			c.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(e))
-			return e
+		if err, ok := rErr.(error); ok && e != nil {
+			e.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(err))
+			return err
 		}
 		return errUnknownErrorOccurred
 	}
@@ -54,9 +56,9 @@ func (c *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 			2. if value already exists, AddProvider will replace it with new one
 		*/
 		vertex.AddProvider(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()), in[0].Kind())
-		c.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("parameter", in[0].Type().String()))
+		e.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("parameter", in[0].Type().String()))
 	} else {
-		c.logger.Error("0 or less parameters for Init", zap.String("vertex id", vertex.ID))
+		e.logger.Error("0 or less parameters for Init", zap.String("vertex id", vertex.ID))
 		return errors.New("0 or less parameters for Init")
 	}
 
@@ -64,13 +66,13 @@ func (c *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 		for i := 0; i < len(vertex.Meta.DepsList); i++ {
 			// Interface dependency
 			if vertex.Meta.DepsList[i].Kind == reflect.Interface {
-				err = c.traverseCallDependersInterface(vertex)
+				err = e.traverseCallDependersInterface(vertex)
 				if err != nil {
 					return err
 				}
 			} else {
 				// structure dependence
-				err = c.traverseCallDependers(vertex)
+				err = e.traverseCallDependers(vertex)
 				if err != nil {
 					return err
 				}
@@ -80,12 +82,12 @@ func (c *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 	return nil
 }
 
-func (c *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error {
+func (e *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error {
 	for i := 0; i < len(vertex.Meta.DepsList); i++ {
 		// get dependency id (vertex id)
 		depID := vertex.Meta.DepsList[i].Name
 		// find vertex which provides dependency
-		providers := c.graph.FindProviders(depID)
+		providers := e.graph.FindProviders(depID)
 
 		// Depend from interface
 		/*
@@ -124,14 +126,14 @@ func (c *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error
 					if vertexVal.Value.CanAddr() {
 						inInterface = append(inInterface, vertexVal.Value.Addr())
 					} else {
-						c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", vertexVal.Value.Type()), zap.String("type", vertexVal.Value.Type().String()))
-						c.logger.Warn("making a fresh pointer")
+						e.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", vertexVal.Value.Type()), zap.String("type", vertexVal.Value.Type().String()))
+						e.logger.Warn("making a fresh pointer")
 						nt := reflect.New(vertexVal.Value.Type())
 						inInterface = append(inInterface, nt)
 					}
 				}
 
-				err := c.callDependerFns(vertex, inInterface)
+				err := e.callDependerFns(vertex, inInterface)
 				if err != nil {
 					return err
 				}
@@ -142,7 +144,7 @@ func (c *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error
 	return nil
 }
 
-func (c *Endure) traverseCallDependers(vertex *structures.Vertex) error {
+func (e *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 	in := make([]reflect.Value, 0, 2)
 	// add service itself
 	in = append(in, reflect.ValueOf(vertex.Iface))
@@ -151,7 +153,7 @@ func (c *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 		// get dependency id (vertex id)
 		depID := vertex.Meta.DepsList[i].Name
 		// find vertex which provides dependency
-		providers := c.graph.FindProviders(depID)
+		providers := e.graph.FindProviders(depID)
 		// search for providers
 		for j := 0; j < len(providers); j++ {
 			for vertexID, val := range providers[j].Provides {
@@ -172,8 +174,8 @@ func (c *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 						if val.Value.CanAddr() {
 							in = append(in, val.Value.Addr())
 						} else {
-							c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type()), zap.String("type", val.Value.Type().String()))
-							c.logger.Warn("making a fresh pointer")
+							e.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", val.Value.Type()), zap.String("type", val.Value.Type().String()))
+							e.logger.Warn("making a fresh pointer")
 							nt := reflect.New(val.Value.Type())
 							in = append(in, nt)
 						}
@@ -183,7 +185,7 @@ func (c *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 		}
 	}
 
-	err := c.callDependerFns(vertex, in)
+	err := e.callDependerFns(vertex, in)
 	if err != nil {
 		return err
 	}
@@ -191,7 +193,7 @@ func (c *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 	return nil
 }
 
-func (c *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) error {
+func (e *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) error {
 	// type implements Depender interface
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Depender)(nil)).Elem()) {
 		// if type implements Depender() it should has FnsProviderToInvoke
@@ -199,7 +201,7 @@ func (c *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) 
 			for k := 0; k < len(vertex.Meta.FnsDependerToInvoke); k++ {
 				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsDependerToInvoke[k])
 				if !ok {
-					c.logger.Error("type has missing method in FnsDependerToInvoke", zap.String("vertex id", vertex.ID), zap.String("method", vertex.Meta.FnsDependerToInvoke[k]))
+					e.logger.Error("type has missing method in FnsDependerToInvoke", zap.String("vertex id", vertex.ID), zap.String("method", vertex.Meta.FnsDependerToInvoke[k]))
 					return errors.New("type has missing method in FnsDependerToInvoke")
 				}
 
@@ -209,9 +211,9 @@ func (c *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) 
 					// error is the last return parameter in line
 					rErr := ret[len(ret)-1].Interface()
 					if rErr != nil {
-						if e, ok := rErr.(error); ok && e != nil {
-							c.logger.Error("error calling DependerFns", zap.String("vertex id", vertex.ID), zap.Error(e))
-							return e
+						if err, ok := rErr.(error); ok && e != nil {
+							e.logger.Error("error calling DependerFns", zap.String("vertex id", vertex.ID), zap.Error(err))
+							return err
 						}
 						return errUnknownErrorOccurred
 					}
@@ -224,7 +226,7 @@ func (c *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) 
 	return nil
 }
 
-func (c *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value, error) {
+func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value, error) {
 	in := make([]reflect.Value, 0, 2)
 
 	// add service itself
@@ -234,9 +236,9 @@ func (c *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value,
 	if len(vertex.Meta.InitDepsList) > 0 {
 		for i := 0; i < len(vertex.Meta.InitDepsList); i++ {
 			depID := vertex.Meta.InitDepsList[i].Name
-			v := c.graph.FindProviders(depID)
+			v := e.graph.FindProviders(depID)
 			var err error
-			in, err = c.traverseProviders(vertex.Meta.InitDepsList[i], v[0], depID, vertex.ID, in)
+			in, err = e.traverseProviders(vertex.Meta.InitDepsList[i], v[0], depID, vertex.ID, in)
 			if err != nil {
 				return nil, err
 			}
@@ -245,9 +247,9 @@ func (c *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value,
 	return in, nil
 }
 
-func (c *Endure) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
+func (e *Endure) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
 	// we need to call all providers first
-	err := c.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID)
+	err := e.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID)
 	if err != nil {
 		return nil, err
 	}
@@ -255,14 +257,14 @@ func (c *Endure) traverseProviders(depsEntry structures.DepsEntry, depVertex *st
 	// to index function name in defer
 	for providerID, providedEntry := range depVertex.Provides {
 		if providerID == depID {
-			in = c.appendProviderFuncArgs(depsEntry, providedEntry, in)
+			in = e.appendProviderFuncArgs(depsEntry, providedEntry, in)
 		}
 	}
 
 	return in, nil
 }
 
-func (c *Endure) appendProviderFuncArgs(depsEntry structures.DepsEntry, providedEntry structures.ProvidedEntry, in []reflect.Value) []reflect.Value {
+func (e *Endure) appendProviderFuncArgs(depsEntry structures.DepsEntry, providedEntry structures.ProvidedEntry, in []reflect.Value) []reflect.Value {
 	switch {
 	case *providedEntry.IsReference == *depsEntry.IsReference:
 		in = append(in, *providedEntry.Value)
@@ -278,8 +280,8 @@ func (c *Endure) appendProviderFuncArgs(depsEntry structures.DepsEntry, provided
 		if providedEntry.Value.CanAddr() {
 			in = append(in, providedEntry.Value.Addr())
 		} else {
-			c.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", providedEntry.Value.Type()), zap.String("type", providedEntry.Value.Type().String()))
-			c.logger.Warn("making a fresh pointer")
+			e.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", providedEntry.Value.Type()), zap.String("type", providedEntry.Value.Type().String()))
+			e.logger.Warn("making a fresh pointer")
 			nt := reflect.New(providedEntry.Value.Type())
 			in = append(in, nt)
 		}
@@ -287,12 +289,12 @@ func (c *Endure) appendProviderFuncArgs(depsEntry structures.DepsEntry, provided
 	return in
 }
 
-func (c *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Value, callerID string) error {
+func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Value, callerID string) error {
 	// to index function name in defer
 	i := 0
 	defer func() {
 		if r := recover(); r != nil {
-			c.logger.Error("panic during the function call", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]), zap.String("error", fmt.Sprint(r)))
+			e.logger.Error("panic during the function call", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]), zap.String("error", fmt.Sprint(r)))
 		}
 	}()
 	// type implements Provider interface
@@ -305,7 +307,7 @@ func (c *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Va
 			for i = 0; i < len(vertex.Meta.FnsProviderToInvoke); i++ {
 				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsProviderToInvoke[i])
 				if !ok {
-					c.logger.Panic("should implement the Provider interface", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
+					e.logger.Panic("should implement the Provider interface", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
 				}
 
 				/*
@@ -326,7 +328,7 @@ func (c *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Va
 						at the moment we seek for implementation in the callerID only
 					*/
 
-					callerV := c.graph.GetVertex(callerID)
+					callerV := e.graph.GetVertex(callerID)
 					if callerV == nil {
 						return errors.New("caller vertex is nil")
 					}
@@ -336,13 +338,13 @@ func (c *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Va
 						// current function IN type (interface)
 						t := m.Func.Type().In(j)
 						if t.Kind() != reflect.Interface {
-							c.logger.Panic("Provider accepts only interfaces", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
+							e.logger.Panic("Provider accepts only interfaces", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
 						}
 
 						// if Caller struct implements interface -- ok, add it to the inCopy list
 						// else panic
 						if reflect.TypeOf(callerV.Iface).Implements(t) == false {
-							c.logger.Panic("Caller should implement callee interface", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
+							e.logger.Panic("Caller should implement callee interface", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
 						}
 
 						inCopy = append(inCopy, reflect.ValueOf(callerV.Iface))
@@ -354,15 +356,15 @@ func (c *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Va
 				if len(ret) > 1 {
 					rErr := ret[1].Interface()
 					if rErr != nil {
-						if e, ok := rErr.(error); ok && e != nil {
-							c.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
-							return e
+						if err, ok := rErr.(error); ok && e != nil {
+							e.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
+							return err
 						}
 						return errUnknownErrorOccurred
 					}
 
 					// add the value to the Providers
-					c.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("caller id", callerID), zap.String("parameter", in[0].Type().String()))
+					e.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("caller id", callerID), zap.String("parameter", in[0].Type().String()))
 					vertex.AddProvider(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()), in[0].Kind())
 				} else {
 					return errors.New("provider should return Value and error types")
@@ -382,7 +384,7 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-func (c *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) *result {
+func (e *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) *result {
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
@@ -390,7 +392,7 @@ func (c *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) *res
 		if e, ok := res.(chan error); ok && e != nil {
 			return &result{
 				errCh:    e,
-				exit:     make(chan struct{}, 2),
+				exit:     make(chan struct{}),
 				vertexID: vertex.ID,
 			}
 		}
@@ -403,7 +405,7 @@ func (c *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) *res
 /*
 callConfigureFn invoke Configure() error method
 */
-func (c *Endure) callConfigureFn(vertex *structures.Vertex, in []reflect.Value) error {
+func (e *Endure) callConfigureFn(vertex *structures.Vertex, in []reflect.Value) error {
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ConfigureMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
@@ -416,7 +418,7 @@ func (c *Endure) callConfigureFn(vertex *structures.Vertex, in []reflect.Value) 
 	return nil
 }
 
-func (c *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error {
+func (e *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error {
 	// Call Stop() method, which returns only error (or nil)
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(StopMethodName)
 	ret := m.Func.Call(in)
@@ -430,23 +432,23 @@ func (c *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error
 	return nil
 }
 
-func (c *Endure) stop(vID string) error {
-	vertex := c.graph.GetVertex(vID)
+func (e *Endure) stop(vID string) error {
+	vertex := e.graph.GetVertex(vID)
 
 	in := make([]reflect.Value, 0, 1)
 	// add service itself
 	in = append(in, reflect.ValueOf(vertex.Iface))
 
-	err := c.callStopFn(vertex, in)
+	err := e.callStopFn(vertex, in)
 	if err != nil {
-		c.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vertex.ID))
+		e.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vertex.ID))
 		return err
 	}
 
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-		err = c.callCloseFn(vertex.ID, in)
+		err = e.callCloseFn(vertex.ID, in)
 		if err != nil {
-			c.logger.Error("error occurred during the callCloseFn", zap.String("vertex id", vertex.ID))
+			e.logger.Error("error occurred during the callCloseFn", zap.String("vertex id", vertex.ID))
 			return err
 		}
 	}
@@ -455,8 +457,8 @@ func (c *Endure) stop(vID string) error {
 }
 
 // TODO add stack to the all of the log events
-func (c *Endure) callCloseFn(vID string, in []reflect.Value) error {
-	v := c.graph.GetVertex(vID)
+func (e *Endure) callCloseFn(vID string, in []reflect.Value) error {
+	v := e.graph.GetVertex(vID)
 	// Call Close() method, which returns only error (or nil)
 	m, _ := reflect.TypeOf(v.Iface).MethodByName(CloseMethodName)
 	ret := m.Func.Call(in)
@@ -470,23 +472,23 @@ func (c *Endure) callCloseFn(vID string, in []reflect.Value) error {
 	return nil
 }
 
-func (c *Endure) sendExitSignal(sorted []*structures.Vertex) {
+func (e *Endure) sendExitSignal(sorted []*structures.Vertex) {
 	for _, v := range sorted {
 		// get result by vertex ID
-		tmp := c.results[v.ID]
+		tmp := e.results[v.ID]
 		if tmp == nil {
 			continue
 		}
 		// send exit signal to the goroutine in sorted order
-		c.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", tmp.vertexID))
+		e.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", tmp.vertexID))
 		tmp.exit <- struct{}{}
 
-		c.results[v.ID] = nil
+		e.results[v.ID] = nil
 	}
 }
 
-func (c *Endure) sendResultToUser(res *result) {
-	c.userResultsCh <- &Result{
+func (e *Endure) sendResultToUser(res *result) {
+	e.userResultsCh <- &Result{
 		Error: Error{
 			Err:   res.err,
 			Code:  0,
@@ -496,103 +498,248 @@ func (c *Endure) sendResultToUser(res *result) {
 	}
 }
 
-// TODO implement fail tolerant mechanism to force shutdown if freezes
-func (c *Endure) shutdown(n *structures.DllNode) {
-	nCopy := n
-	for nCopy != nil {
-		err := c.stop(nCopy.Vertex.ID)
-		if err != nil {
-			// TODO do not return until finished
-			// just log the errors
-			// stack it in slice and if slice is not empty, print it ??
-			c.logger.Error("error occurred during the services stopping", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
+func (e *Endure) shutdown(n *structures.DllNode) {
+	// channel with nodes to stop
+	sh := make(chan *structures.DllNode)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+	go func() {
+		// process all nodes one by one
+		nCopy := n
+		for nCopy != nil {
+			sh <- nCopy
+			nCopy = nCopy.Next
 		}
-		if channel, ok := c.results[nCopy.Vertex.ID]; (ok == true) && (channel != nil) {
-			channel.exit <- struct{}{}
-		}
+		// after all nodes will be processed, send ctx.Done signal to finish the stopHandler
+		cancel()
+	}()
+	// block until process all nodes
+	e.forceStopHandler(ctx, sh)
+}
 
-		// next DLL node
-		nCopy = nCopy.Next
+func (e *Endure) forceStopHandler(ctx context.Context, data chan *structures.DllNode) {
+	for {
+		select {
+		case node := <-data:
+			// stop vertex
+			err := e.stop(node.Vertex.ID)
+			if err != nil {
+				// TODO do not return until finished
+				// just log the errors
+				// stack it in slice and if slice is not empty, print it ??
+				e.logger.Error("error occurred during the services stopping", zap.String("vertex id", node.Vertex.ID), zap.Error(err))
+			}
+			// exit from vertex poller
+			if channel, ok := e.results[node.Vertex.ID]; (ok == true) && (channel != nil) {
+				channel.exit <- struct{}{}
+			}
+
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
 // serve run configure (if exist) and callServeFn for each node and put the results in the map
-func (c *Endure) serve(n *structures.DllNode) error {
+func (e *Endure) serve(n *structures.DllNode) error {
 	// handle all configure
 	in := make([]reflect.Value, 0, 1)
 	// add service itself
 	in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-	res := c.callServeFn(n.Vertex, in)
+	res := e.callServeFn(n.Vertex, in)
 	if res != nil {
-		c.results[res.vertexID] = res
+		e.results[res.vertexID] = res
 	} else {
-		c.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serve function should return initialized channel with errors"))
+		e.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serve function should return initialized channel with errors"))
 		return fmt.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID)
 	}
 
-	c.poll(res)
-	if c.restartedTime[n.Vertex.ID] != nil {
-		*c.restartedTime[n.Vertex.ID] = time.Now()
+	e.poll(res)
+	if e.restartedTime[n.Vertex.ID] != nil {
+		*e.restartedTime[n.Vertex.ID] = time.Now()
 	} else {
 		tmp := time.Now()
-		c.restartedTime[n.Vertex.ID] = &tmp
+		e.restartedTime[n.Vertex.ID] = &tmp
 	}
 
 	return nil
 }
 
-func (c *Endure) checkLeafErrorTime(res *result) bool {
-	return c.restartedTime[res.vertexID] != nil && c.restartedTime[res.vertexID].After(*c.errorTime[res.vertexID])
+func (e *Endure) checkLeafErrorTime(res *result) bool {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	return e.restartedTime[res.vertexID] != nil && e.restartedTime[res.vertexID].After(*e.errorTime[res.vertexID])
+}
+
+func (e *Endure) startMainThread() {
+	/*
+		Used for handling error from the vertices
+	*/
+	go func() {
+		for {
+			select {
+			// failed Vertex
+			case res, ok := <-e.handleErrorCh:
+				// lock the handleErrorCh processing
+				if !ok {
+					e.logger.Debug("handle error channel was closed")
+					return
+				}
+
+				e.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexID))
+				if e.checkLeafErrorTime(res) {
+					e.logger.Debug("error processing skipped because vertex already restarted by the root", zap.String("vertex id", res.vertexID))
+					e.sendResultToUser(res)
+					continue
+				}
+
+				// get vertex from the graph
+				vertex := e.graph.GetVertex(res.vertexID)
+				if vertex == nil {
+					e.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
+					e.userResultsCh <- &Result{
+						Error:    FailedToGetTheVertex,
+						VertexID: "",
+					}
+					return
+				}
+
+				// reset vertex and dependencies to the initial state
+				// numOfDeps and visited/visiting
+				vertices := e.graph.Reset(vertex)
+
+				// Topologically sort the graph
+				sorted := structures.TopologicalSort(vertices)
+				if sorted == nil {
+					e.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
+					e.userResultsCh <- &Result{
+						Error:    FailedToSortTheGraph,
+						VertexID: res.vertexID,
+					}
+					return
+				}
+
+				if e.retry {
+					// send exit signal only to sorted and involved vertices
+					e.sendExitSignal(sorted)
+
+					// Init backoff
+					b := backoff.NewExponentialBackOff()
+					b.MaxElapsedTime = e.maxInterval
+					b.InitialInterval = e.initialInterval
+
+					affectedRunList := structures.NewDoublyLinkedList()
+					for i := 0; i <= len(sorted)-1; i++ {
+						affectedRunList.Push(sorted[i])
+					}
+
+					// call init
+					headCopy := affectedRunList.Head
+					for headCopy != nil {
+						berr := backoff.Retry(e.backoffInit(headCopy.Vertex), b)
+						if berr != nil {
+							e.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
+							e.userResultsCh <- &Result{
+								Error:    ErrorDuringInit,
+								VertexID: headCopy.Vertex.ID,
+							}
+							return
+						}
+
+						headCopy = headCopy.Next
+					}
+
+					// call configure
+					headCopy = affectedRunList.Head
+					for headCopy != nil {
+						berr := backoff.Retry(e.backoffConfigure(headCopy), b)
+						if berr != nil {
+							e.userResultsCh <- &Result{
+								Error:    ErrorDuringInit,
+								VertexID: headCopy.Vertex.ID,
+							}
+							e.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
+							return
+						}
+
+						headCopy = headCopy.Next
+					}
+
+					// call serve
+					headCopy = affectedRunList.Head
+					for headCopy != nil {
+						err := e.serve(headCopy)
+						if err != nil {
+							e.userResultsCh <- &Result{
+								Error:    ErrorDuringServe,
+								VertexID: headCopy.Vertex.ID,
+							}
+							e.logger.Error("fatal error during the serve in the main thread", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(err))
+							return
+						}
+
+						headCopy = headCopy.Next
+					}
+
+					e.sendResultToUser(res)
+				} else {
+					e.logger.Info("retry is turned off, sending exit signal to every vertex in the graph")
+					// send exit signal to whole graph
+					e.sendExitSignal(e.graph.Vertices)
+					e.sendResultToUser(res)
+				}
+			}
+		}
+	}()
 }
 
 // poll is used to poll the errors from the vertex
 // and exit from it
-func (c *Endure) poll(r *result) {
+func (e *Endure) poll(r *result) {
 	rr := r
 	go func(res *result) {
 		for {
 			select {
 			// error
-			case e := <-res.errCh:
-				if e != nil {
+			case err := <-res.errCh:
+				if err != nil {
 					// log error message
-					c.logger.Error("vertex got an error", zap.String("vertex id", res.vertexID), zap.Error(e))
+					e.logger.Error("vertex got an error", zap.String("vertex id", res.vertexID), zap.Error(err))
 					// set error time
-					c.mutex.Lock()
-					if c.errorTime[res.vertexID] != nil {
-						*c.errorTime[res.vertexID] = time.Now()
+					e.mutex.Lock()
+					if e.errorTime[res.vertexID] != nil {
+						*e.errorTime[res.vertexID] = time.Now()
 					} else {
 						tmp := time.Now()
-						c.errorTime[res.vertexID] = &tmp
+						e.errorTime[res.vertexID] = &tmp
 					}
-					c.mutex.Unlock()
+					e.mutex.Unlock()
 
 					// set the error
-					res.err = e
+					res.err = err
 
 					// send handleErrorCh signal
-					c.handleErrorCh <- res
+					e.handleErrorCh <- res
 				}
 			// exit from the goroutine
 			case <-res.exit:
-				c.mutex.Lock()
-				c.logger.Info("vertex got exit signal", zap.String("vertex id", res.vertexID))
-				err := c.stop(res.vertexID)
+				e.mutex.Lock()
+				e.logger.Info("vertex got exit signal", zap.String("vertex id", res.vertexID))
+				err := e.stop(res.vertexID)
 				if err != nil {
-					c.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexID), zap.Error(err))
-					c.mutex.Unlock()
+					e.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexID), zap.Error(err))
+					e.mutex.Unlock()
 				}
-				c.mutex.Unlock()
+				e.mutex.Unlock()
 				return
 			}
 		}
 	}(rr)
 }
 
-func (c *Endure) register(name string, vertex interface{}, order int) error {
+func (e *Endure) register(name string, vertex interface{}, order int) error {
 	// check the vertex
-	if c.graph.HasVertex(name) {
+	if e.graph.HasVertex(name) {
 		return errVertexAlreadyExists(name)
 	}
 
@@ -602,19 +749,19 @@ func (c *Endure) register(name string, vertex interface{}, order int) error {
 
 	// just push the vertex
 	// here we can append in future some meta information
-	c.graph.AddVertex(name, vertex, meta)
+	e.graph.AddVertex(name, vertex, meta)
 	return nil
 }
 
-func (c *Endure) backoffInit(v *structures.Vertex) func() error {
+func (e *Endure) backoffInit(v *structures.Vertex) func() error {
 	return func() error {
 		// we already checked the Interface satisfaction
 		// at this step absence of Init() is impossible
 		init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
 
-		err := c.callInitFn(init, v)
+		err := e.callInitFn(init, v)
 		if err != nil {
-			c.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.ID), zap.Error(err))
+			e.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.ID), zap.Error(err))
 			return err
 		}
 
@@ -622,14 +769,14 @@ func (c *Endure) backoffInit(v *structures.Vertex) func() error {
 	}
 }
 
-func (c *Endure) configure(n *structures.DllNode) error {
+func (e *Endure) configure(n *structures.DllNode) error {
 	// handle all configure
 	in := make([]reflect.Value, 0, 1)
 	// add service itself
 	in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-		err := c.callConfigureFn(n.Vertex, in)
+		err := e.callConfigureFn(n.Vertex, in)
 		if err != nil {
 			return err
 		}
@@ -638,7 +785,7 @@ func (c *Endure) configure(n *structures.DllNode) error {
 	return nil
 }
 
-func (c *Endure) backoffConfigure(n *structures.DllNode) func() error {
+func (e *Endure) backoffConfigure(n *structures.DllNode) func() error {
 	return func() error {
 		// handle all configure
 		in := make([]reflect.Value, 0, 1)
@@ -646,9 +793,9 @@ func (c *Endure) backoffConfigure(n *structures.DllNode) func() error {
 		in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
 		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-			err := c.callConfigureFn(n.Vertex, in)
+			err := e.callConfigureFn(n.Vertex, in)
 			if err != nil {
-				c.logger.Error("error configuring the vertex", zap.String("vertex id", n.Vertex.ID), zap.Error(err))
+				e.logger.Error("error configuring the vertex", zap.String("vertex id", n.Vertex.ID), zap.Error(err))
 				return err
 			}
 		}
