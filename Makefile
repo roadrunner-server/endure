@@ -1,2 +1,2 @@
 test:
-	go test -v -cover ./tests
+	go test -v -cover -race ./tests

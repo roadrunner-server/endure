@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/endure/structures"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -176,7 +175,7 @@ func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) O
 // Depender depends the dependencies
 // name is a name of the dependency, for example - S2
 // vertex is a value -> pointer to the structure
-func (c *Endure) Register(vertex interface{}) error {
+func (e *Endure) Register(vertex interface{}) error {
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
 
@@ -195,7 +194,7 @@ func (c *Endure) Register(vertex interface{}) error {
 	2. Vertex structure value (interface)
 	And we fill vertex with this information
 	*/
-	err := c.register(vertexID, vertex, order)
+	err := e.register(vertexID, vertex, order)
 	if err != nil {
 		return err
 	}
@@ -208,41 +207,41 @@ func (c *Endure) Register(vertex interface{}) error {
 	4. Provided type String name
 	We add 3 and 4 points to the Vertex
 	*/
-	err = c.addProviders(vertexID, vertex)
+	err = e.addProviders(vertexID, vertex)
 	if err != nil {
 		return err
 	}
-	c.logger.Debug("registering type", zap.String("type", t.String()))
+	e.logger.Debug("registering type", zap.String("type", t.String()))
 
 	return nil
 }
 
 // Init container and all service edges.
-func (c *Endure) Init() error {
+func (e *Endure) Init() error {
 	// traverse the graph
-	if err := c.addEdges(); err != nil {
+	if err := e.addEdges(); err != nil {
 		return err
 	}
 
 	// we should build init list in the reverse order
-	sorted := structures.TopologicalSort(c.graph.Vertices)
+	sorted := structures.TopologicalSort(e.graph.Vertices)
 
 	if len(sorted) == 0 {
-		c.logger.Error("initial graph should contain at least 1 vertex, possibly you forget to invoke Registers?")
+		e.logger.Error("initial graph should contain at least 1 vertex, possibly you forget to invoke Registers?")
 		return errors.New("graph should contain at least 1 vertex, possibly you forget to invoke registers")
 	}
 
-	c.runList = structures.NewDoublyLinkedList()
+	e.runList = structures.NewDoublyLinkedList()
 	for i := 0; i <= len(sorted)-1; i++ {
-		c.runList.Push(sorted[i])
+		e.runList.Push(sorted[i])
 	}
 
-	head := c.runList.Head
+	head := e.runList.Head
 	headCopy := head
 	for headCopy != nil {
-		err := c.init(headCopy.Vertex)
+		err := e.init(headCopy.Vertex)
 		if err != nil {
-			c.logger.Error("error during the init", zap.Error(err))
+			e.logger.Error("error during the init", zap.Error(err))
 			return err
 		}
 		headCopy = headCopy.Next
@@ -251,173 +250,40 @@ func (c *Endure) Init() error {
 	return nil
 }
 
-func (c *Endure) Serve() (<-chan *Result, error) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	c.startMainThread()
+func (e *Endure) Serve() (<-chan *Result, error) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	e.startMainThread()
 
 	// call configure
-	nCopy := c.runList.Head
+	nCopy := e.runList.Head
 	for nCopy != nil {
-		err := c.configure(nCopy)
+		err := e.configure(nCopy)
 		if err != nil {
-			c.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
+			e.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
 			return nil, err
 		}
 
 		nCopy = nCopy.Next
 	}
 
-	nCopy = c.runList.Head
+	nCopy = e.runList.Head
 	for nCopy != nil {
-		err := c.serve(nCopy)
+		err := e.serve(nCopy)
 		if err != nil {
 			return nil, err
 		}
 		nCopy = nCopy.Next
 	}
-	return c.userResultsCh, nil
+	return e.userResultsCh, nil
 }
 
-func (c *Endure) Stop() error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+func (e *Endure) Stop() error {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
 
-	c.logger.Info("exiting from the Endure")
-	n := c.runList.Head
-	c.shutdown(n)
+	e.logger.Info("exiting from the Endure")
+	n := e.runList.Head
+	e.shutdown(n)
 	return nil
-}
-
-func (c *Endure) startMainThread() {
-	// handle error channel goroutine
-	/*
-		Used for handling error from the vertices
-	*/
-	go func() {
-		for {
-			select {
-			// failed Vertex
-			case res, ok := <-c.handleErrorCh:
-				// lock the handleErrorCh processing
-				c.mutex.Lock()
-				if !ok {
-					c.logger.Debug("handle error channel was closed")
-					c.mutex.Unlock()
-					return
-				}
-
-				c.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexID))
-				if c.checkLeafErrorTime(res) {
-					c.logger.Debug("error processing skipped because vertex already restarted by the root", zap.String("vertex id", res.vertexID))
-					c.sendResultToUser(res)
-					c.mutex.Unlock()
-					continue
-				}
-
-				// get vertex from the graph
-				vertex := c.graph.GetVertex(res.vertexID)
-				if vertex == nil {
-					c.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
-					c.userResultsCh <- &Result{
-						Error:    FailedToGetTheVertex,
-						VertexID: "",
-					}
-					c.mutex.Unlock()
-					return
-				}
-
-				// reset vertex and dependencies to the initial state
-				// numOfDeps and visited/visiting
-				vertices := c.graph.Reset(vertex)
-
-				// Topologically sort the graph
-				sorted := structures.TopologicalSort(vertices)
-				if sorted == nil {
-					c.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
-					c.userResultsCh <- &Result{
-						Error:    FailedToSortTheGraph,
-						VertexID: res.vertexID,
-					}
-					c.mutex.Unlock()
-					return
-				}
-
-				if c.retry {
-					// send exit signal only to sorted and involved vertices
-					c.sendExitSignal(sorted)
-
-					// Init backoff
-					b := backoff.NewExponentialBackOff()
-					b.MaxElapsedTime = c.maxInterval
-					b.InitialInterval = c.initialInterval
-
-					affectedRunList := structures.NewDoublyLinkedList()
-					for i := 0; i <= len(sorted)-1; i++ {
-						affectedRunList.Push(sorted[i])
-					}
-
-					// call init
-					headCopy := affectedRunList.Head
-					for headCopy != nil {
-						berr := backoff.Retry(c.backoffInit(headCopy.Vertex), b)
-						if berr != nil {
-							c.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
-							c.userResultsCh <- &Result{
-								Error:    ErrorDuringInit,
-								VertexID: headCopy.Vertex.ID,
-							}
-							c.mutex.Unlock()
-							return
-						}
-
-						headCopy = headCopy.Next
-					}
-
-					// call configure
-					headCopy = affectedRunList.Head
-					for headCopy != nil {
-						berr := backoff.Retry(c.backoffConfigure(headCopy), b)
-						if berr != nil {
-							c.userResultsCh <- &Result{
-								Error:    ErrorDuringInit,
-								VertexID: headCopy.Vertex.ID,
-							}
-							c.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
-							c.mutex.Unlock()
-							return
-						}
-
-						headCopy = headCopy.Next
-					}
-
-					// call serve
-					headCopy = affectedRunList.Head
-					for headCopy != nil {
-						err := c.serve(headCopy)
-						if err != nil {
-							c.userResultsCh <- &Result{
-								Error:    ErrorDuringServe,
-								VertexID: headCopy.Vertex.ID,
-							}
-							c.logger.Error("fatal error during the serve in the main thread", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(err))
-							c.mutex.Unlock()
-							return
-						}
-
-						headCopy = headCopy.Next
-					}
-
-					c.sendResultToUser(res)
-					c.mutex.Unlock()
-				} else {
-					c.logger.Info("retry is turned off, sending exit signal to every vertex in the graph")
-					// send exit signal to whole graph
-					c.sendExitSignal(c.graph.Vertices)
-					c.sendResultToUser(res)
-					c.mutex.Unlock()
-				}
-			}
-		}
-	}()
 }
