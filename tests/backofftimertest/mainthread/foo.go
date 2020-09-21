@@ -38,8 +38,6 @@ func (f *Foo) Stop() error {
 	return nil
 }
 
-/////////////////////////////////////////////////
-
 var number2 int = 0
 
 type Foo2 struct {
@@ -72,8 +70,6 @@ func (f *Foo2) Serve() chan error {
 func (f *Foo2) Stop() error {
 	return nil
 }
-
-/////////////////////////////////////////////////
 
 var number3 int = 0
 

@@ -63,11 +63,10 @@ type Vertex struct {
 	// Set of entries which can vertex provide (for example, foo4 vertex can provide DB instance and logger)
 	Provides map[string]ProvidedEntry
 
-
 	// for the topological sort, private
 	numOfDeps int
-	visited  bool
-	visiting bool
+	visited   bool
+	visiting  bool
 }
 
 type ProvidedEntry struct {
@@ -91,34 +90,10 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 	}
 }
 
-// NewAL initializes adjacency list to store the VerticesMap
-// example
-// 1 -> 2 -> 4
-// 2 -> 5
-// 3 -> 6 -> 5
-// 4 -> 2
-// 5 -> 4
-// 6 -> 6
-//
-// VerticesMap from the AL:
-//
-//+---+          +---+               +---+
-//| 1 +--------->+ 2 |               | 3 |
-//+-+-+          +--++               +-+-+
-//  |          +-+  |             +-+  |
-//  |        +-+    |           +-+    |
-//  |       ++      |          ++      |
-//  v     +-+       v        +-+       v
-//+-+-+<--+      +--++       |       +-+-+
-//| 4 |     +----+ 5 +<------+       | 6 +<-+
-//+---+<----+    +---+               +-+-+  |
-//                                     |    |
-//                                     +----+
-// BUT
+// NewGraph initializes endure Graph
 // According to the topological sorting, graph should be
 // 1. DIRECTED
 // 2. ACYCLIC
-//
 func NewGraph() *Graph {
 	return &Graph{
 		VerticesMap: make(map[string]*Vertex),
@@ -175,7 +150,7 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 		// OR know Depends methods to invoke
 		g.addToList(method, vertex, depID, isRef, reflect.Interface)
 
-		//append depID vertex
+		// append depID vertex
 		for j := 0; j < len(depVertices[i].Dependencies); j++ {
 			tmpID := depVertices[i].Dependencies[i].ID
 			if tmpID == vertex.ID {

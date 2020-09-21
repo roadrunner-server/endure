@@ -352,7 +352,7 @@ func TestEndure_Serve_Err(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		for r := range res { //<--- Error is HERE
+		for r := range res { // <--- Error is HERE
 			assert.Equal(t, "foo4.S4ServeError", r.VertexID)
 			assert.Error(t, r.Error.Err)
 			assert.NoError(t, c.Stop())

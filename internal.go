@@ -192,7 +192,7 @@ func (c *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 }
 
 func (c *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) error {
-	//type implements Depender interface
+	// type implements Depender interface
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Depender)(nil)).Elem()) {
 		// if type implements Depender() it should has FnsProviderToInvoke
 		if vertex.Meta.DepsList != nil {
@@ -507,7 +507,7 @@ func (c *Endure) shutdown(n *structures.DllNode) {
 			// stack it in slice and if slice is not empty, print it ??
 			c.logger.Error("error occurred during the services stopping", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
 		}
-		if channel, ok := c.results[nCopy.Vertex.ID]; ok && channel != nil {
+		if channel, ok := c.results[nCopy.Vertex.ID]; (ok == true) && (channel != nil) {
 			channel.exit <- struct{}{}
 		}
 
@@ -559,14 +559,14 @@ func (c *Endure) poll(r *result) {
 					// log error message
 					c.logger.Error("vertex got an error", zap.String("vertex id", res.vertexID), zap.Error(e))
 					// set error time
-					c.rwMutex.Lock()
+					c.mutex.Lock()
 					if c.errorTime[res.vertexID] != nil {
 						*c.errorTime[res.vertexID] = time.Now()
 					} else {
 						tmp := time.Now()
 						c.errorTime[res.vertexID] = &tmp
 					}
-					c.rwMutex.Unlock()
+					c.mutex.Unlock()
 
 					// set the error
 					res.err = e
@@ -576,14 +576,14 @@ func (c *Endure) poll(r *result) {
 				}
 			// exit from the goroutine
 			case <-res.exit:
-				c.rwMutex.Lock()
+				c.mutex.Lock()
 				c.logger.Info("vertex got exit signal", zap.String("vertex id", res.vertexID))
 				err := c.stop(res.vertexID)
 				if err != nil {
 					c.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexID), zap.Error(err))
-					c.rwMutex.Unlock()
+					c.mutex.Unlock()
 				}
-				c.rwMutex.Unlock()
+				c.mutex.Unlock()
 				return
 			}
 		}
@@ -628,7 +628,6 @@ func (c *Endure) configure(n *structures.DllNode) error {
 	// add service itself
 	in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-	//var res Result
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
 		err := c.callConfigureFn(n.Vertex, in)
 		if err != nil {
@@ -646,7 +645,6 @@ func (c *Endure) backoffConfigure(n *structures.DllNode) func() error {
 		// add service itself
 		in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-		//var res Result
 		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
 			err := c.callConfigureFn(n.Vertex, in)
 			if err != nil {

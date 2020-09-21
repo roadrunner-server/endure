@@ -56,12 +56,12 @@ type Endure struct {
 	maxInterval     time.Duration
 	initialInterval time.Duration
 
-	rwMutex *sync.RWMutex
+	mutex *sync.Mutex
 
 	// result always points on healthy channel associated with vertex
 	results map[string]*result
 
-	/// main thread
+	// main thread
 	handleErrorCh chan *result
 	userResultsCh chan *Result
 
@@ -70,10 +70,6 @@ type Endure struct {
 }
 
 type Options func(endure *Endure)
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////// PUBLIC ////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Input parameters: logLevel
    -1 is the most informative level - DebugLevel --> also turns on pprof endpoint
@@ -89,7 +85,7 @@ type Options func(endure *Endure)
 */
 func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 	c := &Endure{
-		rwMutex:         &sync.RWMutex{},
+		mutex:           &sync.Mutex{},
 		initialInterval: time.Second * 1,
 		maxInterval:     time.Second * 60,
 	}
@@ -256,8 +252,8 @@ func (c *Endure) Init() error {
 }
 
 func (c *Endure) Serve() (<-chan *Result, error) {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	c.startMainThread()
 
 	// call configure
@@ -284,18 +280,14 @@ func (c *Endure) Serve() (<-chan *Result, error) {
 }
 
 func (c *Endure) Stop() error {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	c.logger.Info("exiting from the Endure")
 	n := c.runList.Head
 	c.shutdown(n)
 	return nil
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////// PRIVATE ///////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func (c *Endure) startMainThread() {
 	// handle error channel goroutine
@@ -308,10 +300,10 @@ func (c *Endure) startMainThread() {
 			// failed Vertex
 			case res, ok := <-c.handleErrorCh:
 				// lock the handleErrorCh processing
-				c.rwMutex.Lock()
+				c.mutex.Lock()
 				if !ok {
 					c.logger.Debug("handle error channel was closed")
-					c.rwMutex.Unlock()
+					c.mutex.Unlock()
 					return
 				}
 
@@ -319,7 +311,7 @@ func (c *Endure) startMainThread() {
 				if c.checkLeafErrorTime(res) {
 					c.logger.Debug("error processing skipped because vertex already restarted by the root", zap.String("vertex id", res.vertexID))
 					c.sendResultToUser(res)
-					c.rwMutex.Unlock()
+					c.mutex.Unlock()
 					continue
 				}
 
@@ -331,7 +323,7 @@ func (c *Endure) startMainThread() {
 						Error:    FailedToGetTheVertex,
 						VertexID: "",
 					}
-					c.rwMutex.Unlock()
+					c.mutex.Unlock()
 					return
 				}
 
@@ -347,7 +339,7 @@ func (c *Endure) startMainThread() {
 						Error:    FailedToSortTheGraph,
 						VertexID: res.vertexID,
 					}
-					c.rwMutex.Unlock()
+					c.mutex.Unlock()
 					return
 				}
 
@@ -375,7 +367,7 @@ func (c *Endure) startMainThread() {
 								Error:    ErrorDuringInit,
 								VertexID: headCopy.Vertex.ID,
 							}
-							c.rwMutex.Unlock()
+							c.mutex.Unlock()
 							return
 						}
 
@@ -392,7 +384,7 @@ func (c *Endure) startMainThread() {
 								VertexID: headCopy.Vertex.ID,
 							}
 							c.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
-							c.rwMutex.Unlock()
+							c.mutex.Unlock()
 							return
 						}
 
@@ -409,7 +401,7 @@ func (c *Endure) startMainThread() {
 								VertexID: headCopy.Vertex.ID,
 							}
 							c.logger.Error("fatal error during the serve in the main thread", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(err))
-							c.rwMutex.Unlock()
+							c.mutex.Unlock()
 							return
 						}
 
@@ -417,13 +409,13 @@ func (c *Endure) startMainThread() {
 					}
 
 					c.sendResultToUser(res)
-					c.rwMutex.Unlock()
+					c.mutex.Unlock()
 				} else {
 					c.logger.Info("retry is turned off, sending exit signal to every vertex in the graph")
 					// send exit signal to whole graph
 					c.sendExitSignal(c.graph.Vertices)
 					c.sendResultToUser(res)
-					c.rwMutex.Unlock()
+					c.mutex.Unlock()
 				}
 			}
 		}

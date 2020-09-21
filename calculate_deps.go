@@ -37,10 +37,10 @@ func (c *Endure) addProviders(vertexID string, vertex interface{}) error {
 
 			// Interface dep
 			/*
-			If Provided type is interface
-			1. Check that type implement interface
-			2. Write record, that this particular type also provides Interface
-			 */
+				If Provided type is interface
+				1. Check that type implement interface
+				2. Write record, that this particular type also provides Interface
+			*/
 			if ret.Kind() == reflect.Interface {
 				if reflect.TypeOf(vertex).Implements(ret) {
 					tmpValue := reflect.ValueOf(vertex)
