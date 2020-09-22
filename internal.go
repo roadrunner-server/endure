@@ -31,6 +31,11 @@ func (e *Endure) init(vertex *structures.Vertex) error {
 }
 
 func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
+	defer func() {
+		if r := recover(); r != nil {
+			e.logger.Error("[panic][recovered] probably called Init with insufficient number of params. check the init function and make sure you are registered dependency")
+		}
+	}()
 	in, err := e.findInitParameters(vertex)
 	if err != nil {
 		return err
