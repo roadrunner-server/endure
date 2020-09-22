@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         go: [1.13, 1.14]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     env:
       GO111MODULE: on
     steps:
