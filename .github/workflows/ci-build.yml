@@ -27,11 +27,6 @@ jobs:
       - name: Show versions
         run: go version
 
-      - name: Debug if needed
-        env:
-          DEBUG: ${{ secrets.DEBUG }}
-        run: if [[ "$DEBUG" == "true" ]]; then env && go env; fi
-
       - name: Install Go dependencies
         run: go mod download
 
