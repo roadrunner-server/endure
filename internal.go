@@ -587,7 +587,8 @@ func (e *Endure) checkLeafErrorTime(res *result) bool {
 
 func (e *Endure) startMainThread() {
 	/*
-		Used for handling error from the vertices
+		Main thread is the main Endure unit of work
+		It used to handle erros from vertices, notify user about result, re-calculating graph according to failed vertices and sending stop signals
 	*/
 	go func() {
 		for {
@@ -607,96 +608,8 @@ func (e *Endure) startMainThread() {
 					continue
 				}
 
-				// get vertex from the graph
-				vertex := e.graph.GetVertex(res.vertexID)
-				if vertex == nil {
-					e.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
-					e.userResultsCh <- &Result{
-						Error:    FailedToGetTheVertex,
-						VertexID: "",
-					}
-					return
-				}
-
-				// reset vertex and dependencies to the initial state
-				// numOfDeps and visited/visiting
-				vertices := e.graph.Reset(vertex)
-
-				// Topologically sort the graph
-				sorted := structures.TopologicalSort(vertices)
-				if sorted == nil {
-					e.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
-					e.userResultsCh <- &Result{
-						Error:    FailedToSortTheGraph,
-						VertexID: res.vertexID,
-					}
-					return
-				}
-
 				if e.retry {
-					// send exit signal only to sorted and involved vertices
-					// stop will be called inside poller
-					e.sendStopSignal(sorted)
-
-					// Init backoff
-					b := backoff.NewExponentialBackOff()
-					b.MaxElapsedTime = e.maxInterval
-					b.InitialInterval = e.initialInterval
-
-					affectedRunList := structures.NewDoublyLinkedList()
-					for i := 0; i <= len(sorted)-1; i++ {
-						affectedRunList.Push(sorted[i])
-					}
-
-					// call init
-					headCopy := affectedRunList.Head
-					for headCopy != nil {
-						berr := backoff.Retry(e.backoffInit(headCopy.Vertex), b)
-						if berr != nil {
-							e.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
-							e.userResultsCh <- &Result{
-								Error:    ErrorDuringInit,
-								VertexID: headCopy.Vertex.ID,
-							}
-							return
-						}
-
-						headCopy = headCopy.Next
-					}
-
-					// call configure
-					headCopy = affectedRunList.Head
-					for headCopy != nil {
-						berr := backoff.Retry(e.backoffConfigure(headCopy), b)
-						if berr != nil {
-							e.userResultsCh <- &Result{
-								Error:    ErrorDuringInit,
-								VertexID: headCopy.Vertex.ID,
-							}
-							e.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
-							return
-						}
-
-						headCopy = headCopy.Next
-					}
-
-					// call serve
-					headCopy = affectedRunList.Head
-					for headCopy != nil {
-						err := e.serve(headCopy)
-						if err != nil {
-							e.userResultsCh <- &Result{
-								Error:    ErrorDuringServe,
-								VertexID: headCopy.Vertex.ID,
-							}
-							e.logger.Error("fatal error during the serve in the main thread", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(err))
-							return
-						}
-
-						headCopy = headCopy.Next
-					}
-
-					e.sendResultToUser(res)
+					e.retryHandler(res)
 				} else {
 					e.logger.Info("retry is turned off, sending exit signal to every vertex in the graph")
 					// send exit signal to whole graph
@@ -706,6 +619,97 @@ func (e *Endure) startMainThread() {
 			}
 		}
 	}()
+}
+
+func (e *Endure) retryHandler(res *result) {
+	// get vertex from the graph
+	vertex := e.graph.GetVertex(res.vertexID)
+	if vertex == nil {
+		e.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
+		e.userResultsCh <- &Result{
+			Error:    FailedToGetTheVertex,
+			VertexID: "",
+		}
+		return
+	}
+
+	// reset vertex and dependencies to the initial state
+	// numOfDeps and visited/visiting
+	vertices := e.graph.Reset(vertex)
+
+	// Topologically sort the graph
+	sorted := structures.TopologicalSort(vertices)
+	if sorted == nil {
+		e.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
+		e.userResultsCh <- &Result{
+			Error:    FailedToSortTheGraph,
+			VertexID: res.vertexID,
+		}
+		return
+	}
+
+	// send exit signal only to sorted and involved vertices
+	// stop will be called inside poller
+	e.sendStopSignal(sorted)
+
+	// Init backoff
+	b := backoff.NewExponentialBackOff()
+	b.MaxElapsedTime = e.maxInterval
+	b.InitialInterval = e.initialInterval
+
+	affectedRunList := structures.NewDoublyLinkedList()
+	for i := 0; i <= len(sorted)-1; i++ {
+		affectedRunList.Push(sorted[i])
+	}
+
+	// call init
+	headCopy := affectedRunList.Head
+	for headCopy != nil {
+		berr := backoff.Retry(e.backoffInit(headCopy.Vertex), b)
+		if berr != nil {
+			e.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
+			e.userResultsCh <- &Result{
+				Error:    ErrorDuringInit,
+				VertexID: headCopy.Vertex.ID,
+			}
+			return
+		}
+		headCopy = headCopy.Next
+	}
+
+	// call configure
+	headCopy = affectedRunList.Head
+	for headCopy != nil {
+		berr := backoff.Retry(e.backoffConfigure(headCopy), b)
+		if berr != nil {
+			e.userResultsCh <- &Result{
+				Error:    ErrorDuringInit,
+				VertexID: headCopy.Vertex.ID,
+			}
+			e.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
+			return
+		}
+
+		headCopy = headCopy.Next
+	}
+
+	// call serve
+	headCopy = affectedRunList.Head
+	for headCopy != nil {
+		err := e.serve(headCopy)
+		if err != nil {
+			e.userResultsCh <- &Result{
+				Error:    ErrorDuringServe,
+				VertexID: headCopy.Vertex.ID,
+			}
+			e.logger.Error("fatal error during the serve in the main thread", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(err))
+			return
+		}
+
+		headCopy = headCopy.Next
+	}
+
+	e.sendResultToUser(res)
 }
 
 // poll is used to poll the errors from the vertex
