@@ -1,6 +1,6 @@
 name: CI
 
-on: [push, pull_request]
+on: [ push, pull_request ]
 
 jobs:
   build:
@@ -9,8 +9,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: [1.14, 1.15]
-        os: [ubuntu-latest, macos-latest]
+        go: [ 1.14, 1.15 ]
+        os: [ ubuntu-latest, macos-latest ]
     env:
       GO111MODULE: on
     steps:
@@ -32,6 +32,12 @@ jobs:
 
       - name: Run golang tests
         run: |
+          go test -v -coverprofile=backoff.txt -race ./tests/backoff
+          go test -v -coverprofile=happyScenario.txt -race ./tests/happyScenario
+          go test -v -coverprofile=interfaces.txt -race ./tests/interfaces
+          go test -v -coverprofile=issues.txt -race ./tests/issues
+          go test -v -coverprofile=stress.txt -race ./tests/stress
+
           go test -race -v -coverprofile=endure.txt -covermode=atomic
 
       - name: Run code coverage
@@ -41,7 +47,11 @@ jobs:
           if [[ "$CODECOV_TOKEN" != "" ]]; then
             curl https://codecov.io/bash -o codecov-bash
             chmod +x codecov-bash
-            ./codecov-bash -f endure.txt
+            ./codecov-bash -f backoff.txt
+            ./codecov-bash -f happyScenario.txt
+            ./codecov-bash -f interfaces.txt
+            ./codecov-bash -f issues.txt
+            ./codecov-bash -f stress.txt
           fi
 
   golangci-check:

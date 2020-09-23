@@ -305,7 +305,7 @@ func (v Vertices) Swap(i, j int) {
 	v[i], v[j] = v[j], v[i]
 }
 
-func TopologicalSort(vertices []*Vertex) []*Vertex {
+func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {
 	var ord Vertices
 	verticesCopy := vertices
 
@@ -314,11 +314,11 @@ func TopologicalSort(vertices []*Vertex) []*Vertex {
 		verticesCopy = verticesCopy[:len(verticesCopy)-1]
 		containsCycle := dfs(vertex, &ord)
 		if containsCycle {
-			return nil
+			return nil, errors.New(fmt.Sprintf("cycle detected, please, check vertex: %s", vertex.ID))
 		}
 	}
 
-	return ord
+	return ord, nil
 }
 
 func dfs(vertex *Vertex, ordered *Vertices) bool {

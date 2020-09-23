@@ -224,7 +224,11 @@ func (e *Endure) Init() error {
 	}
 
 	// we should build init list in the reverse order
-	sorted := structures.TopologicalSort(e.graph.Vertices)
+	sorted, err := structures.TopologicalSort(e.graph.Vertices)
+	if err != nil {
+		e.logger.Error("error sorting the graph", zap.Error(err))
+		return err
+	}
 
 	if len(sorted) == 0 {
 		e.logger.Error("initial graph should contain at least 1 vertex, possibly you forget to invoke Registers?")

@@ -609,6 +609,7 @@ func (e *Endure) startMainThread() {
 				}
 
 				if e.retry {
+					// TODO handle error from the retry handler
 					e.retryHandler(res)
 				} else {
 					e.logger.Info("retry is turned off, sending exit signal to every vertex in the graph")
@@ -638,7 +639,11 @@ func (e *Endure) retryHandler(res *result) {
 	vertices := e.graph.Reset(vertex)
 
 	// Topologically sort the graph
-	sorted := structures.TopologicalSort(vertices)
+	sorted, err := structures.TopologicalSort(vertices)
+	if err != nil {
+		e.logger.Error("error sorting the graph", zap.Error(err))
+		return
+	}
 	if sorted == nil {
 		e.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
 		e.userResultsCh <- &Result{
