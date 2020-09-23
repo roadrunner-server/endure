@@ -32,11 +32,11 @@ jobs:
 
       - name: Run golang tests
         run: |
-          go test -v -coverprofile=backoff.txt -race ./tests/backoff
-          go test -v -coverprofile=happyScenario.txt -race ./tests/happyScenario
-          go test -v -coverprofile=interfaces.txt -race ./tests/interfaces
-          go test -v -coverprofile=issues.txt -race ./tests/issues
-          go test -v -coverprofile=stress.txt -race ./tests/stress
+          go test ./tests/backoff -race -v -coverprofile=backoff.txt -covermode=atomic
+          go test ./tests/happyScenario -race -v -coverprofile=happyScenario.txt -covermode=atomic
+          go test ./tests/interfaces -race -v -coverprofile=interfaces.txt -covermode=atomic
+          go test ./tests/issues -race -v -coverprofile=issues.txt -covermode=atomic
+          go test ./tests/stress -race -v -coverprofile=stress.txt -covermode=atomic
 
           go test -race -v -coverprofile=endure.txt -covermode=atomic
 
