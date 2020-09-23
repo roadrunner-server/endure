@@ -38,8 +38,6 @@ jobs:
           go test ./tests/issues -race -v -coverprofile=issues.txt -covermode=atomic
           go test ./tests/stress -race -v -coverprofile=stress.txt -covermode=atomic
 
-          go test -race -v -coverprofile=endure.txt -covermode=atomic
-
       - name: Run code coverage
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
