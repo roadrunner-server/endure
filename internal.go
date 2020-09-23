@@ -588,7 +588,7 @@ func (e *Endure) checkLeafErrorTime(res *result) bool {
 func (e *Endure) startMainThread() {
 	/*
 		Main thread is the main Endure unit of work
-		It used to handle erros from vertices, notify user about result, re-calculating graph according to failed vertices and sending stop signals
+		It used to handle errors from vertices, notify user about result, re-calculating graph according to failed vertices and sending stop signals
 	*/
 	go func() {
 		for {

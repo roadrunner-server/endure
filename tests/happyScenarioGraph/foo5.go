@@ -1,4 +1,4 @@
-package foo5
+package happyScenarioGraph
 
 type S5 struct {
 }

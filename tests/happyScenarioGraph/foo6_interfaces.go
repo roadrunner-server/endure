@@ -1,4 +1,4 @@
-package foo6
+package happyScenarioGraph
 
 type FooReader interface {
 	Fooo() // just stupid name

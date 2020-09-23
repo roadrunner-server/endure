@@ -1,4 +1,4 @@
-package foo4
+package happyScenarioGraph
 
 import (
 	"github.com/spiral/endure/tests/foo5"
