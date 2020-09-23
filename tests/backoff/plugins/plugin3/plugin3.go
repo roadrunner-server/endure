@@ -31,7 +31,6 @@ func (f *Plugin3) Serve() chan error {
 	return errCh
 }
 
-
 func (f *Plugin3) Stop() error {
 	return nil
 }

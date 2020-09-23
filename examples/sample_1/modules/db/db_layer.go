@@ -56,7 +56,6 @@ func (db *DB) Name() string {
 
 /////////////// DB LAYER /////////////////
 
-
 func (db *DB) Insert() {
 	db.logger.SuperLogToStdOut("INSERTING")
 }

@@ -7,7 +7,6 @@ import (
 )
 
 type Gzip struct {
-
 }
 
 func (gz *Gzip) Init() error {
@@ -22,7 +21,6 @@ func (gz *Gzip) Serve() chan error {
 func (gz *Gzip) Stop() error {
 	return nil
 }
-
 
 func (gz *Gzip) Middleware(f http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

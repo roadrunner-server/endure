@@ -1,4 +1,4 @@
-package ServeRetryErr
+package serve_retry_err
 
 import (
 	"errors"

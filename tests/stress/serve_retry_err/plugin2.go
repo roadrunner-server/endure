@@ -1,5 +1,4 @@
-package ServeRetryErr
-
+package serve_retry_err
 
 type FOO2DB struct {
 }

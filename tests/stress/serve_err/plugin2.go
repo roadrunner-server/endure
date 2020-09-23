@@ -1,4 +1,4 @@
-package ServeErr
+package serve_err
 
 type DB struct {
 }

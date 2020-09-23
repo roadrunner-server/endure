@@ -1,4 +1,4 @@
-package InitErr
+package init_err
 
 type S2Err struct {
 }
