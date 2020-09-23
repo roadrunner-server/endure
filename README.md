@@ -5,6 +5,7 @@
 	<a href="https://goreportcard.com/report/github.com/spiral/Endure"><img src="https://goreportcard.com/badge/github.com/spiral/Endure"></a>
 	<a href="https://codecov.io/gh/spiral/Endure/"><img src="https://codecov.io/gh/spiral/Endure/branch/master/graph/badge.svg"></a>
 	<a href="https://discord.gg/TFeEmCs"><img src="https://img.shields.io/badge/discord-chat-magenta.svg"></a>
+	<a href="https://lgtm.com/projects/g/spiral/endure/alerts/"><img src="https://img.shields.io/lgtm/alerts/g/spiral/endure.svg?logo=lgtm&logoWidth=18"></a>
 </p>
 
 Endure is an open-source (MIT licensed) plugin container with IoC and self-healing.

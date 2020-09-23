@@ -20,6 +20,11 @@ type Result struct {
 	VertexID string
 }
 
+type notify struct {
+	// stop used to notify vertex goroutine, that we need to stop vertex and return from goroutine
+	stop bool
+}
+
 type result struct {
 	// error channel from vertex
 	errCh chan error
@@ -27,8 +32,8 @@ type result struct {
 	err error
 	// unique vertex id
 	vertexID string
-	// signal to the vertex goroutine to exit
-	exit chan struct{}
+	// notify used to signal vertex about event
+	signal chan notify
 }
 
 type (
