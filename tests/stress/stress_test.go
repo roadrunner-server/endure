@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/spiral/endure"
-	"github.com/spiral/endure/tests/stress/depender_func_return"
-	"github.com/spiral/endure/tests/stress/init_err"
-	"github.com/spiral/endure/tests/stress/serve_err"
-	"github.com/spiral/endure/tests/stress/serve_retry_err"
+	"github.com/spiral/endure/tests/stress/DependerFuncReturn"
+	"github.com/spiral/endure/tests/stress/InitErr"
+	"github.com/spiral/endure/tests/stress/ServeErr"
+	"github.com/spiral/endure/tests/stress/ServeRetryErr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,8 +17,8 @@ func TestEndure_Init_Err(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&init_err.S1Err{}))
-	assert.NoError(t, c.Register(&init_err.S2Err{})) // should produce an error during the Init
+	assert.NoError(t, c.Register(&InitErr.S1Err{}))
+	assert.NoError(t, c.Register(&InitErr.S2Err{})) // should produce an error during the Init
 	assert.Error(t, c.Init())
 }
 
@@ -26,11 +26,11 @@ func TestEndure_Serve_Err(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&serve_err.S4ServeError{})) // should produce an error during the Serve
-	assert.NoError(t, c.Register(&serve_err.S2{}))
-	assert.NoError(t, c.Register(&serve_err.S3ServeError{}))
-	assert.NoError(t, c.Register(&serve_err.S5{}))
-	assert.NoError(t, c.Register(&serve_err.S1ServeErr{}))
+	assert.NoError(t, c.Register(&ServeErr.S4ServeError{})) // should produce an error during the Serve
+	assert.NoError(t, c.Register(&ServeErr.S2{}))
+	assert.NoError(t, c.Register(&ServeErr.S3ServeError{}))
+	assert.NoError(t, c.Register(&ServeErr.S5{}))
+	assert.NoError(t, c.Register(&ServeErr.S1ServeErr{}))
 	err = c.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestEndure_Serve_Err(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res { // <--- Error is HERE
-			assert.Equal(t, "serve_err.S4ServeError", r.VertexID)
+			assert.Equal(t, "ServeErr.S4ServeError", r.VertexID)
 			assert.Error(t, r.Error.Err)
 			assert.NoError(t, c.Stop())
 			time.Sleep(time.Second * 3)
@@ -68,19 +68,19 @@ func TestEndure_Serve_Retry_Err(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&serve_retry_err.S4{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S2{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S2ServeErr{})) // Random error here
-	assert.NoError(t, c.Register(&serve_retry_err.S3{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S5{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S1ServeErr{})) // should produce an error during the Serve
+	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S2{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S2ServeErr{})) // Random error here
+	assert.NoError(t, c.Register(&ServeRetryErr.S3{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S5{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S1ServeErr{})) // should produce an error during the Serve
 	assert.NoError(t, c.Init())
 
 	res, err := c.Serve()
 	assert.NoError(t, err)
 
 	// we can't be sure, what node will be processed first
-	ord := [2]string{"serve_retry_err.S1ServeErr", "serve_retry_err.S2ServeErr"}
+	ord := [2]string{"ServeRetryErr.S1ServeErr", "ServeRetryErr.S2ServeErr"}
 
 	count := 0
 
@@ -119,19 +119,19 @@ func TestEndure_Serve_Retry_100_Err(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&serve_retry_err.S4{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S2{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S2ServeErr{})) // Random error here
-	assert.NoError(t, c.Register(&serve_retry_err.S3{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S5{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S1ServeErr{})) // should produce an error during the Serve
+	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S2{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S2ServeErr{})) // Random error here
+	assert.NoError(t, c.Register(&ServeRetryErr.S3{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S5{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S1ServeErr{})) // should produce an error during the Serve
 	assert.NoError(t, c.Init())
 
 	res, err := c.Serve()
 	assert.NoError(t, err)
 
 	// we can't be sure, what node will be processed first
-	ord := [2]string{"serve_retry_err.S1ServeErr", "serve_retry_err.S2ServeErr"}
+	ord := [2]string{"ServeRetryErr.S1ServeErr", "ServeRetryErr.S2ServeErr"}
 
 	count := 0
 
@@ -167,19 +167,19 @@ func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&serve_retry_err.S4{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S2{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S2ServeErr{})) // Random error here
-	assert.NoError(t, c.Register(&serve_retry_err.S3Init{}))     // Random error here
-	assert.NoError(t, c.Register(&serve_retry_err.S5{}))
-	assert.NoError(t, c.Register(&serve_retry_err.S1ServeErr{})) // should produce an error during the Serve
+	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S2{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S2ServeErr{})) // Random error here
+	assert.NoError(t, c.Register(&ServeRetryErr.S3Init{}))     // Random Init error here
+	assert.NoError(t, c.Register(&ServeRetryErr.S5{}))
+	assert.NoError(t, c.Register(&ServeRetryErr.S1ServeErr{})) // should produce an error during the Serve
 	assert.NoError(t, c.Init())
 
 	res, err := c.Serve()
 	assert.NoError(t, err)
 
 	// we can't be sure, what node will be processed first
-	ord := [2]string{"serve_retry_err.S1ServeErr", "serve_retry_err.S2ServeErr"}
+	ord := [2]string{"ServeRetryErr.S1ServeErr", "ServeRetryErr.S2ServeErr"}
 
 	count := 0
 
@@ -225,8 +225,8 @@ func TestEndure_DependerFuncReturnError(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&depender_func_return.FooDep{}))
-	assert.NoError(t, c.Register(&depender_func_return.FooDep2{}))
+	assert.NoError(t, c.Register(&DependerFuncReturn.FooDep{}))
+	assert.NoError(t, c.Register(&DependerFuncReturn.FooDep2{}))
 	assert.Error(t, c.Init())
 
 	_, _ = c.Serve()

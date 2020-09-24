@@ -1,4 +1,4 @@
-package serve_err
+package ServeErr
 
 import (
 	"errors"

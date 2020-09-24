@@ -1,4 +1,4 @@
-package serve_retry_err
+package ServeRetryErr
 
 type FOO2DB struct {
 }
@@ -6,16 +6,8 @@ type FOO2DB struct {
 type S2 struct {
 }
 
-func (s2 *S2) Init(db *FOO4DB) error {
+func (s2 *S2) Init() error {
 	return nil
-}
-
-func (s2 *S2) Provides() []interface{} {
-	return []interface{}{s2.CreateDB}
-}
-
-func (s2 *S2) CreateDB() (FOO2DB, error) {
-	return FOO2DB{}, nil
 }
 
 func (s2 *S2) Close() error {

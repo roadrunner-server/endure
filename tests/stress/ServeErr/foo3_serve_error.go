@@ -1,4 +1,4 @@
-package serve_err
+package ServeErr
 
 type S3ServeError struct {
 }

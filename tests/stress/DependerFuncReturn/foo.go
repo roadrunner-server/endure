@@ -1,4 +1,4 @@
-package depender_func_return
+package DependerFuncReturn
 
 import "errors"
 
