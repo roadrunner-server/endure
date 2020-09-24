@@ -55,7 +55,7 @@ type Endure struct {
 	maxInterval     time.Duration
 	initialInterval time.Duration
 
-	mutex *sync.Mutex
+	mutex *sync.RWMutex
 
 	// result always points on healthy channel associated with vertex
 	results map[string]*result
@@ -63,9 +63,6 @@ type Endure struct {
 	// main thread
 	handleErrorCh chan *result
 	userResultsCh chan *Result
-
-	errorTime     map[string]*time.Time
-	restartedTime map[string]*time.Time
 }
 
 type Options func(endure *Endure)
@@ -84,7 +81,7 @@ type Options func(endure *Endure)
 */
 func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 	c := &Endure{
-		mutex:           &sync.Mutex{},
+		mutex:           &sync.RWMutex{},
 		initialInterval: time.Second * 1,
 		maxInterval:     time.Second * 60,
 	}
@@ -142,8 +139,6 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 	// Main thread channels
 	c.handleErrorCh = make(chan *result)
 	c.userResultsCh = make(chan *Result)
-	c.errorTime = make(map[string]*time.Time)
-	c.restartedTime = make(map[string]*time.Time)
 
 	// append options
 	for _, option := range options {
@@ -224,7 +219,11 @@ func (e *Endure) Init() error {
 	}
 
 	// we should build init list in the reverse order
-	sorted := structures.TopologicalSort(e.graph.Vertices)
+	sorted, err := structures.TopologicalSort(e.graph.Vertices)
+	if err != nil {
+		e.logger.Error("error sorting the graph", zap.Error(err))
+		return err
+	}
 
 	if len(sorted) == 0 {
 		e.logger.Error("initial graph should contain at least 1 vertex, possibly you forget to invoke Registers?")
@@ -251,8 +250,6 @@ func (e *Endure) Init() error {
 }
 
 func (e *Endure) Serve() (<-chan *Result, error) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
 	e.startMainThread()
 
 	// call configure
