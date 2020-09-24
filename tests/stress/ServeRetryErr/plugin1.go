@@ -16,7 +16,7 @@ func (s *S1ServeErr) Init(s2 *S2) error {
 func (s *S1ServeErr) Serve() chan error {
 	errCh := make(chan error, 1)
 	go func() {
-		time.Sleep(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 300)
 		errCh <- errors.New("test serve error")
 	}()
 	return errCh

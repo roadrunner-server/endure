@@ -484,7 +484,9 @@ func (e *Endure) callCloseFn(vID string, in []reflect.Value) error {
 func (e *Endure) sendStopSignal(sorted []*structures.Vertex) {
 	for _, v := range sorted {
 		// get result by vertex ID
+		e.mutex.RLock()
 		tmp := e.results[v.ID]
+		e.mutex.RUnlock()
 		if tmp == nil {
 			continue
 		}
@@ -494,7 +496,9 @@ func (e *Endure) sendStopSignal(sorted []*structures.Vertex) {
 			stop: true,
 		}
 
+		e.mutex.Lock()
 		e.results[v.ID] = nil
+		e.mutex.Unlock()
 	}
 }
 
@@ -562,27 +566,18 @@ func (e *Endure) serve(n *structures.DllNode) error {
 
 	res := e.callServeFn(n.Vertex, in)
 	if res != nil {
+		e.mutex.Lock()
 		e.results[res.vertexID] = res
+		e.mutex.Unlock()
 	} else {
 		e.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serve function should return initialized channel with errors"))
 		return fmt.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID)
 	}
 
+	// start poll the vertex
 	e.poll(res)
-	if e.restartedTime[n.Vertex.ID] != nil {
-		*e.restartedTime[n.Vertex.ID] = time.Now()
-	} else {
-		tmp := time.Now()
-		e.restartedTime[n.Vertex.ID] = &tmp
-	}
 
 	return nil
-}
-
-func (e *Endure) checkLeafErrorTime(res *result) bool {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	return e.restartedTime[res.vertexID] != nil && e.restartedTime[res.vertexID].After(*e.errorTime[res.vertexID])
 }
 
 func (e *Endure) startMainThread() {
@@ -602,12 +597,6 @@ func (e *Endure) startMainThread() {
 				}
 
 				e.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexID))
-				if e.checkLeafErrorTime(res) {
-					e.logger.Debug("error processing skipped because vertex already restarted by the root", zap.String("vertex id", res.vertexID))
-					e.sendResultToUser(res)
-					continue
-				}
-
 				if e.retry {
 					// TODO handle error from the retry handler
 					e.retryHandler(res)
@@ -729,15 +718,6 @@ func (e *Endure) poll(r *result) {
 				if err != nil {
 					// log error message
 					e.logger.Error("vertex got an error", zap.String("vertex id", res.vertexID), zap.Error(err))
-					// set error time
-					e.mutex.Lock()
-					if e.errorTime[res.vertexID] != nil {
-						*e.errorTime[res.vertexID] = time.Now()
-					} else {
-						tmp := time.Now()
-						e.errorTime[res.vertexID] = &tmp
-					}
-					e.mutex.Unlock()
 
 					// set the error
 					res.err = err
