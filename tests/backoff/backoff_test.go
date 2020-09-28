@@ -99,7 +99,7 @@ func TestEndure_BackoffTimers(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true), endure.SetBackoffTimes(time.Second, time.Second*5))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&plugin2.Foo{}))
+	assert.NoError(t, c.Register(&plugin2.Plugin2{}))
 	assert.Error(t, c.Init())
 
 	_, _ = c.Serve()

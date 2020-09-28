@@ -28,10 +28,10 @@ func (f *Plugin4) Serve() chan error {
 		number3++
 		go func() {
 			time.Sleep(time.Second * 3)
-			errCh <- errors.New("test error3")
+			errCh <- errors.New("test plugin4 error")
 		}()
 	} else {
-		return nil
+		return errCh
 	}
 	return errCh
 }
