@@ -58,8 +58,10 @@ type Endure struct {
 	mutex *sync.RWMutex
 
 	// result always points on healthy channel associated with vertex
-	results map[string]*result
+	//results map[string]*result
 
+	// since Endure sturcture has ALL method with pointer receiver, we do not need additional pointer to the sync.Map
+	results sync.Map
 	// main thread
 	handleErrorCh chan *result
 	userResultsCh chan *Result
@@ -84,6 +86,7 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 		mutex:           &sync.RWMutex{},
 		initialInterval: time.Second * 1,
 		maxInterval:     time.Second * 60,
+		results: sync.Map{},
 	}
 
 	var lvl zap.AtomicLevel
@@ -134,7 +137,6 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 	c.graph = structures.NewGraph()
 	c.runList = structures.NewDoublyLinkedList()
 	c.logger = logger
-	c.results = make(map[string]*result)
 
 	// Main thread channels
 	c.handleErrorCh = make(chan *result)

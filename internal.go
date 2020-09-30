@@ -484,21 +484,21 @@ func (e *Endure) callCloseFn(vID string, in []reflect.Value) error {
 func (e *Endure) sendStopSignal(sorted []*structures.Vertex) {
 	for _, v := range sorted {
 		// get result by vertex ID
-		e.mutex.RLock()
-		tmp := e.results[v.ID]
-		e.mutex.RUnlock()
+		tmp, ok := e.results.Load(v.ID)
+		if !ok {
+			continue
+		}
+		res := tmp.(*result)
 		if tmp == nil {
 			continue
 		}
 		// send exit signal to the goroutine in sorted order
-		e.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", tmp.vertexID))
-		tmp.signal <- notify{
+		e.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", res.vertexID))
+		res.signal <- notify{
 			stop: true,
 		}
 
-		e.mutex.Lock()
-		e.results[v.ID] = nil
-		e.mutex.Unlock()
+		e.results.Delete(v.ID)
 	}
 }
 
@@ -544,11 +544,15 @@ func (e *Endure) forceExitHandler(ctx context.Context, data chan *structures.Dll
 				e.logger.Error("error occurred during the services stopping", zap.String("vertex id", node.Vertex.ID), zap.Error(err))
 			}
 			// exit from vertex poller
-			if channel, ok := e.results[node.Vertex.ID]; (ok == true) && (channel != nil) {
-				channel.signal <- notify{
-					// false because we called stop already
-					stop: false,
-				}
+			tmp, ok := e.results.Load(node.Vertex.ID)
+			if !ok {
+				continue
+			}
+
+			channel := tmp.(*result)
+			channel.signal <- notify{
+				// false because we called stop already
+				stop: false,
 			}
 
 		case <-ctx.Done():
@@ -566,9 +570,7 @@ func (e *Endure) serve(n *structures.DllNode) error {
 
 	res := e.callServeFn(n.Vertex, in)
 	if res != nil {
-		e.mutex.Lock()
-		e.results[res.vertexID] = res
-		e.mutex.Unlock()
+		e.results.Store(res.vertexID, res)
 	} else {
 		e.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serve function should return initialized channel with errors"))
 		return fmt.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID)
