@@ -58,9 +58,7 @@ type Endure struct {
 	mutex *sync.RWMutex
 
 	// result always points on healthy channel associated with vertex
-	//results map[string]*result
-
-	// since Endure sturcture has ALL method with pointer receiver, we do not need additional pointer to the sync.Map
+	// since Endure structure has ALL method with pointer receiver, we do not need additional pointer to the sync.Map
 	results sync.Map
 	// main thread
 	handleErrorCh chan *result
