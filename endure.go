@@ -154,9 +154,9 @@ func pprof() {
 	}()
 }
 
-func RetryOnFail(set bool) Options {
+func RetryOnFail(retry bool) Options {
 	return func(endure *Endure) {
-		endure.retry = set
+		endure.retry = retry
 	}
 }
 
