@@ -69,6 +69,11 @@ func (e *Endure) addEdges() error {
 		// and we can safely skip the OK parameter here
 		init, _ := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
 
+		if init.Type == nil {
+			e.logger.Fatal("init method is absent in struct", zap.String("vertexId", vertexID))
+			return errNoInitMethodInStructure
+		}
+
 		/* Add the dependencies (if) which this vertex needs to init
 		Information we know at this step is:
 		1. vertexID
@@ -168,7 +173,7 @@ func (e *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 }
 
 func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
-	// S2 init args
+	// Init function in arguments
 	initArgs := functionParameters(initMethod)
 
 	// iterate over all function parameters

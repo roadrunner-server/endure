@@ -426,6 +426,31 @@ func (e *Endure) callConfigureFn(vertex *structures.Vertex, in []reflect.Value) 
 	return nil
 }
 
+func (e *Endure) stop(vID string) error {
+	vertex := e.graph.GetVertex(vID)
+	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
+		in := make([]reflect.Value, 0, 1)
+		// add service itself
+		in = append(in, reflect.ValueOf(vertex.Iface))
+
+		err := e.callStopFn(vertex, in)
+		if err != nil {
+			e.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vertex.ID))
+			return err
+		}
+
+		if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+			err = e.callCloseFn(vertex.ID, in)
+			if err != nil {
+				e.logger.Error("error occurred during the callCloseFn", zap.String("vertex id", vertex.ID))
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (e *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error {
 	// Call Stop() method, which returns only error (or nil)
 	e.logger.Debug("stopping vertex", zap.String("vertexId", vertex.ID))
@@ -438,30 +463,6 @@ func (e *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error
 		}
 		return errUnknownErrorOccurred
 	}
-	return nil
-}
-
-func (e *Endure) stop(vID string) error {
-	vertex := e.graph.GetVertex(vID)
-
-	in := make([]reflect.Value, 0, 1)
-	// add service itself
-	in = append(in, reflect.ValueOf(vertex.Iface))
-
-	err := e.callStopFn(vertex, in)
-	if err != nil {
-		e.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vertex.ID))
-		return err
-	}
-
-	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
-		err = e.callCloseFn(vertex.ID, in)
-		if err != nil {
-			e.logger.Error("error occurred during the callCloseFn", zap.String("vertex id", vertex.ID))
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -563,21 +564,24 @@ func (e *Endure) forceExitHandler(ctx context.Context, data chan *structures.Dll
 
 // serve run configure (if exist) and callServeFn for each node and put the results in the map
 func (e *Endure) serve(n *structures.DllNode) error {
-	// handle all configure
-	in := make([]reflect.Value, 0, 1)
-	// add service itself
-	in = append(in, reflect.ValueOf(n.Vertex.Iface))
+	// check if type implements serve, if implements, call serve
+	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
+		// handle all configure
+		in := make([]reflect.Value, 0, 1)
+		// add service itself
+		in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-	res := e.callServeFn(n.Vertex, in)
-	if res != nil {
-		e.results.Store(res.vertexID, res)
-	} else {
-		e.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serve function should return initialized channel with errors"))
-		return fmt.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID)
+		res := e.callServeFn(n.Vertex, in)
+		if res != nil {
+			e.results.Store(res.vertexID, res)
+		} else {
+			e.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serve function should return initialized channel with errors"))
+			return fmt.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID)
+		}
+
+		// start poll the vertex
+		e.poll(res)
 	}
-
-	// start poll the vertex
-	e.poll(res)
 
 	return nil
 }
