@@ -178,11 +178,6 @@ func (e *Endure) Register(vertex interface{}) error {
 		return errors.New("you should pass pointer to the structure instead of value")
 	}
 
-	ok := t.Implements(reflect.TypeOf((*Service)(nil)).Elem())
-	if !ok {
-		return errTypeNotImplementError
-	}
-
 	/* Depender the type
 	Information we know at this step is:
 	1. vertexID

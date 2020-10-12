@@ -13,6 +13,8 @@ import (
 	"github.com/spiral/endure/tests/interfaces/plugins/plugin3"
 	"github.com/spiral/endure/tests/interfaces/plugins/plugin4"
 	"github.com/spiral/endure/tests/interfaces/plugins/plugin5"
+	notImplPlugin1 "github.com/spiral/endure/tests/interfaces/service/not_implemented_service/plugin1"
+	notImplPlugin2 "github.com/spiral/endure/tests/interfaces/service/not_implemented_service/plugin2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -104,6 +106,21 @@ func TestEndure_NamedProvides_WrongType_Fail(t *testing.T) {
 	assert.NoError(t, c.Register(&registersfail.Plugin1{}))
 
 	assert.Error(t, c.Init())
+
+	_, err = c.Serve()
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Stop())
+}
+
+func TestEndure_ServiceInterface_NotImplemented_Ok(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&notImplPlugin1.Foo{}))
+	assert.NoError(t, c.Register(&notImplPlugin2.Foo{}))
+
+	assert.NoError(t, c.Init())
 
 	_, err = c.Serve()
 	assert.NoError(t, err)

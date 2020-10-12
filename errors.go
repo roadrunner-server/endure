@@ -46,3 +46,4 @@ var ErrorDuringServe = Error{
 var errTypeNotImplementError = errors.New("type should implement Service interface")
 var errVertexAlreadyExists = func(name string) error { return fmt.Errorf("vertex `%s` already exists", name) }
 var errUnknownErrorOccurred = errors.New("unknown error occurred during the function call")
+var errNoInitMethodInStructure = errors.New("init method is absent in struct")

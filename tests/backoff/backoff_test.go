@@ -91,8 +91,8 @@ func TestEndure_MainThread_Backoff(t *testing.T) {
 	wg.Wait()
 
 	after := time.Now().Second()
-	// after - now should not be more than 11 as we set in NewContainer
-	assert.Greater(t, 11, after-now, "time")
+	// after - now should not be more than 15 as we set in NewContainer
+	assert.Greater(t, 15, after-now, "time")
 }
 
 func TestEndure_BackoffTimers(t *testing.T) {
