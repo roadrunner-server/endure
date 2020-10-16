@@ -58,7 +58,7 @@ type (
 	}
 
 	// internal container interface
-	container interface {
+	Container interface {
 		Serve() (<-chan *Result, error)
 		Stop() error
 		Register(service interface{}) error
