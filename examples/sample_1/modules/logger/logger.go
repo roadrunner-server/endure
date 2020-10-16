@@ -22,15 +22,6 @@ func (l *Logger) Init() error {
 	return nil
 }
 
-func (l *Logger) Serve() chan error {
-	errCh := make(chan error)
-	return errCh
-}
-
-func (l *Logger) Stop() error {
-	return nil
-}
-
 func (l *Logger) Provides() []interface{} {
 	return []interface{}{
 		l.LoggerInstance,

@@ -13,15 +13,6 @@ func (gz *Gzip) Init() error {
 	return nil
 }
 
-func (gz *Gzip) Serve() chan error {
-	errCh := make(chan error)
-	return errCh
-}
-
-func (gz *Gzip) Stop() error {
-	return nil
-}
-
 func (gz *Gzip) Middleware(f http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		gziphandler.GzipHandler(f).ServeHTTP(w, r)
