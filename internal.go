@@ -439,7 +439,7 @@ func (e *Endure) stop(vID string) error {
 			return err
 		}
 
-		if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+		if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*graceful)(nil)).Elem()) {
 			err = e.callCloseFn(vertex.ID, in)
 			if err != nil {
 				e.logger.Error("error occurred during the callCloseFn", zap.String("vertex id", vertex.ID))
@@ -788,7 +788,7 @@ func (e *Endure) configure(n *structures.DllNode) error {
 	// add service itself
 	in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*graceful)(nil)).Elem()) {
 		err := e.callConfigureFn(n.Vertex, in)
 		if err != nil {
 			return err
@@ -805,7 +805,7 @@ func (e *Endure) backoffConfigure(n *structures.DllNode) func() error {
 		// add service itself
 		in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Graceful)(nil)).Elem()) {
+		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*graceful)(nil)).Elem()) {
 			err := e.callConfigureFn(n.Vertex, in)
 			if err != nil {
 				e.logger.Error("error configuring the vertex", zap.String("vertex id", n.Vertex.ID), zap.Error(err))

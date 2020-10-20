@@ -38,7 +38,7 @@ type result struct {
 
 type (
 	// used to gracefully stop and configure the plugins
-	Graceful interface {
+	graceful interface {
 		// Configure is used when we need to make preparation and wait for all services till Serve
 		Configure() error
 		// Close frees resources allocated by the service
