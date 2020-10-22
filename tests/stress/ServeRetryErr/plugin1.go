@@ -1,8 +1,9 @@
 package ServeRetryErr
 
 import (
-	"errors"
 	"time"
+
+	"github.com/spiral/endure/errors"
 )
 
 type S1ServeErr struct {
@@ -14,10 +15,12 @@ func (s *S1ServeErr) Init(s2 *S2) error {
 }
 
 func (s *S1ServeErr) Serve() chan error {
+	var op = errors.Op("S1 Serve")
 	errCh := make(chan error, 1)
 	go func() {
-		time.Sleep(time.Millisecond * 300)
-		errCh <- errors.New("test serve error")
+		time.Sleep(time.Second * 10)
+		err := errors.E(op, errors.Serve, "test serve error")
+		errCh <- err
 	}()
 	return errCh
 }

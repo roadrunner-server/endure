@@ -2,12 +2,12 @@ package endure
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/spiral/endure/errors"
 	"github.com/spiral/endure/structures"
 	"go.uber.org/zap"
 )
@@ -17,6 +17,7 @@ import (
 
 */
 func (e *Endure) init(vertex *structures.Vertex) error {
+	const op = errors.Op("internal_init")
 	// we already checked the Interface satisfaction
 	// at this step absence of Init() is impoosssibruuu
 	initMethod, _ := reflect.TypeOf(vertex.Iface).MethodByName(InitMethodName)
@@ -24,13 +25,14 @@ func (e *Endure) init(vertex *structures.Vertex) error {
 	err := e.callInitFn(initMethod, vertex)
 	if err != nil {
 		e.logger.Error("error occurred during the call INIT function", zap.String("vertex id", vertex.ID), zap.Error(err))
-		return err
+		return errors.E(op, errors.FunctionCall, err)
 	}
 
 	return nil
 }
 
 func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
+	const op = errors.Op("internal_call_init_function")
 	defer func() {
 		if r := recover(); r != nil {
 			e.logger.Error("[panic][recovered] probably called Init with insufficient number of params. check the init function and make sure you are registered dependency")
@@ -49,9 +51,9 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 	if rErr != nil {
 		if err, ok := rErr.(error); ok && e != nil {
 			e.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(err))
-			return err
+			return errors.E(op, errors.FunctionCall, err)
 		}
-		return errUnknownErrorOccurred
+		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 	}
 
 	// just to be safe here
@@ -66,7 +68,7 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 		e.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("parameter", in[0].Type().String()))
 	} else {
 		e.logger.Error("0 or less parameters for Init", zap.String("vertex id", vertex.ID))
-		return errors.New("0 or less parameters for Init")
+		return errors.E(op, errors.ArgType, errors.Str("0 or less parameters for Init"))
 	}
 
 	if len(vertex.Meta.DepsList) > 0 {
@@ -75,13 +77,13 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 			if vertex.Meta.DepsList[i].Kind == reflect.Interface {
 				err = e.traverseCallDependersInterface(vertex)
 				if err != nil {
-					return err
+					return errors.E(op, errors.Traverse, err)
 				}
 			} else {
 				// structure dependence
 				err = e.traverseCallDependers(vertex)
 				if err != nil {
-					return err
+					return errors.E(op, errors.Traverse, err)
 				}
 			}
 		}
@@ -90,6 +92,7 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 }
 
 func (e *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error {
+	const op = errors.Op("internal_traverse_call_dependers_interface")
 	for i := 0; i < len(vertex.Meta.DepsList); i++ {
 		// get dependency id (vertex id)
 		depID := vertex.Meta.DepsList[i].Name
@@ -142,7 +145,7 @@ func (e *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error
 
 				err := e.callDependerFns(vertex, inInterface)
 				if err != nil {
-					return err
+					return errors.E(op, errors.Traverse, err)
 				}
 			}
 		}
@@ -152,6 +155,7 @@ func (e *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error
 }
 
 func (e *Endure) traverseCallDependers(vertex *structures.Vertex) error {
+	const op = "internal_traverse_call_dependers"
 	in := make([]reflect.Value, 0, 2)
 	// add service itself
 	in = append(in, reflect.ValueOf(vertex.Iface))
@@ -194,13 +198,14 @@ func (e *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 
 	err := e.callDependerFns(vertex, in)
 	if err != nil {
-		return err
+		return errors.E(op, errors.Traverse, err)
 	}
 
 	return nil
 }
 
 func (e *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) error {
+	const op = errors.Op("internal_call_depender_functions")
 	// type implements Depender interface
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Depender)(nil)).Elem()) {
 		// if type implements Depender() it should has FnsProviderToInvoke
@@ -209,7 +214,7 @@ func (e *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) 
 				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsDependerToInvoke[k])
 				if !ok {
 					e.logger.Error("type has missing method in FnsDependerToInvoke", zap.String("vertex id", vertex.ID), zap.String("method", vertex.Meta.FnsDependerToInvoke[k]))
-					return errors.New("type has missing method in FnsDependerToInvoke")
+					return errors.E(op, errors.FunctionCall, errors.Str("type has missing method in FnsDependerToInvoke"))
 				}
 
 				ret := m.Func.Call(in)
@@ -220,12 +225,12 @@ func (e *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) 
 					if rErr != nil {
 						if err, ok := rErr.(error); ok && e != nil {
 							e.logger.Error("error calling DependerFns", zap.String("vertex id", vertex.ID), zap.Error(err))
-							return err
+							return errors.E(op, errors.FunctionCall, err)
 						}
-						return errUnknownErrorOccurred
+						return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 					}
 				} else {
-					return errors.New("depender should return Value and error types")
+					return errors.E(op, errors.FunctionCall, errors.Str("depender should return Value and error types"))
 				}
 			}
 		}
@@ -234,6 +239,7 @@ func (e *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) 
 }
 
 func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value, error) {
+	const op = errors.Op("internal_find_init_parameters")
 	in := make([]reflect.Value, 0, 2)
 
 	// add service itself
@@ -247,7 +253,7 @@ func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value,
 			var err error
 			in, err = e.traverseProviders(vertex.Meta.InitDepsList[i], v[0], depID, vertex.ID, in)
 			if err != nil {
-				return nil, err
+				return nil, errors.E(op, errors.Traverse, err)
 			}
 		}
 	}
@@ -255,10 +261,11 @@ func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value,
 }
 
 func (e *Endure) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
+	const op = errors.Op("internal_traverse_providers")
 	// we need to call all providers first
 	err := e.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID)
 	if err != nil {
-		return nil, err
+		return nil, errors.E(op, errors.Traverse, err)
 	}
 
 	// to index function name in defer
@@ -297,6 +304,7 @@ func (e *Endure) appendProviderFuncArgs(depsEntry structures.DepsEntry, provided
 }
 
 func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Value, callerID string) error {
+	const op = errors.Op("internal_traverse_call_provider")
 	// to index function name in defer
 	i := 0
 	defer func() {
@@ -337,7 +345,7 @@ func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Va
 
 					callerV := e.graph.GetVertex(callerID)
 					if callerV == nil {
-						return errors.New("caller vertex is nil")
+						return errors.E(op, errors.Traverse, errors.Str("caller vertex is nil"))
 					}
 
 					// skip function receiver
@@ -365,16 +373,16 @@ func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Va
 					if rErr != nil {
 						if err, ok := rErr.(error); ok && e != nil {
 							e.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
-							return err
+							return errors.E(op, errors.FunctionCall, err)
 						}
-						return errUnknownErrorOccurred
+						return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 					}
 
 					// add the value to the Providers
 					e.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("caller id", callerID), zap.String("parameter", in[0].Type().String()))
 					vertex.AddProvider(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()), in[0].Kind())
 				} else {
-					return errors.New("provider should return Value and error types")
+					return errors.E(op, errors.FunctionCall, errors.Str("provider should return Value and error types"))
 				}
 			}
 		}
@@ -414,19 +422,21 @@ func (e *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) *res
 callConfigureFn invoke Configure() error method
 */
 func (e *Endure) callConfigureFn(vertex *structures.Vertex, in []reflect.Value) error {
+	const op = errors.Op("internal_call_configure_function")
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ConfigureMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
 	if res != nil {
 		if e, ok := res.(error); ok && e != nil {
-			return e
+			return errors.E(op, errors.FunctionCall, e)
 		}
-		return errUnknownErrorOccurred
+		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 	}
 	return nil
 }
 
 func (e *Endure) stop(vID string) error {
+	const op = errors.Op("internal_stop")
 	vertex := e.graph.GetVertex(vID)
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
 		in := make([]reflect.Value, 0, 1)
@@ -436,14 +446,14 @@ func (e *Endure) stop(vID string) error {
 		err := e.callStopFn(vertex, in)
 		if err != nil {
 			e.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vertex.ID))
-			return err
+			return errors.E(op, errors.FunctionCall, err)
 		}
 
 		if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*graceful)(nil)).Elem()) {
 			err = e.callCloseFn(vertex.ID, in)
 			if err != nil {
 				e.logger.Error("error occurred during the callCloseFn", zap.String("vertex id", vertex.ID))
-				return err
+				return errors.E(op, errors.FunctionCall, err)
 			}
 		}
 	}
@@ -452,6 +462,7 @@ func (e *Endure) stop(vID string) error {
 }
 
 func (e *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error {
+	const op = errors.Op("internal_call_stop_function")
 	// Call Stop() method, which returns only error (or nil)
 	e.logger.Debug("stopping vertex", zap.String("vertexId", vertex.ID))
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(StopMethodName)
@@ -459,15 +470,16 @@ func (e *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error
 	rErr := ret[0].Interface()
 	if rErr != nil {
 		if e, ok := rErr.(error); ok && e != nil {
-			return e
+			return errors.E(op, errors.FunctionCall, e)
 		}
-		return errUnknownErrorOccurred
+		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 	}
 	return nil
 }
 
 // TODO add stack to the all of the log events
 func (e *Endure) callCloseFn(vID string, in []reflect.Value) error {
+	const op = errors.Op("internal_call_close_function")
 	v := e.graph.GetVertex(vID)
 	// Call Close() method, which returns only error (or nil)
 	m, _ := reflect.TypeOf(v.Iface).MethodByName(CloseMethodName)
@@ -475,9 +487,9 @@ func (e *Endure) callCloseFn(vID string, in []reflect.Value) error {
 	rErr := ret[0].Interface()
 	if rErr != nil {
 		if e, ok := rErr.(error); ok && e != nil {
-			return e
+			return errors.E(op, errors.FunctionCall, e)
 		}
-		return errUnknownErrorOccurred
+		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 	}
 	return nil
 }
@@ -505,11 +517,7 @@ func (e *Endure) sendStopSignal(sorted []*structures.Vertex) {
 
 func (e *Endure) sendResultToUser(res *result) {
 	e.userResultsCh <- &Result{
-		Error: Error{
-			Err:   res.err,
-			Code:  0,
-			Stack: nil,
-		},
+		Error:    res.err,
 		VertexID: res.vertexID,
 	}
 }
@@ -564,6 +572,7 @@ func (e *Endure) forceExitHandler(ctx context.Context, data chan *structures.Dll
 
 // serve run configure (if exist) and callServeFn for each node and put the results in the map
 func (e *Endure) serve(n *structures.DllNode) error {
+	const op = errors.Op("internal_serve")
 	// check if type implements serve, if implements, call serve
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
 		// handle all configure
@@ -576,7 +585,7 @@ func (e *Endure) serve(n *structures.DllNode) error {
 			e.results.Store(res.vertexID, res)
 		} else {
 			e.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serve function should return initialized channel with errors"))
-			return fmt.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID)
+			return errors.E(op, errors.FunctionCall, errors.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID))
 		}
 
 		// start poll the vertex
@@ -618,12 +627,13 @@ func (e *Endure) startMainThread() {
 }
 
 func (e *Endure) retryHandler(res *result) {
+	const op = errors.Op("internal_retry_handler")
 	// get vertex from the graph
 	vertex := e.graph.GetVertex(res.vertexID)
 	if vertex == nil {
 		e.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
 		e.userResultsCh <- &Result{
-			Error:    FailedToGetTheVertex,
+			Error:    errors.E(op, errors.Traverse, errors.Str("failed to get vertex from the graph, vertex is nil")),
 			VertexID: "",
 		}
 		return
@@ -642,7 +652,7 @@ func (e *Endure) retryHandler(res *result) {
 	if sorted == nil {
 		e.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
 		e.userResultsCh <- &Result{
-			Error:    FailedToSortTheGraph,
+			Error:    errors.E(op, errors.Traverse, errors.Str("failed to topologically sort the graph")),
 			VertexID: res.vertexID,
 		}
 		return
@@ -669,7 +679,7 @@ func (e *Endure) retryHandler(res *result) {
 		if berr != nil {
 			e.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
 			e.userResultsCh <- &Result{
-				Error:    ErrorDuringInit,
+				Error:    errors.E(op, errors.FunctionCall, errors.Errorf("error during the Init function call")),
 				VertexID: headCopy.Vertex.ID,
 			}
 			return
@@ -683,7 +693,7 @@ func (e *Endure) retryHandler(res *result) {
 		berr := backoff.Retry(e.backoffConfigure(headCopy), b)
 		if berr != nil {
 			e.userResultsCh <- &Result{
-				Error:    ErrorDuringInit,
+				Error:    errors.E(op, errors.FunctionCall, errors.Errorf("error during the Init function call")),
 				VertexID: headCopy.Vertex.ID,
 			}
 			e.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
@@ -699,7 +709,7 @@ func (e *Endure) retryHandler(res *result) {
 		err := e.serve(headCopy)
 		if err != nil {
 			e.userResultsCh <- &Result{
-				Error:    ErrorDuringServe,
+				Error:    errors.E(op, errors.FunctionCall, errors.Errorf("error during the Serve function call")),
 				VertexID: headCopy.Vertex.ID,
 			}
 			e.logger.Error("fatal error during the serve in the main thread", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(err))
@@ -752,8 +762,9 @@ func (e *Endure) poll(r *result) {
 
 func (e *Endure) register(name string, vertex interface{}, order int) error {
 	// check the vertex
+	const op = errors.Op("internal_register")
 	if e.graph.HasVertex(name) {
-		return errVertexAlreadyExists(name)
+		return errors.E(op, errors.Traverse, errors.Errorf("vertex `%s` already exists", name))
 	}
 
 	meta := structures.Meta{
@@ -768,6 +779,7 @@ func (e *Endure) register(name string, vertex interface{}, order int) error {
 
 func (e *Endure) backoffInit(v *structures.Vertex) func() error {
 	return func() error {
+		const op = errors.Op("internal_backoff_init")
 		// we already checked the Interface satisfaction
 		// at this step absence of Init() is impossible
 		init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
@@ -775,7 +787,7 @@ func (e *Endure) backoffInit(v *structures.Vertex) func() error {
 		err := e.callInitFn(init, v)
 		if err != nil {
 			e.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.ID), zap.Error(err))
-			return err
+			return errors.E(op, errors.FunctionCall, err)
 		}
 
 		return nil
@@ -783,6 +795,7 @@ func (e *Endure) backoffInit(v *structures.Vertex) func() error {
 }
 
 func (e *Endure) configure(n *structures.DllNode) error {
+	const op = errors.Op("internal_configure")
 	// handle all configure
 	in := make([]reflect.Value, 0, 1)
 	// add service itself
@@ -791,7 +804,7 @@ func (e *Endure) configure(n *structures.DllNode) error {
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*graceful)(nil)).Elem()) {
 		err := e.callConfigureFn(n.Vertex, in)
 		if err != nil {
-			return err
+			return errors.E(op, errors.FunctionCall, err)
 		}
 	}
 

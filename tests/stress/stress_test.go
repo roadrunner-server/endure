@@ -3,9 +3,9 @@ package stress
 import (
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/spiral/endure"
+	"github.com/spiral/endure/errors"
 	"github.com/spiral/endure/tests/stress/DependerFuncReturn"
 	"github.com/spiral/endure/tests/stress/InitErr"
 	"github.com/spiral/endure/tests/stress/ServeErr"
@@ -46,9 +46,8 @@ func TestEndure_Serve_Err(t *testing.T) {
 	go func() {
 		for r := range res { // <--- Error is HERE
 			assert.Equal(t, "ServeErr.S4ServeError", r.VertexID)
-			assert.Error(t, r.Error.Err)
+			assert.Error(t, r.Error)
 			assert.NoError(t, c.Stop())
-			time.Sleep(time.Second * 3)
 			wg.Done()
 			return
 		}
@@ -88,7 +87,7 @@ func TestEndure_Serve_Retry_Err(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res {
-			assert.Error(t, r.Error.Err)
+			assert.Error(t, r.Error)
 			if r.VertexID == ord[0] || r.VertexID == ord[1] {
 				count++
 				if count == 2 {
@@ -139,8 +138,8 @@ func TestEndure_Serve_Retry_100_Err(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res {
-			assert.Error(t, r.Error.Err)
-			if r.Error.Code >= 500 {
+			assert.Error(t, r.Error)
+			if errors.Is(errors.Serve, r.Error) {
 				assert.NoError(t, c.Stop())
 				wg.Done()
 				return
@@ -187,8 +186,8 @@ func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res {
-			assert.Error(t, r.Error.Err)
-			if r.Error.Code == 501 {
+			assert.Error(t, r.Error)
+			if errors.Is(errors.Serve, r.Error) {
 				assert.NoError(t, c.Stop())
 				wg.Done()
 				return

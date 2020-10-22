@@ -1,24 +1,26 @@
 package endure
 
 import (
-	"fmt"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
+
+	"github.com/spiral/endure/errors"
 )
 
 func dependersReturnType(m interface{}) (reflect.Type, error) {
+	const op = errors.Op("dependers_return_type")
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
-		return nil, fmt.Errorf("unable to reflect `%s`, expected func. tip: provide function, not structre. for example v.Logger", r.String())
+		return nil, errors.E(op, errors.ArgType, errors.Errorf("unable to reflect `%s`, expected func. tip: provide function, not structre. for example v.Logger", r.String()))
 	}
 
 	// should be at least 2 parameters
 	// error --> nil (hope)
 	// type --> initialized
 	if r.NumOut() < 2 {
-		return nil, fmt.Errorf("provider should return at least 2 parameters, but returns `%d`", r.NumOut())
+		return nil, errors.E(op, errors.ArgType, errors.Errorf("provider should return at least 2 parameters, but returns `%d`", r.NumOut()))
 	}
 
 	// return type, w/o error
@@ -26,9 +28,10 @@ func dependersReturnType(m interface{}) (reflect.Type, error) {
 }
 
 func argType(m interface{}) ([]reflect.Type, error) {
+	const op = errors.Op("arg_type")
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
-		return nil, fmt.Errorf("unable to reflect `%s`, expected func", r.String())
+		return nil, errors.E(op, errors.ArgType, errors.Errorf("unable to reflect `%s`, expected func", r.String()))
 	}
 
 	out := make([]reflect.Type, 0)
