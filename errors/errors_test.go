@@ -5,24 +5,25 @@ package errors
 import (
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
+
+	"os"
 	"testing"
 )
 
-func TestDebug(t *testing.T) {
-	// Test with -tags debug to run the tests in debug_test.go
-	cmd := exec.Command("go", "test", "-tags", "prod")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("external go test failed: %v", err)
-	}
-}
+//func TestDebug(t *testing.T) {
+//	// Test with -tags debug to run the tests in debug_test.go
+//	cmd := exec.Command("go", "test", "-tags", "prod")
+//	cmd.Stdout = os.Stdout
+//	cmd.Stderr = os.Stderr
+//	if err := cmd.Run(); err != nil {
+//		t.Fatalf("external go test failed: %v", err)
+//	}
+//}
 
 func TestMarshal(t *testing.T) {
 	// Single error. No user is set, so we will have a zero-length field inside.
-	e1 := E(Op("Get"), Network, "caching in progress")
+	e1 := E(Op("Get"), Serve, "caching in progress")
 
 	// Nested error.
 	e2 := E(Op("Read"), Undefined, e1)
@@ -53,28 +54,28 @@ func TestSeparator(t *testing.T) {
 	Separator = ":: "
 
 	// Single error. No user is set, so we will have a zero-length field inside.
-	e1 := E(Op("Get"), Network, "network error")
+	e1 := E(Op("Get"), Serve, "Serve error")
 
 	// Nested error.
-	e2 := E(Op("Get"), Network, e1)
+	e2 := E(Op("Get"), Serve, e1)
 
-	want := "Get: Network error:: Get: network error"
+	want := "Get: Serve error:: Get: Serve error"
 	if errorAsString(e2) != want {
 		t.Errorf("expected %q; got %q", want, e2)
 	}
 }
 
 func TestDoesNotChangePreviousError(t *testing.T) {
-	err := E(Network)
+	err := E(Serve)
 	err2 := E(Op("I will NOT modify err"), err)
 
-	expected := "I will NOT modify err: Network error"
+	expected := "I will NOT modify err: Serve error"
 	if errorAsString(err2) != expected {
 		t.Fatalf("Expected %q, got %q", expected, err2)
 	}
 	kind := err.(*Error).Kind
-	if kind != Network {
-		t.Fatalf("Expected kind %v, got %v", Network, kind)
+	if kind != Serve {
+		t.Fatalf("Expected kind %v, got %v", Serve, kind)
 	}
 }
 
@@ -107,17 +108,17 @@ var matchTests = []matchTest{
 	{io.EOF, E(io.EOF), false},
 	// Success. We can drop fields from the first argument and still match.
 	{E(io.EOF), E(io.EOF), true},
-	{E(op, Other, io.EOF), E(op, Other, io.EOF), true},
-	{E(op, Other, io.EOF, "test"), E(op, Other, io.EOF, "test", "test"), true},
-	{E(op, Other), E(op, Other, io.EOF, "test", "test"), true},
-	{E(op), E(op, Other, io.EOF, "test", "test"), true},
+	{E(op, Init, io.EOF), E(op, Init, io.EOF), true},
+	{E(op, Init, io.EOF, "test"), E(op, Init, io.EOF, "test", "test"), true},
+	{E(op, Init), E(op, Init, io.EOF, "test", "test"), true},
+	{E(op), E(op, Init, io.EOF, "test", "test"), true},
 	// Failure.
 	{E(io.EOF), E(io.ErrClosedPipe), false},
 	{E(op1), E(op2), false},
-	{E(Other), E(Network), false},
+	{E(Init), E(Serve), false},
 	{E("test"), E("test1"), false},
 	{E(fmt.Errorf("error")), E(fmt.Errorf("error1")), false},
-	{E(op, Other, io.EOF, "test", "test1"), E(op, Other, io.EOF, "test", "test"), false},
+	{E(op, Init, io.EOF, "test", "test1"), E(op, Init, io.EOF, "test", "test"), false},
 	{E("test", Str("something")), E("test"), false}, // Test nil error on rhs.
 	// Nested *Errors.
 	{E(op1, E("test")), E(op1, "1", E(op2, "2", "test")), true},
@@ -142,20 +143,20 @@ type kindTest struct {
 
 var kindTests = []kindTest{
 	//Non-Error errors.
-	{nil, Network, false},
-	{Str("not an *Error"), Network, false},
+	{nil, Serve, false},
+	{Str("not an *Error"), Serve, false},
 
 	// Basic comparisons.
-	{E(Network), Network, true},
-	{E(Test), Network, false},
-	{E("no kind"), Network, false},
-	{E("no kind"), Other, false},
+	{E(Serve), Serve, true},
+	{E(Init), Serve, false},
+	{E("no kind"), Serve, false},
+	{E("no kind"), Logger, false},
 
 	// Nested *Error values.
-	{E("Nesting", E(Network)), Network, true},
-	{E("Nesting", E(Test)), Network, false},
-	{E("Nesting", E("no kind")), Network, false},
-	{E("Nesting", E("no kind")), Other, false},
+	{E("Nesting", E(Serve)), Serve, true},
+	{E("Nesting", E(Logger)), Serve, false},
+	{E("Nesting", E("no kind")), Serve, false},
+	{E("Nesting", E("no kind")), Logger, false},
 }
 
 func TestKind(t *testing.T) {

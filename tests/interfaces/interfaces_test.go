@@ -34,8 +34,8 @@ func TestEndure_Interfaces_OK(t *testing.T) {
 
 	go func() {
 		for r := range res {
-			if r.Error.Err != nil {
-				assert.NoError(t, r.Error.Err)
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
 				return
 			}
 		}

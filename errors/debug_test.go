@@ -10,10 +10,10 @@ import (
 )
 
 var errorLines = strings.Split(strings.TrimSpace(`
-	.*/errors/debug_test.go:\d+:  github.com/ValeryPiashchynski/errors.func1:
+	.*/errors/debug_test.go:\d+:  github.com/spiral/endure/errors.func1:
 	.*/errors/debug_test.go:\d+:  ...T.func2:
 	.*/errors/debug_test.go:\d+:  ...func3:
-	.*/errors/debug_test.go:\d+:  ...func4: func2 invoke func3: Network error:
+	.*/errors/debug_test.go:\d+:  ...func4: func2 invoke func3: Serve error:
 	func4 operation: error in action
 `), "\n")
 
@@ -25,7 +25,7 @@ func init() {
 	}
 }
 
-func TestsDebug(t *testing.T) {
+func TestDebug(t *testing.T) {
 	got := printErr(t, func1())
 	lines := strings.Split(got, "\n")
 	for i, re := range errorLineREs {
@@ -64,11 +64,11 @@ func func3() error {
 
 func func4() error {
 	o := Op("func4 operation")
-	return E(o, Network, Str("error in action"))
+	return E(o, Serve, Str("error in action"))
 }
 
-///Users/0xdev/Projects/repo/errors/debug_test.go:53: github.com/ValeryPiashchynski/errors.func1:
+///Users/0xdev/Projects/repo/errors/debug_test.go:53: github.com/spiral/endure/errors.func1:
 ///Users/0xdev/Projects/repo/errors/debug_test.go:58: ...T.func2:
 ///Users/0xdev/Projects/repo/errors/debug_test.go:62: ...func3:
-///Users/0xdev/Projects/repo/errors/debug_test.go:67: ...func4: func2 invoke func3: Network error:
+///Users/0xdev/Projects/repo/errors/debug_test.go:67: ...func4: func2 invoke func3: Serve error:
 //func4 operation: error in action

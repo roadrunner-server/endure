@@ -56,23 +56,23 @@ func (k Kind) String() string {
 	case Undefined:
 		return "UNDEF"
 	case Register:
-		return "Register"
+		return "Register error"
 	case Providers:
-		return "Providers"
+		return "Providers error"
 	case Logger:
-		return "Logger"
+		return "Logger error"
 	case Init:
-		return "Init"
+		return "Init error"
 	case Serve:
-		return "Serve"
+		return "Serve error"
 	case Disabled:
 		return "Vertex disabled"
 	case ArgType:
 		return "Wrong arg type, or return type"
 	case Traverse:
-		return "Traverse"
+		return "Traverse error"
 	case FunctionCall:
-		return "Function call"
+		return "Function call error"
 	default:
 		return "UNDEF"
 	}

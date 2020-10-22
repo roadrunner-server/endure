@@ -28,7 +28,7 @@ func TestEndure_MainThread_Serve_Backoff(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res {
-			if r.Error.Err != nil {
+			if r.Error != nil {
 				assert.NoError(t, c.Stop())
 				wg.Done()
 			}
@@ -53,7 +53,7 @@ func TestEndure_MainThread_Init_Backoff(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res {
-			if r.Error.Err != nil {
+			if r.Error != nil {
 				assert.NoError(t, c.Stop())
 				wg.Done()
 			}
@@ -82,7 +82,7 @@ func TestEndure_MainThread_Backoff(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for r := range res {
-			if r.Error.Err != nil {
+			if r.Error != nil {
 				assert.NoError(t, c.Stop())
 				wg.Done()
 			}
