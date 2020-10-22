@@ -6,6 +6,7 @@ import (
 	"github.com/spiral/endure"
 	"github.com/spiral/endure/tests/disabled_vertices/plugin1"
 	"github.com/spiral/endure/tests/disabled_vertices/plugin2"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestVertexDisabled(t *testing.T) {
@@ -28,4 +29,8 @@ func TestVertexDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal()
 	}
+
+	_, err = cont.Serve()
+	assert.Error(t, err)
+
 }

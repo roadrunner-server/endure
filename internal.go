@@ -18,6 +18,10 @@ import (
 */
 func (e *Endure) init(vertex *structures.Vertex) error {
 	const op = errors.Op("internal_init")
+	if vertex.IsDisabled {
+		e.logger.Warn("vertex is disable due to error.Disabled in the Init func or due to Endure decision (Disabled dependency)", zap.String("vertex id", vertex.ID))
+		return nil
+	}
 	// we already checked the Interface satisfaction
 	// at this step absence of Init() is impoosssibruuu
 	initMethod, _ := reflect.TypeOf(vertex.Iface).MethodByName(InitMethodName)
@@ -42,6 +46,11 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 	}()
 	in, err := e.findInitParameters(vertex)
 	if err != nil {
+		if errors.Is(errors.Disabled, err) {
+			e.logger.Warn("vertex disabled", zap.String("vertex id", vertex.ID), zap.Error(err))
+			vertex.IsDisabled = true
+			return nil
+		}
 		return err
 	}
 	// Iterate over dependencies
@@ -51,19 +60,19 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 	if rErr != nil {
 		if err, ok := rErr.(error); ok && e != nil {
 			/*
-			If vertex is disabled we skip all processing for it:
-			1. We don't add Init function args as dependencies
-			 */
+				If vertex is disabled we skip all processing for it:
+				1. We don't add Init function args as dependencies
+			*/
 			if errors.Is(errors.Disabled, err) {
-				e.logger.Warn("vertex is disabled", zap.String("vertex id", vertex.ID), zap.Error(err))
+				e.logger.Warn("vertex disabled", zap.String("vertex id", vertex.ID), zap.Error(err))
 				vertex.IsDisabled = true
-				return nil
+			} else {
+				e.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(err))
+				return errors.E(op, errors.FunctionCall, err)
 			}
-
-			e.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(err))
-			return errors.E(op, errors.FunctionCall, err)
+		} else {
+			return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 		}
-		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 	}
 
 	// just to be safe here
@@ -263,6 +272,11 @@ func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value,
 			var err error
 			in, err = e.traverseProviders(vertex.Meta.InitDepsList[i], v[0], depID, vertex.ID, in)
 			if err != nil {
+				// dependency disabled, we should also disable root
+				if errors.Is(errors.Disabled, err) {
+					vertex.IsDisabled = true
+					return nil, err
+				}
 				return nil, errors.E(op, errors.Traverse, err)
 			}
 		}
@@ -273,6 +287,9 @@ func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value,
 func (e *Endure) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
 	const op = errors.Op("internal_traverse_providers")
 	// we need to call all providers first
+	if depVertex.IsDisabled {
+		return nil, errors.E(op, errors.Disabled)
+	}
 	err := e.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID)
 	if err != nil {
 		return nil, errors.E(op, errors.Traverse, err)
@@ -540,6 +557,10 @@ func (e *Endure) shutdown(n *structures.DllNode) {
 		// process all nodes one by one
 		nCopy := n
 		for nCopy != nil {
+			if nCopy.Vertex.IsDisabled == true {
+				nCopy = nCopy.Next
+				continue
+			}
 			sh <- nCopy
 			nCopy = nCopy.Next
 		}
@@ -806,6 +827,9 @@ func (e *Endure) backoffInit(v *structures.Vertex) func() error {
 
 func (e *Endure) configure(n *structures.DllNode) error {
 	const op = errors.Op("internal_configure")
+	if n.Vertex.IsDisabled {
+		return nil
+	}
 	// handle all configure
 	in := make([]reflect.Value, 0, 1)
 	// add service itself
