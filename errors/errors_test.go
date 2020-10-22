@@ -5,21 +5,8 @@ package errors
 import (
 	"fmt"
 	"io"
-	"os/exec"
-
-	"os"
 	"testing"
 )
-
-//func TestDebug(t *testing.T) {
-//	// Test with -tags debug to run the tests in debug_test.go
-//	cmd := exec.Command("go", "test", "-tags", "prod")
-//	cmd.Stdout = os.Stdout
-//	cmd.Stderr = os.Stderr
-//	if err := cmd.Run(); err != nil {
-//		t.Fatalf("external go test failed: %v", err)
-//	}
-//}
 
 func TestMarshal(t *testing.T) {
 	// Single error. No user is set, so we will have a zero-length field inside.
@@ -79,16 +66,6 @@ func TestDoesNotChangePreviousError(t *testing.T) {
 	}
 }
 
-//func TestNoArgs(t *testing.T) {
-//	defer func() {
-//		err := recover()
-//		if err == nil {
-//			t.Fatal("E() did not panic")
-//		}
-//	}()
-//	_ = E()
-//}
-
 type matchTest struct {
 	err1, err2 error
 	matched    bool
@@ -142,7 +119,7 @@ type kindTest struct {
 }
 
 var kindTests = []kindTest{
-	//Non-Error errors.
+	// Non-Error errors.
 	{nil, Serve, false},
 	{Str("not an *Error"), Serve, false},
 

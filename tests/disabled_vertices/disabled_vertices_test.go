@@ -13,5 +13,4 @@ func TestVertexDisabled(t *testing.T) {
 	}
 
 	_ = cont
-
 }
