@@ -1,8 +1,11 @@
 package plugin1
 
+import "github.com/spiral/endure/errors"
+
 type Plugin1 struct {
 }
 
 func (p *Plugin1) Init() error {
-	return nil
+	const op = errors.Op("init")
+	return errors.E(op, errors.Disabled)
 }

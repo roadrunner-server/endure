@@ -50,6 +50,16 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 	rErr := ret[0].Interface()
 	if rErr != nil {
 		if err, ok := rErr.(error); ok && e != nil {
+			/*
+			If vertex is disabled we skip all processing for it:
+			1. We don't add Init function args as dependencies
+			 */
+			if errors.Is(errors.Disabled, err) {
+				e.logger.Warn("vertex is disabled", zap.String("vertex id", vertex.ID), zap.Error(err))
+				vertex.IsDisabled = true
+				return nil
+			}
+
 			e.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(err))
 			return errors.E(op, errors.FunctionCall, err)
 		}

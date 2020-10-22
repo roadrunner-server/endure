@@ -63,6 +63,8 @@ type Vertex struct {
 	// Set of entries which can vertex provide (for example, foo4 vertex can provide DB instance and logger)
 	Provides map[string]ProvidedEntry
 
+	IsDisabled bool
+
 	// for the topological sort, private
 	numOfDeps int
 	visited   bool
