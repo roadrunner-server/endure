@@ -1,7 +1,6 @@
 package endure
 
 import (
-	"errors"
 	"net/http"
 
 	// pprof will be enabled in debug mode
@@ -11,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spiral/endure/errors"
 	"github.com/spiral/endure/structures"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -80,11 +80,12 @@ type Options func(endure *Endure)
    see the endure.Level
 */
 func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
+	const op = errors.Op("NewContainer")
 	c := &Endure{
 		mutex:           &sync.RWMutex{},
 		initialInterval: time.Second * 1,
 		maxInterval:     time.Second * 60,
-		results: sync.Map{},
+		results:         sync.Map{},
 	}
 
 	var lvl zap.AtomicLevel
@@ -128,7 +129,7 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 
 	logger, err := cfg.Build(zap.AddCaller())
 	if err != nil {
-		return nil, err
+		return nil, errors.E(op, errors.Logger, err)
 	}
 	c.logger = logger
 
@@ -171,11 +172,12 @@ func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) O
 // name is a name of the dependency, for example - S2
 // vertex is a value -> pointer to the structure
 func (e *Endure) Register(vertex interface{}) error {
+	const op = errors.Op("Register")
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
 
 	if t.Kind() != reflect.Ptr {
-		return errors.New("you should pass pointer to the structure instead of value")
+		return errors.E(op, errors.Register, errors.Errorf("you should pass pointer to the structure instead of value"))
 	}
 
 	/* Depender the type
@@ -186,7 +188,7 @@ func (e *Endure) Register(vertex interface{}) error {
 	*/
 	err := e.register(vertexID, vertex, order)
 	if err != nil {
-		return err
+		return errors.E(op, errors.Register, err)
 	}
 	order++
 	/* Add the types, which (if) current vertex provides
@@ -199,7 +201,7 @@ func (e *Endure) Register(vertex interface{}) error {
 	*/
 	err = e.addProviders(vertexID, vertex)
 	if err != nil {
-		return err
+		return errors.E(op, errors.Providers, err)
 	}
 	e.logger.Debug("registering type", zap.String("type", t.String()))
 
@@ -208,21 +210,22 @@ func (e *Endure) Register(vertex interface{}) error {
 
 // Init container and all service edges.
 func (e *Endure) Init() error {
+	const op = errors.Op("Init")
 	// traverse the graph
 	if err := e.addEdges(); err != nil {
-		return err
+		return errors.E(op, errors.Init, err)
 	}
 
 	// we should build init list in the reverse order
 	sorted, err := structures.TopologicalSort(e.graph.Vertices)
 	if err != nil {
 		e.logger.Error("error sorting the graph", zap.Error(err))
-		return err
+		return errors.E(op, errors.Init, err)
 	}
 
 	if len(sorted) == 0 {
 		e.logger.Error("initial graph should contain at least 1 vertex, possibly you forget to invoke Registers?")
-		return errors.New("graph should contain at least 1 vertex, possibly you forget to invoke registers")
+		return errors.E(op, errors.Init, errors.Errorf("graph should contain at least 1 vertex, possibly you forget to invoke registers"))
 	}
 
 	e.runList = structures.NewDoublyLinkedList()
@@ -236,7 +239,7 @@ func (e *Endure) Init() error {
 		err := e.init(headCopy.Vertex)
 		if err != nil {
 			e.logger.Error("error during the init", zap.Error(err))
-			return err
+			return errors.E(op, errors.Init, err)
 		}
 		headCopy = headCopy.Next
 	}
@@ -245,6 +248,7 @@ func (e *Endure) Init() error {
 }
 
 func (e *Endure) Serve() (<-chan *Result, error) {
+	const op = errors.Op("Serve")
 	e.startMainThread()
 
 	// call configure
@@ -253,7 +257,7 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 		err := e.configure(nCopy)
 		if err != nil {
 			e.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
-			return nil, err
+			return nil, errors.E(op, errors.Serve, err)
 		}
 
 		nCopy = nCopy.Next
@@ -263,7 +267,7 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 	for nCopy != nil {
 		err := e.serve(nCopy)
 		if err != nil {
-			return nil, err
+			return nil, errors.E(op, errors.Serve, err)
 		}
 		nCopy = nCopy.Next
 	}

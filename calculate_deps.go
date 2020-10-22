@@ -1,8 +1,10 @@
 package endure
 
 import (
+	"fmt"
 	"reflect"
 
+	"github.com/spiral/endure/errors"
 	"github.com/spiral/endure/structures"
 	"go.uber.org/zap"
 )
@@ -15,11 +17,12 @@ actual type after FnsProviderToInvoke will be invoked
 2. FnsProviderToInvoke --> is the list of the Provided function to invoke via the reflection
 */
 func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
+	op := errors.Op("add_providers")
 	if provider, ok := vertex.(Provider); ok {
 		for _, fn := range provider.Provides() {
 			ret, err := dependersReturnType(fn)
 			if err != nil {
-				return err
+				return errors.E(op, err)
 			}
 
 			typeStr := removePointerAsterisk(ret.String())
@@ -63,6 +66,7 @@ func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 
 // addEdges calculates simple graph for the dependencies
 func (e *Endure) addEdges() error {
+	const Op = "add_edges"
 	// vertexID for example S2
 	for vertexID, vrtx := range e.graph.VerticesMap {
 		// we already checked the interface satisfaction
@@ -71,7 +75,7 @@ func (e *Endure) addEdges() error {
 
 		if init.Type == nil {
 			e.logger.Fatal("init method is absent in struct", zap.String("vertexId", vertexID))
-			return errNoInitMethodInStructure
+			return errors.E(Op, fmt.Errorf("init method is absent in struct"))
 		}
 
 		/* Add the dependencies (if) which this vertex needs to init
@@ -85,7 +89,7 @@ func (e *Endure) addEdges() error {
 		*/
 		err := e.addDependersDeps(vertexID, vrtx.Iface)
 		if err != nil {
-			return err
+			return errors.E(Op, err)
 		}
 
 		/*
@@ -96,7 +100,7 @@ func (e *Endure) addEdges() error {
 		*/
 		err = e.addInitDeps(vertexID, init)
 		if err != nil {
-			return err
+			return errors.E(Op, err)
 		}
 	}
 
@@ -104,12 +108,13 @@ func (e *Endure) addEdges() error {
 }
 
 func (e *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
+	const Op = "add_dependers_deps"
 	if register, ok := vertex.(Depender); ok {
 		for _, fn := range register.Depends() {
 			// what type it might depend on?
 			argsTypes, err := argType(fn)
 			if err != nil {
-				return err
+				return errors.E(Op, err)
 			}
 
 			// at is like foo2.S2
@@ -148,7 +153,7 @@ func (e *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 				// we store pointer in the Deps structure in the isRef field
 				err = e.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at), at.Kind())
 				if err != nil {
-					return err
+					return errors.E(Op, err)
 				}
 				e.logger.Debug("adding dependency via Depends()", zap.String("vertex id", vertexID), zap.String("depends", atStr))
 			}
@@ -173,6 +178,7 @@ func (e *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 }
 
 func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
+	const Op = "add_init_deps"
 	// Init function in arguments
 	initArgs := functionParameters(initMethod)
 
@@ -203,7 +209,7 @@ func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
 
 		err := e.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg), initArg.Kind())
 		if err != nil {
-			return err
+			return errors.E(Op, err)
 		}
 		e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vertexID), zap.String("depends", initArg.String()))
 	}

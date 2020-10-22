@@ -45,8 +45,8 @@ func testLog(t *testing.T, level endure.Level) {
 
 	go func() {
 		for r := range res {
-			if r.Error.Err != nil {
-				assert.NoError(t, r.Error.Err)
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
 				return
 			}
 		}
@@ -73,8 +73,8 @@ func TestEndure_Init_OK(t *testing.T) {
 
 	go func() {
 		for r := range res {
-			if r.Error.Err != nil {
-				assert.NoError(t, r.Error.Err)
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
 				return
 			}
 		}
@@ -96,8 +96,8 @@ func TestEndure_Init_1_Element(t *testing.T) {
 
 	go func() {
 		for r := range res {
-			if r.Error.Err != nil {
-				assert.NoError(t, r.Error.Err)
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
 				return
 			}
 		}
@@ -122,8 +122,8 @@ func TestEndure_ProvidedValueButNeedPointer(t *testing.T) {
 
 	go func() {
 		for r := range res {
-			if r.Error.Err != nil {
-				assert.NoError(t, r.Error.Err)
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
 				return
 			}
 		}

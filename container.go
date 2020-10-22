@@ -16,7 +16,7 @@ const ServeMethodName = "Serve"
 const StopMethodName = "Stop"
 
 type Result struct {
-	Error    Error
+	Error    error
 	VertexID string
 }
 
