@@ -35,6 +35,10 @@ func (e *Endure) init(vertex *structures.Vertex) error {
 	return nil
 }
 
+/*
+Here we also track the Disabled vertices. If the vertex is disabled we should re-calculate the tree
+
+*/
 func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
 	const op = errors.Op("internal_call_init_function")
 	defer func() {
@@ -64,8 +68,14 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 				1. We don't add Init function args as dependencies
 			*/
 			if errors.Is(errors.Disabled, err) {
+				/*
+				Disable vertex
+				1. But if vertex is disabled it can't PROVIDE via v.Provided value of itself for other vertices
+				and we should recalculate whole three without this dep.
+				 */
 				e.logger.Warn("vertex disabled", zap.String("vertex id", vertex.ID), zap.Error(err))
 				vertex.IsDisabled = true
+
 			} else {
 				e.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(err))
 				return errors.E(op, errors.FunctionCall, err)
@@ -272,11 +282,6 @@ func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value,
 			var err error
 			in, err = e.traverseProviders(vertex.Meta.InitDepsList[i], v[0], depID, vertex.ID, in)
 			if err != nil {
-				// dependency disabled, we should also disable root
-				if errors.Is(errors.Disabled, err) {
-					vertex.IsDisabled = true
-					return nil, err
-				}
 				return nil, errors.E(op, errors.Traverse, err)
 			}
 		}
@@ -286,10 +291,6 @@ func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value,
 
 func (e *Endure) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
 	const op = errors.Op("internal_traverse_providers")
-	// we need to call all providers first
-	if depVertex.IsDisabled {
-		return nil, errors.E(op, errors.Disabled)
-	}
 	err := e.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID)
 	if err != nil {
 		return nil, errors.E(op, errors.Traverse, err)

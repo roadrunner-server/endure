@@ -13,6 +13,10 @@ const (
 	Depends
 )
 
+type nexter interface {
+	Next(vertexId string) *Vertex
+}
+
 // manages the set of services and their edges
 // type of the VerticesMap: directed
 type Graph struct {
@@ -44,8 +48,11 @@ type Meta struct {
 }
 
 type DepsEntry struct {
+	// Reference ID, structure, which provides interface dep
+	RefId       string
 	Name        string
 	IsReference *bool
+	IsDisabled  bool
 	Kind        reflect.Kind
 }
 
@@ -90,6 +97,10 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 		Value:       &value,
 		Kind:        kind,
 	}
+}
+
+func (g *Graph) Next(vid string) *Vertex {
+	return nil
 }
 
 // NewGraph initializes endure Graph
@@ -150,7 +161,7 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 		// because we should know Init method parameters for every Vertex
 		// for example, we should know http.Middleware dependency and later invoke all types which it implement
 		// OR know Depends methods to invoke
-		g.addToList(method, vertex, depID, isRef, reflect.Interface)
+		g.addToList(method, vertex, depID, isRef, depVertices[i].ID, reflect.Interface)
 
 		// append depID vertex
 		for j := 0; j < len(depVertices[i].Dependencies); j++ {
@@ -167,13 +178,14 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 }
 
 // Add meta information to the InitDepsList or DepsList
-func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool, kind reflect.Kind) {
+func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool, refId string, kind reflect.Kind) {
 	switch method {
 	case Init:
 		if vertex.Meta.InitDepsList == nil {
 			vertex.Meta.InitDepsList = make([]DepsEntry, 0, 1)
 		}
 		vertex.Meta.InitDepsList = append(vertex.Meta.InitDepsList, DepsEntry{
+			RefId:       refId,
 			Name:        depID,
 			IsReference: &isRef,
 			Kind:        kind,
@@ -182,6 +194,7 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool,
 		if vertex.Meta.DepsList == nil {
 			vertex.Meta.DepsList = make([]DepsEntry, 0, 1)
 			vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
+				RefId:       refId,
 				Name:        depID,
 				IsReference: &isRef,
 				Kind:        kind,
@@ -194,6 +207,7 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool,
 				}
 
 				vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
+					RefId:       refId,
 					Name:        depID,
 					IsReference: &isRef,
 					Kind:        kind,
@@ -224,7 +238,7 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 	// add Dependency into the List
 	// to call later
 	// because we should know Init method parameters for every Vertex
-	g.addToList(method, vertex, depID, isRef, reflect.Struct)
+	g.addToList(method, vertex, depID, isRef, depVertex.ID, reflect.Struct)
 
 	// append depID vertex
 	for i := 0; i < len(depVertex.Dependencies); i++ {
@@ -234,8 +248,8 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 		}
 	}
 
-	depVertex.numOfDeps++
-	depVertex.Dependencies = append(depVertex.Dependencies, vertex)
+	vertex.numOfDeps++
+	vertex.Dependencies = append(vertex.Dependencies, depVertex)
 	return nil
 }
 

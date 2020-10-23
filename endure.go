@@ -229,14 +229,14 @@ func (e *Endure) Init() error {
 	}
 
 	e.runList = structures.NewDoublyLinkedList()
-	for i := 0; i <= len(sorted)-1; i++ {
+	for i := len(sorted) - 1; i >= 0; i-- {
 		e.runList.Push(sorted[i])
 	}
 
 	head := e.runList.Head
 	headCopy := head
 	for headCopy != nil {
-		err := e.init(headCopy.Vertex)
+		err = e.init(headCopy.Vertex)
 		if err != nil {
 			e.logger.Error("error during the init", zap.Error(err))
 			return errors.E(op, errors.Init, err)

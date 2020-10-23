@@ -9,8 +9,8 @@ import (
 	"github.com/spiral/endure/errors"
 )
 
-func dependersReturnType(m interface{}) (reflect.Type, error) {
-	const op = errors.Op("dependers_return_type")
+func providersReturnType(m interface{}) (reflect.Type, error) {
+	const op = errors.Op("providers_return_type")
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
 		return nil, errors.E(op, errors.ArgType, errors.Errorf("unable to reflect `%s`, expected func. tip: provide function, not structre. for example v.Logger", r.String()))
