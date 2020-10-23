@@ -14,6 +14,7 @@ type DB2 struct {
 }
 
 func (f *Plugin2) Init() error {
+	println("plugin2 Init called")
 	return nil
 }
 
@@ -38,6 +39,7 @@ func (f *Plugin2) Provides() []interface{} {
 // foo10 invokes foo11
 // foo11 should get the foo10 name or provide vertex id
 func (f *Plugin2) ProvideDB(name endure.Named) (*DB, error) {
+	println("ProvideDB called")
 	return &DB{
 		Name: name.Name(),
 	}, nil
@@ -47,6 +49,7 @@ func (f *Plugin2) ProvideDB(name endure.Named) (*DB, error) {
 // foo10 invokes foo11
 // foo11 should get the foo10 name or provide vertex id
 func (f *Plugin2) ProvideDB2(name endure.Named, name2 endure.Named) (*DB2, error) {
+	println("ProvideDB2 called")
 	return &DB2{
 		Name: name.Name() + "; " + name2.Name(),
 	}, nil

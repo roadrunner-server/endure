@@ -37,11 +37,22 @@ func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 
 			// Make a slice
 			if gVertex.Meta.FnsProviderToInvoke == nil {
-				gVertex.Meta.FnsProviderToInvoke = make([]string, 0, 1)
+				gVertex.Meta.FnsProviderToInvoke = make([]structures.ProviderEntry, 0, 1)
 			}
 
+			// TODO merge function calls into one. Plugin1 -> fn's to invoke ProvideDB, ProvideDB2
 			// Append functions which we will invoke when we start calling the structure functions after Init stage
-			gVertex.Meta.FnsProviderToInvoke = append(gVertex.Meta.FnsProviderToInvoke, getFunctionName(fn))
+			gVertex.Meta.FnsProviderToInvoke = append(gVertex.Meta.FnsProviderToInvoke, structures.ProviderEntry{
+				/*
+				For example:
+				we need to invoke function ProvideDB - that will be FunctionName
+				ReturnTypeId will be DB (in that case)
+				We need return type to filter it in Init call, because in Init we may have one struct which returns
+				two different types.
+				 */
+				FunctionName: getFunctionName(fn), // function name to invoke
+				ReturnTypeId: typeStr,             // return type ID
+			})
 
 			/*
 				   For the interface dependencies
@@ -89,7 +100,7 @@ func (e *Endure) addEdges() error {
 		2. Vertex structure value (interface)
 		3. Provided type
 		4. Provided type String name
-		5. Name of the dependencies which we should found
+		5. FunctionName of the dependencies which we should found
 		We add 3 and 4 points to the Vertex
 		*/
 		err := e.addDependersDeps(vertexID, vrtx.Iface)

@@ -34,20 +34,25 @@ type Meta struct {
 	// Position in code while invoking Register
 	Order int
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
-	FnsProviderToInvoke []string
+	FnsProviderToInvoke []ProviderEntry
 	// FnsDependerToInvoke is the function names to invoke if type implements Depender() interface
 	FnsDependerToInvoke []string
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
-	InitDepsList []DepsEntry
+	InitDepsToInvoke []Entry
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Depends() method
-	DepsList []DepsEntry
+	DependsDepsToInvoke []Entry
 }
 
-type DepsEntry struct {
+type ProviderEntry struct {
+	FunctionName string
+	ReturnTypeId string
+}
+
+type Entry struct {
 	// Reference ID, structure, which provides interface dep
 	RefId       string
 	Name        string
@@ -177,36 +182,36 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 	return nil
 }
 
-// Add meta information to the InitDepsList or DepsList
+// Add meta information to the InitDepsToInvoke or DependsDepsToInvoke
 func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool, refId string, kind reflect.Kind) {
 	switch method {
 	case Init:
-		if vertex.Meta.InitDepsList == nil {
-			vertex.Meta.InitDepsList = make([]DepsEntry, 0, 1)
+		if vertex.Meta.InitDepsToInvoke == nil {
+			vertex.Meta.InitDepsToInvoke = make([]Entry, 0, 1)
 		}
-		vertex.Meta.InitDepsList = append(vertex.Meta.InitDepsList, DepsEntry{
+		vertex.Meta.InitDepsToInvoke = append(vertex.Meta.InitDepsToInvoke, Entry{
 			RefId:       refId,
 			Name:        depID,
 			IsReference: &isRef,
 			Kind:        kind,
 		})
 	case Depends:
-		if vertex.Meta.DepsList == nil {
-			vertex.Meta.DepsList = make([]DepsEntry, 0, 1)
-			vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
+		if vertex.Meta.DependsDepsToInvoke == nil {
+			vertex.Meta.DependsDepsToInvoke = make([]Entry, 0, 1)
+			vertex.Meta.DependsDepsToInvoke = append(vertex.Meta.DependsDepsToInvoke, Entry{
 				RefId:       refId,
 				Name:        depID,
 				IsReference: &isRef,
 				Kind:        kind,
 			})
 		} else {
-			// search if DepsList already contains interface dep
-			for _, v := range vertex.Meta.DepsList {
+			// search if DependsDepsToInvoke already contains interface dep
+			for _, v := range vertex.Meta.DependsDepsToInvoke {
 				if v.Name == depID {
 					continue
 				}
 
-				vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
+				vertex.Meta.DependsDepsToInvoke = append(vertex.Meta.DependsDepsToInvoke, Entry{
 					RefId:       refId,
 					Name:        depID,
 					IsReference: &isRef,
