@@ -44,12 +44,12 @@ func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 			// Append functions which we will invoke when we start calling the structure functions after Init stage
 			gVertex.Meta.FnsProviderToInvoke = append(gVertex.Meta.FnsProviderToInvoke, structures.ProviderEntry{
 				/*
-				For example:
-				we need to invoke function ProvideDB - that will be FunctionName
-				ReturnTypeId will be DB (in that case)
-				We need return type to filter it in Init call, because in Init we may have one struct which returns
-				two different types.
-				 */
+					For example:
+					we need to invoke function ProvideDB - that will be FunctionName
+					ReturnTypeId will be DB (in that case)
+					We need return type to filter it in Init call, because in Init we may have one struct which returns
+					two different types.
+				*/
 				FunctionName: getFunctionName(fn), // function name to invoke
 				ReturnTypeId: typeStr,             // return type ID
 			})

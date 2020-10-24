@@ -13,8 +13,8 @@ const (
 	Depends
 )
 
-type nexter interface {
-	Next(vertexId string) *Vertex
+type disabler interface {
+	Disable(vertexId string)
 }
 
 // manages the set of services and their edges
@@ -75,8 +75,8 @@ type Vertex struct {
 	// Set of entries which can vertex provide (for example, foo4 vertex can provide DB instance and logger)
 	Provides map[string]ProvidedEntry
 
+	// If vertex disabled it removed from the processing (Init, Serve, Stop), but present in the graph
 	IsDisabled bool
-
 	// for the topological sort, private
 	numOfDeps int
 	visited   bool
@@ -84,7 +84,7 @@ type Vertex struct {
 }
 
 type ProvidedEntry struct {
-	Str string
+	Str     string
 	// we need to distinguish false (default bool value) and nil --> we don't know information about reference
 	IsReference *bool
 	Value       *reflect.Value
@@ -104,8 +104,32 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 	}
 }
 
-func (g *Graph) Next(vid string) *Vertex {
-	return nil
+func (g *Graph) Disabler(vid string) {
+	v := g.VerticesMap[vid]
+	for i := 0; i < len(g.Vertices); i++ {
+		g.disablerHelper(g.Vertices[i], v)
+	}
+
+}
+
+func (g *Graph) disablerHelper(vertex *Vertex, disabled *Vertex) bool {
+	if vertex.ID == disabled.ID {
+		return true
+	}
+	for i := 0; i < len(vertex.Dependencies); i++ {
+		contains := g.disablerHelper(vertex.Dependencies[i], disabled)
+		if contains {
+			vertex.IsDisabled = true
+			return true
+		}
+	}
+	return false
+}
+
+func (g *Graph) disablerRecursionHelper(vertex *Vertex, disabled *Vertex) {
+	if vertex.ID == disabled.ID {
+		vertex.IsDisabled = true
+	}
 }
 
 // NewGraph initializes endure Graph
@@ -176,8 +200,8 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 			}
 		}
 
-		depVertices[i].numOfDeps++
-		depVertices[i].Dependencies = append(depVertices[i].Dependencies, vertex)
+		vertex.numOfDeps++
+		vertex.Dependencies = append(vertex.Dependencies, depVertices[i])
 	}
 	return nil
 }
