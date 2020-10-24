@@ -228,7 +228,7 @@ func (e *Endure) Init() error {
 	// if failed - continue, just send warning to a user
 	// print is not critical
 	if e.print {
-		err = e.graph.Print()
+		err = structures.PrintGraph(e.graph.Vertices)
 		if err != nil {
 			e.logger.Warn("failed to print the graph", zap.Error(err))
 		}
