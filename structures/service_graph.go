@@ -126,12 +126,6 @@ func (g *Graph) disablerHelper(vertex *Vertex, disabled *Vertex) bool {
 	return false
 }
 
-func (g *Graph) disablerRecursionHelper(vertex *Vertex, disabled *Vertex) {
-	if vertex.ID == disabled.ID {
-		vertex.IsDisabled = true
-	}
-}
-
 // NewGraph initializes endure Graph
 // According to the topological sorting, graph should be
 // 1. DIRECTED
