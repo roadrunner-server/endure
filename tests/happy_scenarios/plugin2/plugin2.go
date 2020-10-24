@@ -1,6 +1,6 @@
 package plugin2
 
-import "github.com/spiral/endure/tests/happyScenario/plugin4"
+import "github.com/spiral/endure/tests/happy_scenarios/plugin4"
 
 type DB struct {
 }

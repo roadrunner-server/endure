@@ -13,6 +13,11 @@ const (
 	Depends
 )
 
+type disabler interface {
+	// DisableById used to disable all vertices in which dependencies presents passed vertex id
+	DisableById(vertexId string)
+}
+
 // manages the set of services and their edges
 // type of the VerticesMap: directed
 type Graph struct {
@@ -30,22 +35,30 @@ type Meta struct {
 	// Position in code while invoking Register
 	Order int
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
-	FnsProviderToInvoke []string
+	FnsProviderToInvoke []ProviderEntry
 	// FnsDependerToInvoke is the function names to invoke if type implements Depender() interface
 	FnsDependerToInvoke []string
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
-	InitDepsList []DepsEntry
+	InitDepsToInvoke []Entry
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Depends() method
-	DepsList []DepsEntry
+	DependsDepsToInvoke []Entry
 }
 
-type DepsEntry struct {
+type ProviderEntry struct {
+	FunctionName string
+	ReturnTypeId string
+}
+
+type Entry struct {
+	// Reference ID, structure, which provides interface dep
+	RefId       string
 	Name        string
 	IsReference *bool
+	IsDisabled  bool
 	Kind        reflect.Kind
 }
 
@@ -63,6 +76,8 @@ type Vertex struct {
 	// Set of entries which can vertex provide (for example, foo4 vertex can provide DB instance and logger)
 	Provides map[string]ProvidedEntry
 
+	// If vertex disabled it removed from the processing (Init, Serve, Stop), but present in the graph
+	IsDisabled bool
 	// for the topological sort, private
 	numOfDeps int
 	visited   bool
@@ -88,6 +103,27 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 		Value:       &value,
 		Kind:        kind,
 	}
+}
+
+func (g *Graph) DisableById(vid string) {
+	v := g.VerticesMap[vid]
+	for i := 0; i < len(g.Vertices); i++ {
+		g.disablerHelper(g.Vertices[i], v)
+	}
+}
+
+func (g *Graph) disablerHelper(vertex *Vertex, disabled *Vertex) bool {
+	if vertex.ID == disabled.ID {
+		return true
+	}
+	for i := 0; i < len(vertex.Dependencies); i++ {
+		contains := g.disablerHelper(vertex.Dependencies[i], disabled)
+		if contains {
+			vertex.IsDisabled = true
+			return true
+		}
+	}
+	return false
 }
 
 // NewGraph initializes endure Graph
@@ -148,7 +184,7 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 		// because we should know Init method parameters for every Vertex
 		// for example, we should know http.Middleware dependency and later invoke all types which it implement
 		// OR know Depends methods to invoke
-		g.addToList(method, vertex, depID, isRef, reflect.Interface)
+		g.addToList(method, vertex, depID, isRef, depVertices[i].ID, reflect.Interface)
 
 		// append depID vertex
 		for j := 0; j < len(depVertices[i].Dependencies); j++ {
@@ -158,40 +194,43 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 			}
 		}
 
-		depVertices[i].numOfDeps++
-		depVertices[i].Dependencies = append(depVertices[i].Dependencies, vertex)
+		vertex.numOfDeps++
+		vertex.Dependencies = append(vertex.Dependencies, depVertices[i])
 	}
 	return nil
 }
 
-// Add meta information to the InitDepsList or DepsList
-func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool, kind reflect.Kind) {
+// Add meta information to the InitDepsToInvoke or DependsDepsToInvoke
+func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool, refId string, kind reflect.Kind) {
 	switch method {
 	case Init:
-		if vertex.Meta.InitDepsList == nil {
-			vertex.Meta.InitDepsList = make([]DepsEntry, 0, 1)
+		if vertex.Meta.InitDepsToInvoke == nil {
+			vertex.Meta.InitDepsToInvoke = make([]Entry, 0, 1)
 		}
-		vertex.Meta.InitDepsList = append(vertex.Meta.InitDepsList, DepsEntry{
+		vertex.Meta.InitDepsToInvoke = append(vertex.Meta.InitDepsToInvoke, Entry{
+			RefId:       refId,
 			Name:        depID,
 			IsReference: &isRef,
 			Kind:        kind,
 		})
 	case Depends:
-		if vertex.Meta.DepsList == nil {
-			vertex.Meta.DepsList = make([]DepsEntry, 0, 1)
-			vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
+		if vertex.Meta.DependsDepsToInvoke == nil {
+			vertex.Meta.DependsDepsToInvoke = make([]Entry, 0, 1)
+			vertex.Meta.DependsDepsToInvoke = append(vertex.Meta.DependsDepsToInvoke, Entry{
+				RefId:       refId,
 				Name:        depID,
 				IsReference: &isRef,
 				Kind:        kind,
 			})
 		} else {
-			// search if DepsList already contains interface dep
-			for _, v := range vertex.Meta.DepsList {
+			// search if DependsDepsToInvoke already contains interface dep
+			for _, v := range vertex.Meta.DependsDepsToInvoke {
 				if v.Name == depID {
 					continue
 				}
 
-				vertex.Meta.DepsList = append(vertex.Meta.DepsList, DepsEntry{
+				vertex.Meta.DependsDepsToInvoke = append(vertex.Meta.DependsDepsToInvoke, Entry{
+					RefId:       refId,
 					Name:        depID,
 					IsReference: &isRef,
 					Kind:        kind,
@@ -222,7 +261,7 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 	// add Dependency into the List
 	// to call later
 	// because we should know Init method parameters for every Vertex
-	g.addToList(method, vertex, depID, isRef, reflect.Struct)
+	g.addToList(method, vertex, depID, isRef, depVertex.ID, reflect.Struct)
 
 	// append depID vertex
 	for i := 0; i < len(depVertex.Dependencies); i++ {
@@ -232,8 +271,8 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 		}
 	}
 
-	depVertex.numOfDeps++
-	depVertex.Dependencies = append(depVertex.Dependencies, vertex)
+	vertex.numOfDeps++
+	vertex.Dependencies = append(vertex.Dependencies, depVertex)
 	return nil
 }
 

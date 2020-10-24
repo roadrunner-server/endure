@@ -18,6 +18,10 @@ import (
 */
 func (e *Endure) init(vertex *structures.Vertex) error {
 	const op = errors.Op("internal_init")
+	if vertex.IsDisabled {
+		e.logger.Warn("vertex is disable due to error.Disabled in the Init func or due to Endure decision (Disabled dependency)", zap.String("vertex id", vertex.ID))
+		return nil
+	}
 	// we already checked the Interface satisfaction
 	// at this step absence of Init() is impoosssibruuu
 	initMethod, _ := reflect.TypeOf(vertex.Iface).MethodByName(InitMethodName)
@@ -31,18 +35,19 @@ func (e *Endure) init(vertex *structures.Vertex) error {
 	return nil
 }
 
+/*
+Here we also track the Disabled vertices. If the vertex is disabled we should re-calculate the tree
+
+*/
 func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
 	const op = errors.Op("internal_call_init_function")
-	defer func() {
-		if r := recover(); r != nil {
-			e.logger.Error("[panic][recovered] probably called Init with insufficient number of params. check the init function and make sure you are registered dependency")
-			// continue panic to prevent user to use Serve
-			panic("probably called Init with insufficient number of params. check the init function and make sure you are registered dependency")
-		}
-	}()
+	if vertex.IsDisabled {
+		e.logger.Warn("vertex disabled", zap.String("vertex id", vertex.ID))
+		return nil
+	}
 	in, err := e.findInitParameters(vertex)
 	if err != nil {
-		return err
+		return errors.E(op, errors.FunctionCall, err)
 	}
 	// Iterate over dependencies
 	// And search in Vertices for the provided types
@@ -50,10 +55,30 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 	rErr := ret[0].Interface()
 	if rErr != nil {
 		if err, ok := rErr.(error); ok && e != nil {
-			e.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(err))
-			return errors.E(op, errors.FunctionCall, err)
+			/*
+				If vertex is disabled we skip all processing for it:
+				1. We don't add Init function args as dependencies
+			*/
+			if errors.Is(errors.Disabled, err) {
+				/*
+					DisableById vertex
+					1. But if vertex is disabled it can't PROVIDE via v.Provided value of itself for other vertices
+					and we should recalculate whole three without this dep.
+				*/
+				e.logger.Warn("vertex disabled", zap.String("vertex id", vertex.ID), zap.Error(err))
+				// disable current vertex
+				vertex.IsDisabled = true
+				// disable all vertices in the vertex which depends on current
+				e.graph.DisableById(vertex.ID)
+				// Disabled is actually to an error, just notification to the graph, that it has some vertices which are disabled
+				return nil
+			} else {
+				e.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(err))
+				return errors.E(op, errors.FunctionCall, err)
+			}
+		} else {
+			return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 		}
-		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 	}
 
 	// just to be safe here
@@ -71,10 +96,10 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 		return errors.E(op, errors.ArgType, errors.Str("0 or less parameters for Init"))
 	}
 
-	if len(vertex.Meta.DepsList) > 0 {
-		for i := 0; i < len(vertex.Meta.DepsList); i++ {
+	if len(vertex.Meta.DependsDepsToInvoke) > 0 {
+		for i := 0; i < len(vertex.Meta.DependsDepsToInvoke); i++ {
 			// Interface dependency
-			if vertex.Meta.DepsList[i].Kind == reflect.Interface {
+			if vertex.Meta.DependsDepsToInvoke[i].Kind == reflect.Interface {
 				err = e.traverseCallDependersInterface(vertex)
 				if err != nil {
 					return errors.E(op, errors.Traverse, err)
@@ -93,9 +118,9 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 
 func (e *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error {
 	const op = errors.Op("internal_traverse_call_dependers_interface")
-	for i := 0; i < len(vertex.Meta.DepsList); i++ {
+	for i := 0; i < len(vertex.Meta.DependsDepsToInvoke); i++ {
 		// get dependency id (vertex id)
-		depID := vertex.Meta.DepsList[i].Name
+		depID := vertex.Meta.DependsDepsToInvoke[i].Name
 		// find vertex which provides dependency
 		providers := e.graph.FindProviders(depID)
 
@@ -122,7 +147,7 @@ func (e *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error
 				// if type provides needed type
 				// value - reference and init dep also reference
 				switch {
-				case *vertexVal.IsReference == *vertex.Meta.DepsList[i].IsReference:
+				case *vertexVal.IsReference == *vertex.Meta.DependsDepsToInvoke[i].IsReference:
 					inInterface = append(inInterface, *vertexVal.Value)
 				case *vertexVal.IsReference:
 					// same type, but difference in the refs
@@ -160,9 +185,9 @@ func (e *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 	// add service itself
 	in = append(in, reflect.ValueOf(vertex.Iface))
 
-	for i := 0; i < len(vertex.Meta.DepsList); i++ {
+	for i := 0; i < len(vertex.Meta.DependsDepsToInvoke); i++ {
 		// get dependency id (vertex id)
-		depID := vertex.Meta.DepsList[i].Name
+		depID := vertex.Meta.DependsDepsToInvoke[i].Name
 		// find vertex which provides dependency
 		providers := e.graph.FindProviders(depID)
 		// search for providers
@@ -171,7 +196,7 @@ func (e *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 				// if type provides needed type
 				if vertexID == depID {
 					switch {
-					case *val.IsReference == *vertex.Meta.DepsList[i].IsReference:
+					case *val.IsReference == *vertex.Meta.DependsDepsToInvoke[i].IsReference:
 						in = append(in, *val.Value)
 					case *val.IsReference:
 						// same type, but difference in the refs
@@ -209,7 +234,7 @@ func (e *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) 
 	// type implements Depender interface
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Depender)(nil)).Elem()) {
 		// if type implements Depender() it should has FnsProviderToInvoke
-		if vertex.Meta.DepsList != nil {
+		if vertex.Meta.DependsDepsToInvoke != nil {
 			for k := 0; k < len(vertex.Meta.FnsDependerToInvoke); k++ {
 				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsDependerToInvoke[k])
 				if !ok {
@@ -246,12 +271,12 @@ func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value,
 	in = append(in, reflect.ValueOf(vertex.Iface))
 
 	// add dependencies
-	if len(vertex.Meta.InitDepsList) > 0 {
-		for i := 0; i < len(vertex.Meta.InitDepsList); i++ {
-			depID := vertex.Meta.InitDepsList[i].Name
+	if len(vertex.Meta.InitDepsToInvoke) > 0 {
+		for i := 0; i < len(vertex.Meta.InitDepsToInvoke); i++ {
+			depID := vertex.Meta.InitDepsToInvoke[i].Name
 			v := e.graph.FindProviders(depID)
 			var err error
-			in, err = e.traverseProviders(vertex.Meta.InitDepsList[i], v[0], depID, vertex.ID, in)
+			in, err = e.traverseProviders(vertex.Meta.InitDepsToInvoke[i], v[0], depID, vertex.ID, in)
 			if err != nil {
 				return nil, errors.E(op, errors.Traverse, err)
 			}
@@ -260,10 +285,9 @@ func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value,
 	return in, nil
 }
 
-func (e *Endure) traverseProviders(depsEntry structures.DepsEntry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
+func (e *Endure) traverseProviders(depsEntry structures.Entry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
 	const op = errors.Op("internal_traverse_providers")
-	// we need to call all providers first
-	err := e.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID)
+	err := e.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID, depID)
 	if err != nil {
 		return nil, errors.E(op, errors.Traverse, err)
 	}
@@ -278,7 +302,7 @@ func (e *Endure) traverseProviders(depsEntry structures.DepsEntry, depVertex *st
 	return in, nil
 }
 
-func (e *Endure) appendProviderFuncArgs(depsEntry structures.DepsEntry, providedEntry structures.ProvidedEntry, in []reflect.Value) []reflect.Value {
+func (e *Endure) appendProviderFuncArgs(depsEntry structures.Entry, providedEntry structures.ProvidedEntry, in []reflect.Value) []reflect.Value {
 	switch {
 	case *providedEntry.IsReference == *depsEntry.IsReference:
 		in = append(in, *providedEntry.Value)
@@ -303,13 +327,13 @@ func (e *Endure) appendProviderFuncArgs(depsEntry structures.DepsEntry, provided
 	return in
 }
 
-func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Value, callerID string) error {
+func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Value, callerID, depId string) error {
 	const op = errors.Op("internal_traverse_call_provider")
 	// to index function name in defer
 	i := 0
 	defer func() {
 		if r := recover(); r != nil {
-			e.logger.Error("panic during the function call", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]), zap.String("error", fmt.Sprint(r)))
+			e.logger.Error("panic during the function call", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i].FunctionName), zap.String("error", fmt.Sprint(r)))
 		}
 	}()
 	// type implements Provider interface
@@ -320,9 +344,13 @@ func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Va
 			// invoke it
 			// and save its return values
 			for i = 0; i < len(vertex.Meta.FnsProviderToInvoke); i++ {
-				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsProviderToInvoke[i])
+				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsProviderToInvoke[i].FunctionName)
 				if !ok {
-					e.logger.Panic("should implement the Provider interface", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
+					e.logger.Panic("should implement the Provider interface", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i].FunctionName))
+				}
+
+				if vertex.Meta.FnsProviderToInvoke[i].ReturnTypeId != depId {
+					continue
 				}
 
 				/*
@@ -335,7 +363,7 @@ func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Va
 				/*
 					cases when func NumIn can be more than one
 					is that function accepts some other type except of receiver
-					at the moment we assume, that this "other type" is Name interface
+					at the moment we assume, that this "other type" is FunctionName interface
 				*/
 				if m.Func.Type().NumIn() > 1 {
 					/*
@@ -353,13 +381,13 @@ func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Va
 						// current function IN type (interface)
 						t := m.Func.Type().In(j)
 						if t.Kind() != reflect.Interface {
-							e.logger.Panic("Provider accepts only interfaces", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
+							e.logger.Panic("Provider accepts only interfaces", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i].FunctionName))
 						}
 
 						// if Caller struct implements interface -- ok, add it to the inCopy list
 						// else panic
 						if reflect.TypeOf(callerV.Iface).Implements(t) == false {
-							e.logger.Panic("Caller should implement callee interface", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i]))
+							e.logger.Panic("Caller should implement callee interface", zap.String("function name", vertex.Meta.FnsProviderToInvoke[i].FunctionName))
 						}
 
 						inCopy = append(inCopy, reflect.ValueOf(callerV.Iface))
@@ -530,6 +558,10 @@ func (e *Endure) shutdown(n *structures.DllNode) {
 		// process all nodes one by one
 		nCopy := n
 		for nCopy != nil {
+			if nCopy.Vertex.IsDisabled == true {
+				nCopy = nCopy.Next
+				continue
+			}
 			sh <- nCopy
 			nCopy = nCopy.Next
 		}
@@ -796,6 +828,9 @@ func (e *Endure) backoffInit(v *structures.Vertex) func() error {
 
 func (e *Endure) configure(n *structures.DllNode) error {
 	const op = errors.Op("internal_configure")
+	if n.Vertex.IsDisabled {
+		return nil
+	}
 	// handle all configure
 	in := make([]reflect.Value, 0, 1)
 	// add service itself

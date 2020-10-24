@@ -1,20 +1,20 @@
-package happyScenario
+package happy_scenarios
 
 import (
 	"testing"
 	"time"
 
 	"github.com/spiral/endure"
-	plugin12 "github.com/spiral/endure/tests/happyScenario/ProvidedValueButNeedPointer/plugin1"
-	plugin22 "github.com/spiral/endure/tests/happyScenario/ProvidedValueButNeedPointer/plugin2"
-	"github.com/spiral/endure/tests/happyScenario/plugin1"
-	"github.com/spiral/endure/tests/happyScenario/plugin2"
-	"github.com/spiral/endure/tests/happyScenario/plugin3"
-	"github.com/spiral/endure/tests/happyScenario/plugin4"
-	"github.com/spiral/endure/tests/happyScenario/plugin5"
-	"github.com/spiral/endure/tests/happyScenario/plugin6"
-	"github.com/spiral/endure/tests/happyScenario/plugin7"
-	primitive "github.com/spiral/endure/tests/happyScenario/plugin8"
+	"github.com/spiral/endure/tests/happy_scenarios/plugin1"
+	"github.com/spiral/endure/tests/happy_scenarios/plugin2"
+	"github.com/spiral/endure/tests/happy_scenarios/plugin3"
+	"github.com/spiral/endure/tests/happy_scenarios/plugin4"
+	"github.com/spiral/endure/tests/happy_scenarios/plugin5"
+	"github.com/spiral/endure/tests/happy_scenarios/plugin6"
+	"github.com/spiral/endure/tests/happy_scenarios/plugin7"
+	primitive "github.com/spiral/endure/tests/happy_scenarios/plugin8"
+	plugin12 "github.com/spiral/endure/tests/happy_scenarios/provided_value_but_need_pointer/plugin1"
+	plugin22 "github.com/spiral/endure/tests/happy_scenarios/provided_value_but_need_pointer/plugin2"
 	"github.com/stretchr/testify/assert"
 )
 

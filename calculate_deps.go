@@ -12,19 +12,22 @@ import (
 /*
 addProviders:
 Adds a provided type via the Provider interface. And adding:
-1. Key to the `Vertex Provides` map with empty ProvidedEntry, because we use key at the Init stage and fill the map with
+1. Key to the 'Vertex Provides' map with empty ProvidedEntry, because we use key at the Init stage and fill the map with
 actual type after FnsProviderToInvoke will be invoked
 2. FnsProviderToInvoke --> is the list of the Provided function to invoke via the reflection
 */
 func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 	op := errors.Op("add_providers")
+	// if vertex provides some deps via Provides, calculate it
 	if provider, ok := vertex.(Provider); ok {
 		for _, fn := range provider.Provides() {
-			ret, err := dependersReturnType(fn)
+			// Check return types
+			ret, err := providersReturnType(fn)
 			if err != nil {
 				return errors.E(op, err)
 			}
 
+			// remove asterisk from the type string representation *Foo1 -> Foo1
 			typeStr := removePointerAsterisk(ret.String())
 			// get the Vertex from the graph (gVertex)
 			gVertex := e.graph.GetVertex(vertexID)
@@ -32,17 +35,30 @@ func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 				gVertex.Provides = make(map[string]structures.ProvidedEntry)
 			}
 
+			// Make a slice
 			if gVertex.Meta.FnsProviderToInvoke == nil {
-				gVertex.Meta.FnsProviderToInvoke = make([]string, 0, 5)
+				gVertex.Meta.FnsProviderToInvoke = make([]structures.ProviderEntry, 0, 1)
 			}
 
-			gVertex.Meta.FnsProviderToInvoke = append(gVertex.Meta.FnsProviderToInvoke, getFunctionName(fn))
+			// TODO merge function calls into one. Plugin1 -> fn's to invoke ProvideDB, ProvideDB2
+			// Append functions which we will invoke when we start calling the structure functions after Init stage
+			gVertex.Meta.FnsProviderToInvoke = append(gVertex.Meta.FnsProviderToInvoke, structures.ProviderEntry{
+				/*
+					For example:
+					we need to invoke function ProvideDB - that will be FunctionName
+					ReturnTypeId will be DB (in that case)
+					We need return type to filter it in Init call, because in Init we may have one struct which returns
+					two different types.
+				*/
+				FunctionName: getFunctionName(fn), // function name to invoke
+				ReturnTypeId: typeStr,             // return type ID
+			})
 
-			// Interface dep
 			/*
-				If Provided type is interface
-				1. Check that type implement interface
-				2. Write record, that this particular type also provides Interface
+				   For the interface dependencies
+					If Provided type is interface
+					1. Check that type implement interface
+					2. Write record, that this particular type also provides Interface
 			*/
 			if ret.Kind() == reflect.Interface {
 				if reflect.TypeOf(vertex).Implements(ret) {
@@ -84,7 +100,7 @@ func (e *Endure) addEdges() error {
 		2. Vertex structure value (interface)
 		3. Provided type
 		4. Provided type String name
-		5. Name of the dependencies which we should found
+		5. FunctionName of the dependencies which we should found
 		We add 3 and 4 points to the Vertex
 		*/
 		err := e.addDependersDeps(vertexID, vrtx.Iface)

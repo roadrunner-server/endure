@@ -1,8 +1,8 @@
 package plugin4
 
 import (
-	"github.com/spiral/endure/tests/happyScenario/plugin5"
-	"github.com/spiral/endure/tests/happyScenario/plugin6"
+	"github.com/spiral/endure/tests/happy_scenarios/plugin5"
+	"github.com/spiral/endure/tests/happy_scenarios/plugin6"
 )
 
 type S4 struct {
