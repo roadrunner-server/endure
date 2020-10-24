@@ -1,7 +1,7 @@
 package plugin1
 
 import (
-	"github.com/spiral/endure/tests/happyScenario/plugin6"
+	"github.com/spiral/endure/tests/happy_scenarios/plugin6"
 )
 
 type Plugin1 struct {
