@@ -33,10 +33,11 @@ jobs:
       - name: Run golang tests
         run: |
           go test ./tests/backoff -race -v -coverprofile=backoff.txt -covermode=atomic
-          go test ./tests/happyScenario -race -v -coverprofile=happyScenario.txt -covermode=atomic
+          go test ./tests/happy_scenarios -race -v -coverprofile=happy_scenarios.txt -covermode=atomic
           go test ./tests/interfaces -race -v -coverprofile=interfaces.txt -covermode=atomic
           go test ./tests/issues -race -v -coverprofile=issues.txt -covermode=atomic
           go test ./tests/stress -race -v -coverprofile=stress.txt -covermode=atomic
+          go test ./tests/disabled_vertices -race -v -coverprofile=disabled_vertices.txt -covermode=atomic
 
       - name: Run code coverage
         env:
@@ -50,6 +51,7 @@ jobs:
             ./codecov-bash -f interfaces.txt
             ./codecov-bash -f issues.txt
             ./codecov-bash -f stress.txt
+            ./codecov-bash -f disabled_vertices.txt
           fi
 
   golangci-check:
