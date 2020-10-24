@@ -7,22 +7,22 @@ import (
 	"github.com/goccy/go-graphviz"
 )
 
-func PrintGraph(vertices *Vertices) error {
+func PrintGraph(vertices []*Vertex) error {
 	gr := graphviz.New()
 	graph, err := gr.Graph()
 	if err != nil {
 		panic(err)
 	}
 
-	for i := 0; i < len(g.Vertices); i++ {
-		if len(g.Vertices[i].Dependencies) > 0 {
-			for j := 0; j < len(g.Vertices[i].Dependencies); j++ {
-				n, err := graph.CreateNode(g.Vertices[i].ID)
+	for i := 0; i < len(vertices); i++ {
+		if len(vertices[i].Dependencies) > 0 {
+			for j := 0; j < len(vertices[i].Dependencies); j++ {
+				n, err := graph.CreateNode(vertices[i].ID)
 				if err != nil {
 					return err
 				}
 
-				m, err := graph.CreateNode(g.Vertices[i].Dependencies[j].ID)
+				m, err := graph.CreateNode(vertices[i].Dependencies[j].ID)
 				if err != nil {
 					return err
 				}
