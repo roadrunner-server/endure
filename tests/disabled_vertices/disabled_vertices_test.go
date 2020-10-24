@@ -72,6 +72,7 @@ func TestDisabledViaInterface(t *testing.T) {
 	assert.NoError(t, err)
 
 	tt := time.NewTicker(time.Second)
+	// should be one vertex
 	for {
 		select {
 		case e := <-errCh:

@@ -42,7 +42,7 @@ Here we also track the Disabled vertices. If the vertex is disabled we should re
 func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
 	const op = errors.Op("internal_call_init_function")
 	if vertex.IsDisabled {
-		e.logger.Warn("vertex disabled")
+		e.logger.Warn("vertex disabled", zap.String("vertex id", vertex.ID))
 		return nil
 	}
 	in, err := e.findInitParameters(vertex)
@@ -61,13 +61,16 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 			*/
 			if errors.Is(errors.Disabled, err) {
 				/*
-					Disable vertex
+					DisableById vertex
 					1. But if vertex is disabled it can't PROVIDE via v.Provided value of itself for other vertices
 					and we should recalculate whole three without this dep.
 				*/
 				e.logger.Warn("vertex disabled", zap.String("vertex id", vertex.ID), zap.Error(err))
+				// disable current vertex
 				vertex.IsDisabled = true
-				e.graph.Disabler(vertex.ID)
+				// disable all vertices in the vertex which depends on current
+				e.graph.DisableById(vertex.ID)
+				// Disabled is actually to an error, just notification to the graph, that it has some vertices which are disabled
 				return nil
 			} else {
 				e.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(err))

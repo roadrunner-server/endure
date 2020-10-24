@@ -14,7 +14,8 @@ const (
 )
 
 type disabler interface {
-	Disable(vertexId string)
+	// DisableById used to disable all vertices in which dependencies presents passed vertex id
+	DisableById(vertexId string)
 }
 
 // manages the set of services and their edges
@@ -104,7 +105,7 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 	}
 }
 
-func (g *Graph) Disabler(vid string) {
+func (g *Graph) DisableById(vid string) {
 	v := g.VerticesMap[vid]
 	for i := 0; i < len(g.Vertices); i++ {
 		g.disablerHelper(g.Vertices[i], v)
