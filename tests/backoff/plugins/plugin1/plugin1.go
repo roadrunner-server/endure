@@ -14,17 +14,6 @@ func (f *Plugin1) Init() error {
 	return nil
 }
 
-func (f *Plugin1) Configure() error {
-	if number > 1 {
-		return errors.New("test error when num > 1")
-	}
-	return nil
-}
-
-func (f *Plugin1) Close() error {
-	return nil
-}
-
 func (f *Plugin1) Serve() chan error {
 	errCh := make(chan error, 1)
 	go func() {

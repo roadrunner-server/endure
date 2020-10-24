@@ -43,20 +43,12 @@ func (s *S4) AddService(svc plugin5.S5) error {
 	return nil
 }
 
-func (s *S4) Configure() error {
-	return nil
-}
-
 func (s *S4) Serve() chan error {
 	errCh := make(chan error, 1)
 
 	s.fooW.Fooo()
 
 	return errCh
-}
-
-func (s *S4) Close() error {
-	return nil
 }
 
 func (s *S4) Stop() error {

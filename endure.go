@@ -269,33 +269,16 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 	const op = errors.Op("Serve")
 	e.startMainThread()
 
+	// simple check that we have at least one vertex in the graph to Serve
 	atLeastOne := false
-	// call configure
-	nCopy := e.runList.Head
 
-	// DEPRECATED TODO
+	nCopy := e.runList.Head
 	for nCopy != nil {
 		if nCopy.Vertex.IsDisabled {
 			nCopy = nCopy.Next
 			continue
 		}
 		atLeastOne = true
-		// deprecated
-		err := e.configure(nCopy)
-		if err != nil {
-			e.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
-			return nil, errors.E(op, errors.Serve, err)
-		}
-
-		nCopy = nCopy.Next
-	}
-
-	nCopy = e.runList.Head
-	for nCopy != nil {
-		if nCopy.Vertex.IsDisabled {
-			nCopy = nCopy.Next
-			continue
-		}
 		err := e.serve(nCopy)
 		if err != nil {
 			return nil, errors.E(op, errors.Serve, err)

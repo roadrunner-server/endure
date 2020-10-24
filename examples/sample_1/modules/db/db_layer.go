@@ -37,17 +37,8 @@ func (db *DB) Serve() chan error {
 	return errCh
 }
 
-func (db *DB) Configure() error {
-	db.logger.SuperLogToStdOut("configuring DB")
-	return nil
-}
-
-func (db *DB) Close() error {
-	return db.boltdb.Close()
-}
-
 func (db *DB) Stop() error {
-	return nil
+	return db.boltdb.Close()
 }
 
 func (db *DB) Name() string {

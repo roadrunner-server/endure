@@ -13,17 +13,9 @@ func (s *Plugin1) Init(foow plugin6.FooWriter) error {
 	return nil
 }
 
-func (s *Plugin1) Configure() error {
-	return nil
-}
-
 func (s *Plugin1) Serve() chan error {
 	errCh := make(chan error, 1)
 	return errCh
-}
-
-func (s *Plugin1) Close() error {
-	return nil
 }
 
 func (s *Plugin1) Stop() error {

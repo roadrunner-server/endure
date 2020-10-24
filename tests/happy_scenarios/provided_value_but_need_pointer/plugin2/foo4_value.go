@@ -26,17 +26,9 @@ func (s *Plugin2) CreateAnotherDB() (DBV, error) {
 	}, nil
 }
 
-func (s *Plugin2) Configure() error {
-	return nil
-}
-
 func (s *Plugin2) Serve() chan error {
 	errCh := make(chan error, 1)
 	return errCh
-}
-
-func (s *Plugin2) Close() error {
-	return nil
 }
 
 func (s *Plugin2) Stop() error {

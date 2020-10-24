@@ -19,7 +19,7 @@ import (
 func (e *Endure) init(vertex *structures.Vertex) error {
 	const op = errors.Op("internal_init")
 	if vertex.IsDisabled {
-		e.logger.Warn("vertex is disable due to error.Disabled in the Init func or due to Endure decision (Disabled dependency)", zap.String("vertex id", vertex.ID))
+		e.logger.Warn("vertex is disabled due to error.Disabled in the Init func or due to Endure decision (Disabled dependency)", zap.String("vertex id", vertex.ID))
 		return nil
 	}
 	// we already checked the Interface satisfaction
@@ -420,9 +420,8 @@ func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Va
 
 /*
 Algorithm is the following (all steps executing in the topological order):
-1. Call Configure() on all services -- OPTIONAL
-2. Call Serve() on all services --     MUST
-3. Call Stop() on all services --      MUST
+2. Call Serve() on all services --     OPTIONAL
+3. Call Stop() on all services --      OPTIONAL
 4. Call Clear() on a services, which implements this interface -- OPTIONAL
 */
 // call configure on the node
@@ -446,23 +445,6 @@ func (e *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) *res
 	return nil
 }
 
-/*
-callConfigureFn invoke Configure() error method
-*/
-func (e *Endure) callConfigureFn(vertex *structures.Vertex, in []reflect.Value) error {
-	const op = errors.Op("internal_call_configure_function")
-	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ConfigureMethodName)
-	ret := m.Func.Call(in)
-	res := ret[0].Interface()
-	if res != nil {
-		if e, ok := res.(error); ok && e != nil {
-			return errors.E(op, errors.FunctionCall, e)
-		}
-		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
-	}
-	return nil
-}
-
 func (e *Endure) stop(vID string) error {
 	const op = errors.Op("internal_stop")
 	vertex := e.graph.GetVertex(vID)
@@ -476,14 +458,6 @@ func (e *Endure) stop(vID string) error {
 			e.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vertex.ID))
 			return errors.E(op, errors.FunctionCall, err)
 		}
-
-		if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*graceful)(nil)).Elem()) {
-			err = e.callCloseFn(vertex.ID, in)
-			if err != nil {
-				e.logger.Error("error occurred during the callCloseFn", zap.String("vertex id", vertex.ID))
-				return errors.E(op, errors.FunctionCall, err)
-			}
-		}
 	}
 
 	return nil
@@ -494,23 +468,6 @@ func (e *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error
 	// Call Stop() method, which returns only error (or nil)
 	e.logger.Debug("stopping vertex", zap.String("vertexId", vertex.ID))
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(StopMethodName)
-	ret := m.Func.Call(in)
-	rErr := ret[0].Interface()
-	if rErr != nil {
-		if e, ok := rErr.(error); ok && e != nil {
-			return errors.E(op, errors.FunctionCall, e)
-		}
-		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
-	}
-	return nil
-}
-
-// TODO add stack to the all of the log events
-func (e *Endure) callCloseFn(vID string, in []reflect.Value) error {
-	const op = errors.Op("internal_call_close_function")
-	v := e.graph.GetVertex(vID)
-	// Call Close() method, which returns only error (or nil)
-	m, _ := reflect.TypeOf(v.Iface).MethodByName(CloseMethodName)
 	ret := m.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
@@ -602,12 +559,11 @@ func (e *Endure) forceExitHandler(ctx context.Context, data chan *structures.Dll
 	}
 }
 
-// serve run configure (if exist) and callServeFn for each node and put the results in the map
+// serve run calls callServeFn for each node and put the results in the map
 func (e *Endure) serve(n *structures.DllNode) error {
 	const op = errors.Op("internal_serve")
 	// check if type implements serve, if implements, call serve
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
-		// handle all configure
 		in := make([]reflect.Value, 0, 1)
 		// add service itself
 		in = append(in, reflect.ValueOf(n.Vertex.Iface))
@@ -719,22 +675,6 @@ func (e *Endure) retryHandler(res *result) {
 		headCopy = headCopy.Next
 	}
 
-	// call configure
-	headCopy = affectedRunList.Head
-	for headCopy != nil {
-		berr := backoff.Retry(e.backoffConfigure(headCopy), b)
-		if berr != nil {
-			e.userResultsCh <- &Result{
-				Error:    errors.E(op, errors.FunctionCall, errors.Errorf("error during the Init function call")),
-				VertexID: headCopy.Vertex.ID,
-			}
-			e.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
-			return
-		}
-
-		headCopy = headCopy.Next
-	}
-
 	// call serve
 	headCopy = affectedRunList.Head
 	for headCopy != nil {
@@ -820,45 +760,6 @@ func (e *Endure) backoffInit(v *structures.Vertex) func() error {
 		if err != nil {
 			e.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.ID), zap.Error(err))
 			return errors.E(op, errors.FunctionCall, err)
-		}
-
-		return nil
-	}
-}
-
-func (e *Endure) configure(n *structures.DllNode) error {
-	const op = errors.Op("internal_configure")
-	if n.Vertex.IsDisabled {
-		return nil
-	}
-	// handle all configure
-	in := make([]reflect.Value, 0, 1)
-	// add service itself
-	in = append(in, reflect.ValueOf(n.Vertex.Iface))
-
-	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*graceful)(nil)).Elem()) {
-		err := e.callConfigureFn(n.Vertex, in)
-		if err != nil {
-			return errors.E(op, errors.FunctionCall, err)
-		}
-	}
-
-	return nil
-}
-
-func (e *Endure) backoffConfigure(n *structures.DllNode) func() error {
-	return func() error {
-		// handle all configure
-		in := make([]reflect.Value, 0, 1)
-		// add service itself
-		in = append(in, reflect.ValueOf(n.Vertex.Iface))
-
-		if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*graceful)(nil)).Elem()) {
-			err := e.callConfigureFn(n.Vertex, in)
-			if err != nil {
-				e.logger.Error("error configuring the vertex", zap.String("vertex id", n.Vertex.ID), zap.Error(err))
-				return err
-			}
 		}
 
 		return nil

@@ -28,20 +28,12 @@ func (s *S4ServeError) CreateAnotherDB() (*FOO4DB, error) {
 	}, nil
 }
 
-func (s *S4ServeError) Configure() error {
-	return nil
-}
-
 func (s *S4ServeError) Serve() chan error {
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- errors.E(errors.Op("S4Serve"), errors.Serve, errors.Str("s4 test error"))
 	}()
 	return errCh
-}
-
-func (s *S4ServeError) Close() error {
-	return nil
 }
 
 func (s *S4ServeError) Stop() error {
