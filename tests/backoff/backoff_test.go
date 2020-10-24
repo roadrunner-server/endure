@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/spiral/endure"
-	"github.com/spiral/endure/tests/backoff/plugins/plugin1"
 	"github.com/spiral/endure/tests/backoff/plugins/plugin2"
 	"github.com/spiral/endure/tests/backoff/plugins/plugin3"
 	"github.com/spiral/endure/tests/backoff/plugins/plugin4"
