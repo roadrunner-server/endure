@@ -3,8 +3,6 @@
 package structures
 
 import (
-	"bytes"
-
 	"github.com/goccy/go-graphviz"
 	"github.com/spiral/endure/errors"
 )
@@ -37,11 +35,6 @@ func PrintGraph(vertices []*Vertex) error {
 				e.SetLabel("")
 			}
 		}
-	}
-
-	var buf bytes.Buffer
-	if err := gr.Render(graph, graphviz.PNG, &buf); err != nil {
-		return errors.E(op, err)
 	}
 
 	// write to file directly
