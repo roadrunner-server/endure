@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/spiral/endure"
 	"github.com/spiral/endure/examples/db_http_logger/modules/db"
@@ -13,7 +14,7 @@ import (
 )
 
 func main() {
-	container, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	container, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true), endure.PrintGraph(true))
 	if err != nil {
 		panic(err)
 	}
@@ -49,13 +50,13 @@ func main() {
 	}
 
 	// stop by CTRL+C
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGKILL, syscall.SIGINT)
 
 	for {
 		select {
 		case e := <-errCh:
-			println(e.Error.Err.Error())
+			println(e.Error.Error())
 			er := container.Stop()
 			if er != nil {
 				panic(er)

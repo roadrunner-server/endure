@@ -38,6 +38,33 @@ func (h *Http) Init(db db.Repository, logger logger.SuperLogger) error {
 	h.client = client
 	h.db = db
 	h.logger = logger
+
+	h.logger.SuperLogToStdOut("configuring http")
+	r := mux.NewRouter()
+
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+		AllowedMethods:   []string{"GET", "HEAD", "POST", "PUT", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+	})
+
+	r.Methods("POST").HandlerFunc(h.update).Path("/update")
+	r.Methods("POST").HandlerFunc(h.ddelete).Path("/delete")
+	r.Methods("GET").HandlerFunc(h.sselect).Path("/select")
+	r.Methods("POST").HandlerFunc(h.insert).Path("/insert")
+
+	// just as sample, we put server here
+	server := &http.Server{
+		Addr:           ":8080",
+		Handler:        c.Handler(r),
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+
+	h.server = server
+
 	return nil
 }
 
@@ -73,36 +100,6 @@ func (h *Http) Stop() error {
 	return nil
 }
 
-func (h *Http) Configure() error {
-	h.logger.SuperLogToStdOut("configuring http")
-	r := mux.NewRouter()
-
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowCredentials: true,
-		AllowedMethods:   []string{"GET", "HEAD", "POST", "PUT", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-	})
-
-	r.Methods("POST").HandlerFunc(h.update).Path("/update")
-	r.Methods("POST").HandlerFunc(h.ddelete).Path("/delete")
-	r.Methods("GET").HandlerFunc(h.sselect).Path("/select")
-	r.Methods("POST").HandlerFunc(h.insert).Path("/insert")
-
-	// just as sample, we put server here
-	server := &http.Server{
-		Addr:           ":8080",
-		Handler:        c.Handler(r),
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-	}
-
-	h.server = server
-
-	return nil
-}
-
 func (h *Http) Depends() []interface{} {
 	return []interface{}{
 		h.AddMiddleware,
@@ -114,9 +111,6 @@ func (h *Http) AddMiddleware(m Middleware) error {
 	return nil
 }
 
-func (h *Http) Close() error {
-	return nil
-}
 
 ///////////////// INFRA HANDLERS //////////////////////////////
 
@@ -137,7 +131,7 @@ func (h *Http) sselect(writer http.ResponseWriter, request *http.Request) {
 	writer.WriteHeader(http.StatusOK)
 
 	for i := 0; i < 10000; i++ {
-		writer.Write([]byte("TEST_GZIP_HEADERS"))
+		_, _ = writer.Write([]byte("TEST_GZIP_HEADERS"))
 	}
 
 }
