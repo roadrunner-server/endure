@@ -4,13 +4,10 @@ import (
 	"errors"
 )
 
-var number int = 0
-
 type Plugin1 struct {
 }
 
 func (f *Plugin1) Init() error {
-	number += 1
 	return nil
 }
 

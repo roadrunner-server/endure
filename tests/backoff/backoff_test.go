@@ -85,6 +85,7 @@ func TestEndure_MainThread_Backoff(t *testing.T) {
 			if r.Error != nil {
 				assert.NoError(t, c.Stop())
 				wg.Done()
+				return
 			}
 		}
 	}()
