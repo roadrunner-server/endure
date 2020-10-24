@@ -220,12 +220,18 @@ func (e *Endure) Register(vertex interface{}) error {
 func (e *Endure) Init() error {
 	const op = errors.Op("Init")
 	// traverse the graph
-	if err := e.addEdges(); err != nil {
+	err := e.addEdges()
+	if err != nil {
 		return errors.E(op, errors.Init, err)
 	}
 
+	// if failed - continue, just send warning to a user
+	// print is not critical
 	if e.print {
-		e.graph.Print()
+		err = e.graph.Print()
+		if err != nil {
+			e.logger.Warn("failed to print the graph", zap.Error(err))
+		}
 	}
 
 	// we should build init list in the reverse order
