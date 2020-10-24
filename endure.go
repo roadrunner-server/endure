@@ -54,6 +54,8 @@ type Endure struct {
 	retry           bool
 	maxInterval     time.Duration
 	initialInterval time.Duration
+	// option to print resulted (before init) graph
+	print bool
 
 	mutex *sync.RWMutex
 
@@ -168,6 +170,12 @@ func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) O
 	}
 }
 
+func PrintGraph(print bool) Options {
+	return func(endure *Endure) {
+		endure.print = print
+	}
+}
+
 // Depender depends the dependencies
 // name is a name of the dependency, for example - S2
 // vertex is a value -> pointer to the structure
@@ -214,6 +222,10 @@ func (e *Endure) Init() error {
 	// traverse the graph
 	if err := e.addEdges(); err != nil {
 		return errors.E(op, errors.Init, err)
+	}
+
+	if e.print {
+		e.graph.Print()
 	}
 
 	// we should build init list in the reverse order
