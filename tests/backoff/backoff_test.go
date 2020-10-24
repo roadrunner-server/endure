@@ -66,36 +66,6 @@ func TestEndure_MainThread_Init_Backoff(t *testing.T) {
 	assert.Greater(t, 11, after-now)
 }
 
-func TestEndure_MainThread_Backoff(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true), endure.SetBackoffTimes(time.Second, time.Second*10))
-	assert.NoError(t, err)
-
-	assert.NoError(t, c.Register(&plugin1.Plugin1{}))
-	assert.NoError(t, c.Init())
-
-	res, err := c.Serve()
-	assert.NoError(t, err)
-
-	wg := &sync.WaitGroup{}
-
-	now := time.Now().Second()
-	wg.Add(1)
-	go func() {
-		for r := range res {
-			if r.Error != nil {
-				assert.NoError(t, c.Stop())
-				wg.Done()
-				return
-			}
-		}
-	}()
-	wg.Wait()
-
-	after := time.Now().Second()
-	// after - now should not be more than 15 as we set in NewContainer
-	assert.Greater(t, 15, after-now, "time")
-}
-
 func TestEndure_BackoffTimers(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true), endure.SetBackoffTimes(time.Second, time.Second*5))
 	assert.NoError(t, err)
