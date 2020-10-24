@@ -86,7 +86,7 @@ func TestDisabledViaInterface(t *testing.T) {
 }
 
 func TestDisabledRoot(t *testing.T) {
-	cont, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	cont, err := endure.NewContainer(endure.DebugLevel, endure.PrintGraph(true))
 	if err != nil {
 		t.Fatal(err)
 	}
