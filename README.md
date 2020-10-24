@@ -43,17 +43,17 @@ errCh, err := container.Serve()
 `errCh` is the channel with errors from the all `Vertices`. You can identify vertex by `vertexID` which is presented in `errCh` struct.
 Then just process the events from the `errCh`:
 ```go
-	for {
-		select {
-		case e := <-errCh:
-			println(e.Error.Err.Error()) // just print the error, but actually error processing could be there
-			er := container.Stop()
-			if er != nil {
-				panic(er)
-			}
-			return
+for {
+	select {
+	case e := <-errCh:
+		println(e.Error.Err.Error()) // just print the error, but actually error processing could be there
+		er := container.Stop()
+		if er != nil {
+		    panic(er)
 		}
+		return
 	}
+}
 ```
 Also `Endure` will take care of the restart failing vertices (HTTP, DB, Logger in example) with exponential backoff mechanism.   
 The start will proceed in topological order (`Logger` -> `DB` -> `HTTP`), and the stop in reverse-topological order automatically.
