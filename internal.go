@@ -41,10 +41,6 @@ Here we also track the Disabled vertices. If the vertex is disabled we should re
 */
 func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
 	const op = errors.Op("internal_call_init_function")
-	if vertex.IsDisabled {
-		e.logger.Warn("vertex disabled", zap.String("vertex id", vertex.ID))
-		return nil
-	}
 	in, err := e.findInitParameters(vertex)
 	if err != nil {
 		return errors.E(op, errors.FunctionCall, err)
