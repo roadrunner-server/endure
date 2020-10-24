@@ -84,7 +84,7 @@ type Vertex struct {
 }
 
 type ProvidedEntry struct {
-	Str     string
+	Str string
 	// we need to distinguish false (default bool value) and nil --> we don't know information about reference
 	IsReference *bool
 	Value       *reflect.Value
@@ -109,7 +109,6 @@ func (g *Graph) Disabler(vid string) {
 	for i := 0; i < len(g.Vertices); i++ {
 		g.disablerHelper(g.Vertices[i], v)
 	}
-
 }
 
 func (g *Graph) disablerHelper(vertex *Vertex, disabled *Vertex) bool {

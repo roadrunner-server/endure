@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/spiral/endure"
-	plugin12 "github.com/spiral/endure/tests/happy_scenarios/provided_value_but_need_pointer/plugin1"
-	plugin22 "github.com/spiral/endure/tests/happy_scenarios/provided_value_but_need_pointer/plugin2"
 	"github.com/spiral/endure/tests/happy_scenarios/plugin1"
 	"github.com/spiral/endure/tests/happy_scenarios/plugin2"
 	"github.com/spiral/endure/tests/happy_scenarios/plugin3"
@@ -15,6 +13,8 @@ import (
 	"github.com/spiral/endure/tests/happy_scenarios/plugin6"
 	"github.com/spiral/endure/tests/happy_scenarios/plugin7"
 	primitive "github.com/spiral/endure/tests/happy_scenarios/plugin8"
+	plugin12 "github.com/spiral/endure/tests/happy_scenarios/provided_value_but_need_pointer/plugin1"
+	plugin22 "github.com/spiral/endure/tests/happy_scenarios/provided_value_but_need_pointer/plugin2"
 	"github.com/stretchr/testify/assert"
 )
 
