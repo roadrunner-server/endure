@@ -14,14 +14,6 @@ func (f *Plugin3) Init() error {
 	return nil
 }
 
-func (f *Plugin3) Configure() error {
-	return nil
-}
-
-func (f *Plugin3) Close() error {
-	return nil
-}
-
 func (f *Plugin3) Serve() chan error {
 	errCh := make(chan error, 1)
 	number2 += 1

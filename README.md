@@ -2,8 +2,7 @@
 <p align="center">
 	<a href="https://pkg.go.dev/github.com/spiral/Endure?tab=doc"><img src="https://godoc.org/github.com/spiral/Endure?status.svg"></a>
 	<a href="https://github.com/spiral/Endure/actions"><img src="https://github.com/spiral/Endure/workflows/CI/badge.svg" alt=""></a>
-	<a href="https://goreportcard.com/report/github.com/spiral/Endure"><img src="https://goreportcard.com/badge/github.com/spiral/Endure"></a>
-	<a href="https://codecov.io/gh/spiral/Endure/"><img src="https://codecov.io/gh/spiral/Endure/branch/master/graph/badge.svg"></a>
+	<a href="https://codecov.io/gh/spiral/endure"><img src="https://codecov.io/gh/spiral/endure/branch/master/graph/badge.svg?token=itNaiZ6ALN"/></a>
 	<a href="https://discord.gg/TFeEmCs"><img src="https://img.shields.io/badge/discord-chat-magenta.svg"></a>
 	<a href="https://lgtm.com/projects/g/spiral/endure/alerts/"><img src="https://img.shields.io/lgtm/alerts/g/spiral/endure.svg?logo=lgtm&logoWidth=18"></a>
 </p>

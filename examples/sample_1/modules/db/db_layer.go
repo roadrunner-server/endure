@@ -21,7 +21,7 @@ type Repository interface {
 func (db *DB) Init(logger logger.SuperLogger) error {
 	logger.SuperLogToStdOut("initializing DB")
 	db.logger = logger
-	db.path = "./examples"
+	db.path = "./examples_bolt_db"
 	bdb, err := bolt.Open(db.path, 0666, nil)
 	if err != nil {
 		return err
@@ -37,17 +37,8 @@ func (db *DB) Serve() chan error {
 	return errCh
 }
 
-func (db *DB) Configure() error {
-	db.logger.SuperLogToStdOut("configuring DB")
-	return nil
-}
-
-func (db *DB) Close() error {
-	return db.boltdb.Close()
-}
-
 func (db *DB) Stop() error {
-	return nil
+	return db.boltdb.Close()
 }
 
 func (db *DB) Name() string {

@@ -54,6 +54,8 @@ type Endure struct {
 	retry           bool
 	maxInterval     time.Duration
 	initialInterval time.Duration
+	// option to visualize resulted (before init) graph
+	visualize bool
 
 	mutex *sync.RWMutex
 
@@ -168,6 +170,12 @@ func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) O
 	}
 }
 
+func Visualize(print bool) Options {
+	return func(endure *Endure) {
+		endure.visualize = print
+	}
+}
+
 // Depender depends the dependencies
 // name is a name of the dependency, for example - S2
 // vertex is a value -> pointer to the structure
@@ -212,8 +220,18 @@ func (e *Endure) Register(vertex interface{}) error {
 func (e *Endure) Init() error {
 	const op = errors.Op("Init")
 	// traverse the graph
-	if err := e.addEdges(); err != nil {
+	err := e.addEdges()
+	if err != nil {
 		return errors.E(op, errors.Init, err)
+	}
+
+	// if failed - continue, just send warning to a user
+	// visualize is not critical
+	if e.visualize {
+		err = structures.Visualize(e.graph.Vertices)
+		if err != nil {
+			e.logger.Warn("failed to visualize the graph", zap.Error(err))
+		}
 	}
 
 	// we should build init list in the reverse order
@@ -251,33 +269,16 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 	const op = errors.Op("Serve")
 	e.startMainThread()
 
+	// simple check that we have at least one vertex in the graph to Serve
 	atLeastOne := false
-	// call configure
-	nCopy := e.runList.Head
 
-	// DEPRECATED TODO
+	nCopy := e.runList.Head
 	for nCopy != nil {
 		if nCopy.Vertex.IsDisabled {
 			nCopy = nCopy.Next
 			continue
 		}
 		atLeastOne = true
-		// deprecated
-		err := e.configure(nCopy)
-		if err != nil {
-			e.logger.Error("backoff failed", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
-			return nil, errors.E(op, errors.Serve, err)
-		}
-
-		nCopy = nCopy.Next
-	}
-
-	nCopy = e.runList.Head
-	for nCopy != nil {
-		if nCopy.Vertex.IsDisabled {
-			nCopy = nCopy.Next
-			continue
-		}
 		err := e.serve(nCopy)
 		if err != nil {
 			return nil, errors.E(op, errors.Serve, err)

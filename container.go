@@ -3,12 +3,6 @@ package endure
 // InitMethodName is the function name for the reflection
 const InitMethodName = "Init"
 
-// ConfigureMethodName
-const ConfigureMethodName = "Configure"
-
-// CloseMethodName
-const CloseMethodName = "Close"
-
 // ServeMethodName
 const ServeMethodName = "Serve"
 
@@ -37,13 +31,6 @@ type result struct {
 }
 
 type (
-	// used to gracefully stop and configure the plugins
-	graceful interface {
-		// Configure is used when we need to make preparation and wait for all services till Serve
-		Configure() error
-		// Close frees resources allocated by the service
-		Close() error
-	}
 	// this is the main service interface with should implement every plugin
 	Service interface {
 		// Serve

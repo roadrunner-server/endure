@@ -45,6 +45,7 @@ const (
 	ArgType
 	Init
 	Serve
+	Unsupported
 	Disabled
 
 	Traverse
@@ -73,6 +74,8 @@ func (k Kind) String() string {
 		return "Traverse error"
 	case FunctionCall:
 		return "Function call error"
+	case Unsupported:
+		return "Unsupported"
 	default:
 		return "UNDEF"
 	}

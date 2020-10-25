@@ -16,17 +16,9 @@ func (s *S6Interface) Init() error {
 	return nil
 }
 
-func (s *S6Interface) Configure() error {
-	return nil
-}
-
 func (s *S6Interface) Serve() chan error {
 	errCh := make(chan error, 1)
 	return errCh
-}
-
-func (s *S6Interface) Close() error {
-	return nil
 }
 
 func (s *S6Interface) Stop() error {

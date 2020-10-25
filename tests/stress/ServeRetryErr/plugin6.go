@@ -21,14 +21,6 @@ func (s2 *S2ServeErr) Init(svc S4) error {
 	return nil
 }
 
-func (s2 *S2ServeErr) Close() error {
-	return nil
-}
-
-func (s2 *S2ServeErr) Configure() error {
-	return nil
-}
-
 func (s2 *S2ServeErr) Serve() chan error {
 	errCh := make(chan error, 1)
 	go func() {

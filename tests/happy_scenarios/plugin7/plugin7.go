@@ -12,14 +12,6 @@ func (s1 *Plugin7) Serve() chan error {
 	return errCh
 }
 
-func (s1 *Plugin7) Configure() error {
-	return nil
-}
-
-func (s1 *Plugin7) Close() error {
-	return nil
-}
-
 func (s1 *Plugin7) Stop() error {
 	return nil
 }
