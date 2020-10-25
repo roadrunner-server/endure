@@ -57,7 +57,7 @@ func testLog(t *testing.T, level endure.Level) {
 }
 
 func TestEndure_Init_OK(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel)
+	c, err := endure.NewContainer(endure.DebugLevel, endure.Visualize(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin4.S4{}))

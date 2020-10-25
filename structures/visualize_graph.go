@@ -7,7 +7,7 @@ import (
 	"github.com/spiral/endure/errors"
 )
 
-func PrintGraph(vertices []*Vertex) error {
+func Visualize(vertices []*Vertex) error {
 	const op = errors.Op("print_graph")
 	gr := graphviz.New()
 	graph, err := gr.Graph()

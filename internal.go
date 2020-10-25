@@ -534,7 +534,7 @@ func (e *Endure) forceExitHandler(ctx context.Context, data chan *structures.Dll
 			if err != nil {
 				// TODO do not return until finished
 				// just log the errors
-				// stack it in slice and if slice is not empty, print it ??
+				// stack it in slice and if slice is not empty, visualize it ??
 				e.logger.Error("error occurred during the services stopping", zap.String("vertex id", node.Vertex.ID), zap.Error(err))
 			}
 			// exit from vertex poller

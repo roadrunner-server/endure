@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	container, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true), endure.PrintGraph(true))
+	container, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true), endure.Visualize(true))
 	if err != nil {
 		panic(err)
 	}

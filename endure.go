@@ -54,8 +54,8 @@ type Endure struct {
 	retry           bool
 	maxInterval     time.Duration
 	initialInterval time.Duration
-	// option to print resulted (before init) graph
-	print bool
+	// option to visualize resulted (before init) graph
+	visualize bool
 
 	mutex *sync.RWMutex
 
@@ -170,9 +170,9 @@ func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) O
 	}
 }
 
-func PrintGraph(print bool) Options {
+func Visualize(print bool) Options {
 	return func(endure *Endure) {
-		endure.print = print
+		endure.visualize = print
 	}
 }
 
@@ -226,11 +226,11 @@ func (e *Endure) Init() error {
 	}
 
 	// if failed - continue, just send warning to a user
-	// print is not critical
-	if e.print {
-		err = structures.PrintGraph(e.graph.Vertices)
+	// visualize is not critical
+	if e.visualize {
+		err = structures.Visualize(e.graph.Vertices)
 		if err != nil {
-			e.logger.Warn("failed to print the graph", zap.Error(err))
+			e.logger.Warn("failed to visualize the graph", zap.Error(err))
 		}
 	}
 
