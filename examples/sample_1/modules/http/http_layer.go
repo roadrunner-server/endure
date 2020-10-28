@@ -100,7 +100,7 @@ func (h *Http) Stop() error {
 	return nil
 }
 
-func (h *Http) Depends() []interface{} {
+func (h *Http) Collects() []interface{} {
 	return []interface{}{
 		h.AddMiddleware,
 	}
@@ -110,7 +110,6 @@ func (h *Http) AddMiddleware(m Middleware) error {
 	h.mdwr = append(h.mdwr, m)
 	return nil
 }
-
 
 ///////////////// INFRA HANDLERS //////////////////////////////
 

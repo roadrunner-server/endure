@@ -6,7 +6,7 @@ import (
 
 	"github.com/spiral/endure"
 	"github.com/spiral/endure/errors"
-	"github.com/spiral/endure/tests/stress/DependerFuncReturn"
+	"github.com/spiral/endure/tests/stress/CollectorFuncReturn"
 	"github.com/spiral/endure/tests/stress/InitErr"
 	"github.com/spiral/endure/tests/stress/ServeErr"
 	"github.com/spiral/endure/tests/stress/ServeRetryErr"
@@ -36,24 +36,8 @@ func TestEndure_Serve_Err(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := c.Serve()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		for r := range res { // <--- Error is HERE
-			assert.Equal(t, "ServeErr.S4ServeError", r.VertexID)
-			assert.Error(t, r.Error)
-			assert.NoError(t, c.Stop())
-			wg.Done()
-			return
-		}
-	}()
-
-	wg.Wait()
+	_, err = c.Serve()
+	assert.Error(t, err)
 }
 
 /* The scenario for this test is the following:
@@ -220,12 +204,12 @@ func TestEndure_NoRegisterInvoke(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestEndure_DependerFuncReturnError(t *testing.T) {
+func TestEndure_CollectorFuncReturnError(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Register(&DependerFuncReturn.FooDep{}))
-	assert.NoError(t, c.Register(&DependerFuncReturn.FooDep2{}))
+	assert.NoError(t, c.Register(&CollectorFuncReturn.FooDep{}))
+	assert.NoError(t, c.Register(&CollectorFuncReturn.FooDep2{}))
 	assert.Error(t, c.Init())
 
 	_, _ = c.Serve()

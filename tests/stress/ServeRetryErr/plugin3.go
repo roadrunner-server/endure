@@ -9,7 +9,7 @@ import (
 type S3 struct {
 }
 
-func (s3 *S3) Depends() []interface{} {
+func (s3 *S3) Collects() []interface{} {
 	return []interface{}{
 		s3.SomeOtherDep,
 	}
@@ -19,7 +19,7 @@ func (s3 *S3) SomeOtherDep(svc *S4, svc2 S2) error {
 	return nil
 }
 
-// Depends on S3
+// Collects on S3
 func (s3 *S3) Init(svc S2) error {
 	return nil
 }
@@ -36,7 +36,7 @@ func (s3 *S3) Stop() error {
 type S3Init struct {
 }
 
-func (s3 *S3Init) Depends() []interface{} {
+func (s3 *S3Init) Collects() []interface{} {
 	return []interface{}{
 		s3.SomeOtherDep,
 	}
@@ -46,7 +46,7 @@ func (s3 *S3Init) SomeOtherDep(svc *S4, svc2 S2) error {
 	return nil
 }
 
-// Depends on S3
+// Collects on S3
 func (s3 *S3Init) Init(svc S2) error {
 	const Op = "S3Init_Init"
 	s := rand.Intn(10)

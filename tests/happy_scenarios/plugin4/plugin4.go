@@ -33,7 +33,7 @@ func (s *S4) CreateAnotherDB() (*DB, error) {
 	}, nil
 }
 
-func (s *S4) Depends() []interface{} {
+func (s *S4) Collects() []interface{} {
 	return []interface{}{
 		s.AddService,
 	}

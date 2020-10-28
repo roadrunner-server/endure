@@ -47,7 +47,7 @@ func TestEndure_Interfaces_OK(t *testing.T) {
 	time.Sleep(time.Second * 1)
 }
 
-func TestEndure_InterfacesDepends_Ok(t *testing.T) {
+func TestEndure_InterfacesCollects_Ok(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel)
 	assert.NoError(t, err)
 

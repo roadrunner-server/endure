@@ -90,7 +90,7 @@ func (e *Endure) addEdges() error {
 		init, _ := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
 
 		if init.Type == nil {
-			e.logger.Fatal("init method is absent in struct", zap.String("vertexId", vertexID))
+			e.logger.Fatal("init method is absent in struct", zap.String("vertex id", vertexID))
 			return errors.E(Op, fmt.Errorf("init method is absent in struct"))
 		}
 
@@ -103,13 +103,13 @@ func (e *Endure) addEdges() error {
 		5. FunctionName of the dependencies which we should found
 		We add 3 and 4 points to the Vertex
 		*/
-		err := e.addDependersDeps(vertexID, vrtx.Iface)
+		err := e.addCollectorsDeps(vertexID, vrtx.Iface)
 		if err != nil {
 			return errors.E(Op, err)
 		}
 
 		/*
-			At this step we know (and build) all dependencies via the Depends interface and connected all providers
+			At this step we know (and build) all dependencies via the Collects interface and connected all providers
 			to it's dependencies.
 			The next step is to calculate dependencies provided by the Init() method
 			for example S1.Init(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
@@ -123,10 +123,10 @@ func (e *Endure) addEdges() error {
 	return nil
 }
 
-func (e *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
-	const Op = "add_dependers_deps"
-	if register, ok := vertex.(Depender); ok {
-		for _, fn := range register.Depends() {
+func (e *Endure) addCollectorsDeps(vertexID string, vertex interface{}) error {
+	const Op = "add_collectors_deps"
+	if register, ok := vertex.(Collector); ok {
+		for _, fn := range register.Collects() {
 			// what type it might depend on?
 			argsTypes, err := argType(fn)
 			if err != nil {
@@ -144,7 +144,7 @@ func (e *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 				if vertexID == atStr {
 					continue
 				}
-				// depends at interface via Dependers
+				// depends at interface via Collectors
 				/*
 					In this case we should do the following:
 					1. Find all types, which implement this interface
@@ -167,11 +167,11 @@ func (e *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 				// vertex - S4 func
 
 				// we store pointer in the Deps structure in the isRef field
-				err = e.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Depends, isReference(at), at.Kind())
+				err = e.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Collects, isReference(at), at.Kind())
 				if err != nil {
 					return errors.E(Op, err)
 				}
-				e.logger.Debug("adding dependency via Depends()", zap.String("vertex id", vertexID), zap.String("depends", atStr))
+				e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vertexID), zap.String("depends", atStr))
 			}
 
 			// get the Vertex from the graph (gVertex)
@@ -180,13 +180,13 @@ func (e *Endure) addDependersDeps(vertexID string, vertex interface{}) error {
 				gVertex.Provides = make(map[string]structures.ProvidedEntry)
 			}
 
-			if gVertex.Meta.FnsDependerToInvoke == nil {
-				gVertex.Meta.FnsDependerToInvoke = make([]string, 0, 5)
+			if gVertex.Meta.FnsCollectorToInvoke == nil {
+				gVertex.Meta.FnsCollectorToInvoke = make([]string, 0, 5)
 			}
 
-			e.logger.Debug("appending depender function to invoke later", zap.String("vertex id", vertexID), zap.String("function name", getFunctionName(fn)))
+			e.logger.Debug("appending collector function to invoke later", zap.String("vertex id", vertexID), zap.String("function name", getFunctionName(fn)))
 
-			gVertex.Meta.FnsDependerToInvoke = append(gVertex.Meta.FnsDependerToInvoke, getFunctionName(fn))
+			gVertex.Meta.FnsCollectorToInvoke = append(gVertex.Meta.FnsCollectorToInvoke, getFunctionName(fn))
 		}
 	}
 

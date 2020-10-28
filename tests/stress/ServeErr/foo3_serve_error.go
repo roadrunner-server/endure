@@ -3,7 +3,7 @@ package ServeErr
 type S3ServeError struct {
 }
 
-func (s3 *S3ServeError) Depends() []interface{} {
+func (s3 *S3ServeError) Collects() []interface{} {
 	return []interface{}{
 		s3.SomeOtherDep,
 	}
@@ -13,7 +13,7 @@ func (s3 *S3ServeError) SomeOtherDep(svc *S4ServeError, svc2 S2) error {
 	return nil
 }
 
-// Depends on S3
+// Collects on S3
 func (s3 *S3ServeError) Init(svc S2) error {
 	return nil
 }

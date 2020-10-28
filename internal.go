@@ -92,17 +92,17 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 		return errors.E(op, errors.ArgType, errors.Str("0 or less parameters for Init"))
 	}
 
-	if len(vertex.Meta.DependsDepsToInvoke) > 0 {
-		for i := 0; i < len(vertex.Meta.DependsDepsToInvoke); i++ {
+	if len(vertex.Meta.CollectsDepsToInvoke) > 0 {
+		for i := 0; i < len(vertex.Meta.CollectsDepsToInvoke); i++ {
 			// Interface dependency
-			if vertex.Meta.DependsDepsToInvoke[i].Kind == reflect.Interface {
-				err = e.traverseCallDependersInterface(vertex)
+			if vertex.Meta.CollectsDepsToInvoke[i].Kind == reflect.Interface {
+				err = e.traverseCallCollectorsInterface(vertex)
 				if err != nil {
 					return errors.E(op, errors.Traverse, err)
 				}
 			} else {
 				// structure dependence
-				err = e.traverseCallDependers(vertex)
+				err = e.traverseCallCollectors(vertex)
 				if err != nil {
 					return errors.E(op, errors.Traverse, err)
 				}
@@ -112,11 +112,11 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 	return nil
 }
 
-func (e *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error {
-	const op = errors.Op("internal_traverse_call_dependers_interface")
-	for i := 0; i < len(vertex.Meta.DependsDepsToInvoke); i++ {
+func (e *Endure) traverseCallCollectorsInterface(vertex *structures.Vertex) error {
+	const op = errors.Op("internal_traverse_call_collectors_interface")
+	for i := 0; i < len(vertex.Meta.CollectsDepsToInvoke); i++ {
 		// get dependency id (vertex id)
-		depID := vertex.Meta.DependsDepsToInvoke[i].Name
+		depID := vertex.Meta.CollectsDepsToInvoke[i].Name
 		// find vertex which provides dependency
 		providers := e.graph.FindProviders(depID)
 
@@ -143,7 +143,7 @@ func (e *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error
 				// if type provides needed type
 				// value - reference and init dep also reference
 				switch {
-				case *vertexVal.IsReference == *vertex.Meta.DependsDepsToInvoke[i].IsReference:
+				case *vertexVal.IsReference == *vertex.Meta.CollectsDepsToInvoke[i].IsReference:
 					inInterface = append(inInterface, *vertexVal.Value)
 				case *vertexVal.IsReference:
 					// same type, but difference in the refs
@@ -164,7 +164,7 @@ func (e *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error
 					}
 				}
 
-				err := e.callDependerFns(vertex, inInterface)
+				err := e.callCollectorFns(vertex, inInterface)
 				if err != nil {
 					return errors.E(op, errors.Traverse, err)
 				}
@@ -175,15 +175,15 @@ func (e *Endure) traverseCallDependersInterface(vertex *structures.Vertex) error
 	return nil
 }
 
-func (e *Endure) traverseCallDependers(vertex *structures.Vertex) error {
-	const op = "internal_traverse_call_dependers"
+func (e *Endure) traverseCallCollectors(vertex *structures.Vertex) error {
+	const op = "internal_traverse_call_collectors"
 	in := make([]reflect.Value, 0, 2)
 	// add service itself
 	in = append(in, reflect.ValueOf(vertex.Iface))
 
-	for i := 0; i < len(vertex.Meta.DependsDepsToInvoke); i++ {
+	for i := 0; i < len(vertex.Meta.CollectsDepsToInvoke); i++ {
 		// get dependency id (vertex id)
-		depID := vertex.Meta.DependsDepsToInvoke[i].Name
+		depID := vertex.Meta.CollectsDepsToInvoke[i].Name
 		// find vertex which provides dependency
 		providers := e.graph.FindProviders(depID)
 		// search for providers
@@ -192,7 +192,7 @@ func (e *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 				// if type provides needed type
 				if vertexID == depID {
 					switch {
-					case *val.IsReference == *vertex.Meta.DependsDepsToInvoke[i].IsReference:
+					case *val.IsReference == *vertex.Meta.CollectsDepsToInvoke[i].IsReference:
 						in = append(in, *val.Value)
 					case *val.IsReference:
 						// same type, but difference in the refs
@@ -217,7 +217,7 @@ func (e *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 		}
 	}
 
-	err := e.callDependerFns(vertex, in)
+	err := e.callCollectorFns(vertex, in)
 	if err != nil {
 		return errors.E(op, errors.Traverse, err)
 	}
@@ -225,17 +225,17 @@ func (e *Endure) traverseCallDependers(vertex *structures.Vertex) error {
 	return nil
 }
 
-func (e *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) error {
-	const op = errors.Op("internal_call_depender_functions")
-	// type implements Depender interface
-	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Depender)(nil)).Elem()) {
-		// if type implements Depender() it should has FnsProviderToInvoke
-		if vertex.Meta.DependsDepsToInvoke != nil {
-			for k := 0; k < len(vertex.Meta.FnsDependerToInvoke); k++ {
-				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsDependerToInvoke[k])
+func (e *Endure) callCollectorFns(vertex *structures.Vertex, in []reflect.Value) error {
+	const op = errors.Op("internal_call_collector_functions")
+	// type implements Collector interface
+	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Collector)(nil)).Elem()) {
+		// if type implements Collector() it should has FnsProviderToInvoke
+		if vertex.Meta.CollectsDepsToInvoke != nil {
+			for k := 0; k < len(vertex.Meta.FnsCollectorToInvoke); k++ {
+				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsCollectorToInvoke[k])
 				if !ok {
-					e.logger.Error("type has missing method in FnsDependerToInvoke", zap.String("vertex id", vertex.ID), zap.String("method", vertex.Meta.FnsDependerToInvoke[k]))
-					return errors.E(op, errors.FunctionCall, errors.Str("type has missing method in FnsDependerToInvoke"))
+					e.logger.Error("type has missing method in FnsCollectorToInvoke", zap.String("vertex id", vertex.ID), zap.String("method", vertex.Meta.FnsCollectorToInvoke[k]))
+					return errors.E(op, errors.FunctionCall, errors.Str("type has missing method in FnsCollectorToInvoke"))
 				}
 
 				ret := m.Func.Call(in)
@@ -245,13 +245,13 @@ func (e *Endure) callDependerFns(vertex *structures.Vertex, in []reflect.Value) 
 					rErr := ret[len(ret)-1].Interface()
 					if rErr != nil {
 						if err, ok := rErr.(error); ok && e != nil {
-							e.logger.Error("error calling DependerFns", zap.String("vertex id", vertex.ID), zap.Error(err))
+							e.logger.Error("error calling CollectorFns", zap.String("vertex id", vertex.ID), zap.Error(err))
 							return errors.E(op, errors.FunctionCall, err)
 						}
 						return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 					}
 				} else {
-					return errors.E(op, errors.FunctionCall, errors.Str("depender should return Value and error types"))
+					return errors.E(op, errors.FunctionCall, errors.Str("collector should return Value and error types"))
 				}
 			}
 		}
@@ -422,23 +422,28 @@ Algorithm is the following (all steps executing in the topological order):
 */
 // call configure on the node
 
-func (e *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) *result {
+func (e *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) (*result, error) {
+	const op = errors.Op("call_serve_fn")
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
 	if res != nil {
-		e.logger.Debug("start serving vertex", zap.String("vertexId", vertex.ID))
+		e.logger.Debug("start serving vertex", zap.String("vertex id", vertex.ID))
 		if e, ok := res.(chan error); ok && e != nil {
+			// error come righth after we start serving the vertex
+			if len(e) > 0 {
+				return nil, errors.E(op, errors.FunctionCall, errors.Str("got immediate error from vertex, stopping serve execution"))
+			}
 			return &result{
 				errCh:    e,
 				signal:   make(chan notify),
 				vertexID: vertex.ID,
-			}
+			}, nil
 		}
 	}
 	// error, result should not be nil
 	// the only one reason to be nil is to vertex return parameter (channel) is not initialized
-	return nil
+	return nil, nil
 }
 
 func (e *Endure) stop(vID string) error {
@@ -462,7 +467,7 @@ func (e *Endure) stop(vID string) error {
 func (e *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error {
 	const op = errors.Op("internal_call_stop_function")
 	// Call Stop() method, which returns only error (or nil)
-	e.logger.Debug("stopping vertex", zap.String("vertexId", vertex.ID))
+	e.logger.Debug("calling stop function on the vertex", zap.String("vertex id", vertex.ID))
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(StopMethodName)
 	ret := m.Func.Call(in)
 	rErr := ret[0].Interface()
@@ -564,7 +569,10 @@ func (e *Endure) serve(n *structures.DllNode) error {
 		// add service itself
 		in = append(in, reflect.ValueOf(n.Vertex.Iface))
 
-		res := e.callServeFn(n.Vertex, in)
+		res, err := e.callServeFn(n.Vertex, in)
+		if err != nil {
+			return errors.E(op, errors.FunctionCall, err)
+		}
 		if res != nil {
 			e.results.Store(res.vertexID, res)
 		} else {
@@ -576,6 +584,22 @@ func (e *Endure) serve(n *structures.DllNode) error {
 		e.poll(res)
 	}
 
+	return nil
+}
+
+// traverseBackStop used to visit every Prev node and stop vertices
+func (e *Endure) traverseBackStop(n *structures.DllNode) error {
+	const op = errors.Op("traverse_back_stop")
+	e.logger.Debug("stopping vertex in the first Serve call", zap.String("vertex id", n.Vertex.ID))
+	nCopy := n
+	for nCopy != nil {
+		err := e.stop(nCopy.Vertex.ID)
+		if err != nil {
+			// ignore errors from stop
+			e.logger.Error("failed to traverse vertex back", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(errors.E(op, err)))
+		}
+		nCopy = nCopy.Prev
+	}
 	return nil
 }
 
@@ -674,7 +698,7 @@ func (e *Endure) retryHandler(res *result) {
 	// call serve
 	headCopy = affectedRunList.Head
 	for headCopy != nil {
-		err := e.serve(headCopy)
+		err = e.serve(headCopy)
 		if err != nil {
 			e.userResultsCh <- &Result{
 				Error:    errors.E(op, errors.FunctionCall, errors.Errorf("error during the Serve function call")),

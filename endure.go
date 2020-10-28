@@ -176,7 +176,7 @@ func Visualize(print bool) Options {
 	}
 }
 
-// Depender depends the dependencies
+// Collector depends the dependencies
 // name is a name of the dependency, for example - S2
 // vertex is a value -> pointer to the structure
 func (e *Endure) Register(vertex interface{}) error {
@@ -188,7 +188,7 @@ func (e *Endure) Register(vertex interface{}) error {
 		return errors.E(op, errors.Register, errors.Errorf("you should pass pointer to the structure instead of value"))
 	}
 
-	/* Depender the type
+	/* Collector the type
 	Information we know at this step is:
 	1. vertexID
 	2. Vertex structure value (interface)
@@ -265,7 +265,12 @@ func (e *Endure) Init() error {
 	return nil
 }
 
+// Serve starts serving the graph
+// This is the initial serve, if error produced immedeately in the initial serve, endure will traverse deps back, call stop and exit
 func (e *Endure) Serve() (<-chan *Result, error) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
 	const op = errors.Op("Serve")
 	e.startMainThread()
 
@@ -281,6 +286,7 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 		atLeastOne = true
 		err := e.serve(nCopy)
 		if err != nil {
+			e.traverseBackStop(nCopy)
 			return nil, errors.E(op, errors.Serve, err)
 		}
 		nCopy = nCopy.Next
@@ -292,6 +298,7 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 	return e.userResultsCh, nil
 }
 
+// Stop stops the execution and call Stop on every vertex
 func (e *Endure) Stop() error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
