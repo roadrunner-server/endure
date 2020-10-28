@@ -176,9 +176,7 @@ func Visualize(print bool) Options {
 	}
 }
 
-// Collector depends the dependencies
-// name is a name of the dependency, for example - S2
-// vertex is a value -> pointer to the structure
+// Register registers the dependencies in the Endure graph without invoking any methods
 func (e *Endure) Register(vertex interface{}) error {
 	const op = errors.Op("Register")
 	t := reflect.TypeOf(vertex)
