@@ -1,6 +1,6 @@
 package ServeErr
 
-import "github.com/spiral/endure/errors"
+import "github.com/spiral/errors"
 
 type FOO4DB struct {
 	Name string
@@ -30,9 +30,7 @@ func (s *S4ServeError) CreateAnotherDB() (*FOO4DB, error) {
 
 func (s *S4ServeError) Serve() chan error {
 	errCh := make(chan error, 1)
-	go func() {
-		errCh <- errors.E(errors.Op("S4Serve"), errors.Serve, errors.Str("s4 test error"))
-	}()
+	errCh <- errors.E(errors.Op("S4Serve"), errors.Serve, errors.Str("s4 test error"))
 	return errCh
 }
 

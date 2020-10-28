@@ -3,12 +3,13 @@ package endure
 // InitMethodName is the function name for the reflection
 const InitMethodName = "Init"
 
-// ServeMethodName
+// ServeMethodName is the function name for the Serve
 const ServeMethodName = "Serve"
 
-// Stop is the function name for the reflection to Stop the service
+// StopMethodName is the function name for the reflection to Stop the service
 const StopMethodName = "Stop"
 
+// Result is the information which endure send to the user
 type Result struct {
 	Error    error
 	VertexID string
@@ -57,8 +58,8 @@ type (
 		Provides() []interface{}
 	}
 
-	// Depender declares the ability to accept the plugins which match the provided method signature.
-	Depender interface {
-		Depends() []interface{}
+	// Collector declares the ability to accept the plugins which match the provided method signature.
+	Collector interface {
+		Collects() []interface{}
 	}
 )

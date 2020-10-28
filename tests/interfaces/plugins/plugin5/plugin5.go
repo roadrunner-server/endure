@@ -30,7 +30,7 @@ func (f9 *Plugin5) Stop() error {
 	return nil
 }
 
-func (f9 *Plugin5) Depends() []interface{} {
+func (f9 *Plugin5) Collects() []interface{} {
 	return []interface{}{
 		f9.AddMiddleware,
 	}

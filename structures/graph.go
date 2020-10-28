@@ -10,7 +10,7 @@ type Kind int
 
 const (
 	Init Kind = iota
-	Depends
+	Collects
 )
 
 type disabler interface {
@@ -36,16 +36,16 @@ type Meta struct {
 	Order int
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
 	FnsProviderToInvoke []ProviderEntry
-	// FnsDependerToInvoke is the function names to invoke if type implements Depender() interface
-	FnsDependerToInvoke []string
+	// FnsCollectorToInvoke is the function names to invoke if type implements Collector() interface
+	FnsCollectorToInvoke []string
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
 	InitDepsToInvoke []Entry
 
 	// List of the vertex deps
-	// foo4.DB, foo4.S4 etc.. which were found in the Depends() method
-	DependsDepsToInvoke []Entry
+	// foo4.DB, foo4.S4 etc.. which were found in the Collects() method
+	CollectsDepsToInvoke []Entry
 }
 
 type ProviderEntry struct {
@@ -183,7 +183,7 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 		// to call later
 		// because we should know Init method parameters for every Vertex
 		// for example, we should know http.Middleware dependency and later invoke all types which it implement
-		// OR know Depends methods to invoke
+		// OR know Collects methods to invoke
 		g.addToList(method, vertex, depID, isRef, depVertices[i].ID, reflect.Interface)
 
 		// append depID vertex
@@ -200,7 +200,7 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 	return nil
 }
 
-// Add meta information to the InitDepsToInvoke or DependsDepsToInvoke
+// Add meta information to the InitDepsToInvoke or CollectsDepsToInvoke
 func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool, refId string, kind reflect.Kind) {
 	switch method {
 	case Init:
@@ -213,23 +213,23 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool,
 			IsReference: &isRef,
 			Kind:        kind,
 		})
-	case Depends:
-		if vertex.Meta.DependsDepsToInvoke == nil {
-			vertex.Meta.DependsDepsToInvoke = make([]Entry, 0, 1)
-			vertex.Meta.DependsDepsToInvoke = append(vertex.Meta.DependsDepsToInvoke, Entry{
+	case Collects:
+		if vertex.Meta.CollectsDepsToInvoke == nil {
+			vertex.Meta.CollectsDepsToInvoke = make([]Entry, 0, 1)
+			vertex.Meta.CollectsDepsToInvoke = append(vertex.Meta.CollectsDepsToInvoke, Entry{
 				RefId:       refId,
 				Name:        depID,
 				IsReference: &isRef,
 				Kind:        kind,
 			})
 		} else {
-			// search if DependsDepsToInvoke already contains interface dep
-			for _, v := range vertex.Meta.DependsDepsToInvoke {
+			// search if CollectsDepsToInvoke already contains interface dep
+			for _, v := range vertex.Meta.CollectsDepsToInvoke {
 				if v.Name == depID {
 					continue
 				}
 
-				vertex.Meta.DependsDepsToInvoke = append(vertex.Meta.DependsDepsToInvoke, Entry{
+				vertex.Meta.CollectsDepsToInvoke = append(vertex.Meta.CollectsDepsToInvoke, Entry{
 					RefId:       refId,
 					Name:        depID,
 					IsReference: &isRef,

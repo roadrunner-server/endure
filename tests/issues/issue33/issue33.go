@@ -26,7 +26,7 @@ func (f *Plugin1) Provides() []interface{} {
 }
 
 func (f *Plugin1) AddService(dep2 Plugin2) error {
-	return errors.New("test dependers error")
+	return errors.New("test collectors error")
 }
 
 type Plugin2 struct {

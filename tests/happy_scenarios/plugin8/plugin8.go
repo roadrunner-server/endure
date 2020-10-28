@@ -3,7 +3,7 @@ package primitive
 type Plugin8 struct {
 }
 
-// Depends on S2 and DB (S3 in the current case)
+// Collects on S2 and DB (S3 in the current case)
 func (f *Plugin8) Init(a int) error {
 	return nil
 }

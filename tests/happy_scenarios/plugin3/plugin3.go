@@ -8,7 +8,7 @@ import (
 type S3 struct {
 }
 
-func (s3 *S3) Depends() []interface{} {
+func (s3 *S3) Collects() []interface{} {
 	return []interface{}{
 		s3.SomeOtherDep,
 	}
@@ -18,7 +18,7 @@ func (s3 *S3) SomeOtherDep(svc *plugin4.S4, svc2 plugin2.S2) error {
 	return nil
 }
 
-// Depends on S3
+// Collects on S3
 func (s3 *S3) Init(svc plugin2.S2) error {
 	return nil
 }

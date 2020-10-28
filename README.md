@@ -82,9 +82,9 @@ type (
 		Provides() []interface{}
 	}
 
-	// Depender declares the ability to accept the plugins which match the provided method signature.
-	Depender interface {
-		Depends() []interface{}
+	// Collector declares the ability to accept the plugins which match the provided method signature.
+	Collector interface {
+		Collects() []interface{}
 	}
 )  
 ```
@@ -92,5 +92,5 @@ Order is the following:
 1. `Init() error` - is mandatory to implement. In your structure (which you pass to Endure), you should have this method as a receiver. It can accept as parameter any passed to the `Endure` structure (see samples) or interface (with limitations).  
 3. `Service` - is optional to implement. It has 2 main methods - `Serve` which should run the plugin and return initialized golang channel with errors, and `Stop` to shut down the plugin.
 4. `Provider` - is optional to implement. It is used to provide some dependency if you need to extend your struct.
-5. `Depender` - is optional to implement. It is used to mark a structure (vertex) as some struct dependency. It can accept interfaces which implement the caller.
+5. `Collector` - is optional to implement. It is used to mark a structure (vertex) as some struct dependency. It can accept interfaces which implement the caller.
 6. `Named` - is optional to implement. This is a special kind of interface which provides the name of the struct (plugin, vertex) to the caller. Is useful in logger (for example) to know user-friendly plugin name.

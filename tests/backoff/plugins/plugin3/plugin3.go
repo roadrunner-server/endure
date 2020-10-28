@@ -1,6 +1,9 @@
 package plugin3
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 var number2 int = 0
 
@@ -18,6 +21,7 @@ func (f *Plugin3) Serve() chan error {
 	errCh := make(chan error, 1)
 	number2 += 1
 	go func() {
+		time.Sleep(time.Millisecond * 500)
 		errCh <- errors.New("test error2")
 	}()
 	return errCh

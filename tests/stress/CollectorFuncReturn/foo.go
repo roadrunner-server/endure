@@ -1,4 +1,4 @@
-package DependerFuncReturn
+package CollectorFuncReturn
 
 import "errors"
 
@@ -19,14 +19,14 @@ func (f *FooDep) Stop() error {
 	return nil
 }
 
-func (f *FooDep) Depends() []interface{} {
+func (f *FooDep) Collects() []interface{} {
 	return []interface{}{
 		f.AddService,
 	}
 }
 
 func (f *FooDep) AddService(dep2 FooDep2) error {
-	return errors.New("test dependers error")
+	return errors.New("test collectors error")
 }
 
 type FooDep2 struct {
