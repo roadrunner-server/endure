@@ -3,7 +3,7 @@ package ServeRetryErr
 import (
 	"time"
 
-	"github.com/spiral/endure/errors"
+	"github.com/spiral/errors"
 )
 
 type S1ServeErr struct {

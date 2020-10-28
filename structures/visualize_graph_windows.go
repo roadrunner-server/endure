@@ -3,7 +3,7 @@
 package structures
 
 import (
-	"github.com/spiral/endure/errors"
+	"github.com/spiral/errors"
 )
 
 func Visualize(vertices []*Vertex) error {

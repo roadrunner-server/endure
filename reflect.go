@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/spiral/endure/errors"
+	"github.com/spiral/errors"
 )
 
 func providersReturnType(m interface{}) (reflect.Type, error) {

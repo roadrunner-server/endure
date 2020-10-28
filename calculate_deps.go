@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/spiral/endure/errors"
 	"github.com/spiral/endure/structures"
+	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
 

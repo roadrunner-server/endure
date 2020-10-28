@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/spiral/endure/errors"
 	"github.com/spiral/endure/structures"
+	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
 
@@ -424,15 +424,16 @@ Algorithm is the following (all steps executing in the topological order):
 
 func (e *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) (*result, error) {
 	const op = errors.Op("call_serve_fn")
+	e.logger.Debug("preparing to serve the vertex", zap.String("vertex id", vertex.ID))
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
 	if res != nil {
-		e.logger.Debug("start serving vertex", zap.String("vertex id", vertex.ID))
+		e.logger.Debug("called serve on the vertex", zap.String("vertex id", vertex.ID))
 		if e, ok := res.(chan error); ok && e != nil {
 			// error come righth after we start serving the vertex
 			if len(e) > 0 {
-				return nil, errors.E(op, errors.FunctionCall, errors.Str("got immediate error from vertex, stopping serve execution"))
+				return nil, errors.E(op, errors.FunctionCall, errors.Str("got first run error from vertex, stopping serve execution"))
 			}
 			return &result{
 				errCh:    e,
@@ -588,7 +589,7 @@ func (e *Endure) serve(n *structures.DllNode) error {
 }
 
 // traverseBackStop used to visit every Prev node and stop vertices
-func (e *Endure) traverseBackStop(n *structures.DllNode) error {
+func (e *Endure) traverseBackStop(n *structures.DllNode) {
 	const op = errors.Op("traverse_back_stop")
 	e.logger.Debug("stopping vertex in the first Serve call", zap.String("vertex id", n.Vertex.ID))
 	nCopy := n
@@ -600,7 +601,6 @@ func (e *Endure) traverseBackStop(n *structures.DllNode) error {
 		}
 		nCopy = nCopy.Prev
 	}
-	return nil
 }
 
 func (e *Endure) startMainThread() {

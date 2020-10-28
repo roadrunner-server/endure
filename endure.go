@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spiral/endure/errors"
 	"github.com/spiral/endure/structures"
+	"github.com/spiral/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -264,7 +264,7 @@ func (e *Endure) Init() error {
 }
 
 // Serve starts serving the graph
-// This is the initial serve, if error produced immedeately in the initial serve, endure will traverse deps back, call stop and exit
+// This is the initial serve, if error produced immediately in the initial serve, endure will traverse deps back, call stop and exit
 func (e *Endure) Serve() (<-chan *Result, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()

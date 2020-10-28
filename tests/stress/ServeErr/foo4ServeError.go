@@ -1,6 +1,6 @@
 package ServeErr
 
-import "github.com/spiral/endure/errors"
+import "github.com/spiral/errors"
 
 type FOO4DB struct {
 	Name string

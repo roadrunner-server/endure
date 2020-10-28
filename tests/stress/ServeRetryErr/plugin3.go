@@ -3,7 +3,7 @@ package ServeRetryErr
 import (
 	"math/rand"
 
-	"github.com/spiral/endure/errors"
+	"github.com/spiral/errors"
 )
 
 type S3 struct {

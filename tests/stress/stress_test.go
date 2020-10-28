@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"github.com/spiral/endure"
-	"github.com/spiral/endure/errors"
 	"github.com/spiral/endure/tests/stress/CollectorFuncReturn"
 	"github.com/spiral/endure/tests/stress/InitErr"
 	"github.com/spiral/endure/tests/stress/ServeErr"
 	"github.com/spiral/endure/tests/stress/ServeRetryErr"
+	"github.com/spiral/errors"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,7 +1,7 @@
 package plugin3
 
 import (
-	"github.com/spiral/endure/errors"
+	"github.com/spiral/errors"
 )
 
 type Super interface {

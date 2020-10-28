@@ -1,6 +1,6 @@
 package plugin4
 
-import "github.com/spiral/endure/errors"
+import "github.com/spiral/errors"
 
 type Plugin4 struct {
 }
