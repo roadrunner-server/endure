@@ -1,7 +1,6 @@
 package endure
 
 import (
-	"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 )
 
@@ -12,7 +11,7 @@ func (e *Endure) register(name string, vertex interface{}, order int) error {
 		return errors.E(op, errors.Traverse, errors.Errorf("vertex `%s` already exists", name))
 	}
 
-	meta := structures.Meta{
+	meta := Meta{
 		Order: order,
 	}
 

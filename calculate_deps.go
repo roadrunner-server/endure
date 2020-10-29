@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
@@ -32,17 +31,17 @@ func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 			// get the Vertex from the graph (gVertex)
 			gVertex := e.graph.GetVertex(vertexID)
 			if gVertex.Provides == nil {
-				gVertex.Provides = make(map[string]structures.ProvidedEntry)
+				gVertex.Provides = make(map[string]ProvidedEntry)
 			}
 
 			// Make a slice
 			if gVertex.Meta.FnsProviderToInvoke == nil {
-				gVertex.Meta.FnsProviderToInvoke = make([]structures.ProviderEntry, 0, 1)
+				gVertex.Meta.FnsProviderToInvoke = make([]ProviderEntry, 0, 1)
 			}
 
 			// TODO merge function calls into one. Plugin1 -> fn's to invoke ProvideDB, ProvideDB2
 			// Append functions which we will invoke when we start calling the structure functions after Init stage
-			gVertex.Meta.FnsProviderToInvoke = append(gVertex.Meta.FnsProviderToInvoke, structures.ProviderEntry{
+			gVertex.Meta.FnsProviderToInvoke = append(gVertex.Meta.FnsProviderToInvoke, ProviderEntry{
 				/*
 					For example:
 					we need to invoke function ProvideDB - that will be FunctionName
@@ -64,13 +63,13 @@ func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 				if reflect.TypeOf(vertex).Implements(ret) {
 					tmpValue := reflect.ValueOf(vertex)
 					tmpIsRef := isReference(ret)
-					gVertex.Provides[typeStr] = structures.ProvidedEntry{
+					gVertex.Provides[typeStr] = ProvidedEntry{
 						IsReference: &tmpIsRef,
 						Value:       &tmpValue,
 					}
 				}
 			} else {
-				gVertex.Provides[typeStr] = structures.ProvidedEntry{
+				gVertex.Provides[typeStr] = ProvidedEntry{
 					IsReference: nil,
 					Value:       nil,
 				}
@@ -90,11 +89,11 @@ func (e *Endure) addEdges() error {
 		init, _ := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
 
 		if init.Type == nil {
-			e.logger.Fatal("init method is absent in struct", zap.String("vertex id", vertexID))
-			return errors.E(Op, fmt.Errorf("init method is absent in struct"))
+			e.logger.Fatal("internal_init method is absent in struct", zap.String("vertex id", vertexID))
+			return errors.E(Op, fmt.Errorf("internal_init method is absent in struct"))
 		}
 
-		/* Add the dependencies (if) which this vertex needs to init
+		/* Add the dependencies (if) which this vertex needs to internal_init
 		Information we know at this step is:
 		1. vertexID
 		2. Vertex structure value (interface)
@@ -167,7 +166,7 @@ func (e *Endure) addCollectorsDeps(vertexID string, vertex interface{}) error {
 				// vertex - S4 func
 
 				// we store pointer in the Deps structure in the isRef field
-				err = e.graph.AddDep(vertexID, removePointerAsterisk(atStr), structures.Collects, isReference(at), at.Kind())
+				err = e.graph.AddDep(vertexID, removePointerAsterisk(atStr), Collects, isReference(at), at.Kind())
 				if err != nil {
 					return errors.E(Op, err)
 				}
@@ -177,7 +176,7 @@ func (e *Endure) addCollectorsDeps(vertexID string, vertex interface{}) error {
 			// get the Vertex from the graph (gVertex)
 			gVertex := e.graph.GetVertex(vertexID)
 			if gVertex.Provides == nil {
-				gVertex.Provides = make(map[string]structures.ProvidedEntry)
+				gVertex.Provides = make(map[string]ProvidedEntry)
 			}
 
 			if gVertex.Meta.FnsCollectorToInvoke == nil {
@@ -223,7 +222,7 @@ func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
 			}
 		}
 
-		err := e.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), structures.Init, isReference(initArg), initArg.Kind())
+		err := e.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), Init, isReference(initArg), initArg.Kind())
 		if err != nil {
 			return errors.E(Op, err)
 		}

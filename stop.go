@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
@@ -28,7 +27,7 @@ func (e *Endure) stop(vID string) error {
 	return nil
 }
 
-func (e *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error {
+func (e *Endure) callStopFn(vertex *Vertex, in []reflect.Value) error {
 	const op = errors.Op("internal_call_stop_function")
 	// Call Stop() method, which returns only error (or nil)
 	e.logger.Debug("calling stop function on the vertex", zap.String("vertex id", vertex.ID))
@@ -44,7 +43,7 @@ func (e *Endure) callStopFn(vertex *structures.Vertex, in []reflect.Value) error
 	return nil
 }
 
-func (e *Endure) sendStopSignal(sorted []*structures.Vertex) {
+func (e *Endure) sendStopSignal(sorted []*Vertex) {
 	for _, v := range sorted {
 		// get result by vertex ID
 		tmp, ok := e.results.Load(v.ID)
@@ -65,9 +64,9 @@ func (e *Endure) sendStopSignal(sorted []*structures.Vertex) {
 	}
 }
 
-func (e *Endure) shutdown(n *structures.DllNode) {
+func (e *Endure) shutdown(n *DllNode) {
 	// channel with nodes to stop
-	sh := make(chan *structures.DllNode)
+	sh := make(chan *DllNode)
 	// todo remove magic time const
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	go func() {
@@ -88,7 +87,7 @@ func (e *Endure) shutdown(n *structures.DllNode) {
 	e.forceExitHandler(ctx, sh)
 }
 
-func (e *Endure) forceExitHandler(ctx context.Context, data chan *structures.DllNode) {
+func (e *Endure) forceExitHandler(ctx context.Context, data chan *DllNode) {
 	for {
 		select {
 		case node := <-data:

@@ -3,23 +3,22 @@ package endure
 import (
 	"reflect"
 
-	"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
 
-func (e *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) (*result, error) {
+func (e *Endure) callServeFn(vertex *Vertex, in []reflect.Value) (*result, error) {
 	const op = errors.Op("call_serve_fn")
-	e.logger.Debug("preparing to serve the vertex", zap.String("vertex id", vertex.ID))
+	e.logger.Debug("preparing to serveInternal the vertex", zap.String("vertex id", vertex.ID))
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ServeMethodName)
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
 	if res != nil {
-		e.logger.Debug("called serve on the vertex", zap.String("vertex id", vertex.ID))
+		e.logger.Debug("called serveInternal on the vertex", zap.String("vertex id", vertex.ID))
 		if e, ok := res.(chan error); ok && e != nil {
-			// error come righth after we start serving the vertex
+			// error come right after we start serving the vertex
 			if len(e) > 0 {
-				return nil, errors.E(op, errors.FunctionCall, errors.Str("got first run error from vertex, stopping serve execution"))
+				return nil, errors.E(op, errors.FunctionCall, errors.Str("got first run error from vertex, stopping serveInternal execution"))
 			}
 			return &result{
 				errCh:    e,
@@ -33,10 +32,10 @@ func (e *Endure) callServeFn(vertex *structures.Vertex, in []reflect.Value) (*re
 	return nil, nil
 }
 
-// serve run calls callServeFn for each node and put the results in the map
-func (e *Endure) serve(n *structures.DllNode) error {
+// serveInternal run calls callServeFn for each node and put the results in the map
+func (e *Endure) serveInternal(n *DllNode) error {
 	const op = errors.Op("internal_serve")
-	// check if type implements serve, if implements, call serve
+	// check if type implements serveInternal, if implements, call serveInternal
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
 		in := make([]reflect.Value, 0, 1)
 		// add service itself
@@ -49,11 +48,11 @@ func (e *Endure) serve(n *structures.DllNode) error {
 		if res != nil {
 			e.results.Store(res.vertexID, res)
 		} else {
-			e.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serve function should return initialized channel with errors"))
+			e.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serveInternal function should return initialized channel with errors"))
 			return errors.E(op, errors.FunctionCall, errors.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID))
 		}
 
-		// start poll the vertex
+		// start polling the vertex
 		e.poll(res)
 	}
 

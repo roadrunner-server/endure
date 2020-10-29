@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -44,9 +43,9 @@ const (
 
 type Endure struct {
 	// Dependency graph
-	graph *structures.Graph
+	graph *Graph
 	// DLL used as run list to run in order
-	runList *structures.DoublyLinkedList
+	runList *DoublyLinkedList
 	// logger
 	logger *zap.Logger
 	// OPTIONS
@@ -54,8 +53,10 @@ type Endure struct {
 	retry           bool
 	maxInterval     time.Duration
 	initialInterval time.Duration
-	// option to visualize resulted (before init) graph
+	// option to visualize resulted (before internalInit) graph
 	visualize bool
+
+	fsm FSM
 
 	mutex *sync.RWMutex
 
@@ -89,6 +90,8 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 		maxInterval:     time.Second * 60,
 		results:         sync.Map{},
 	}
+
+	c.fsm = NewFSM(c)
 
 	var lvl zap.AtomicLevel
 	switch logLevel {
@@ -135,8 +138,8 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 	}
 	c.logger = logger
 
-	c.graph = structures.NewGraph()
-	c.runList = structures.NewDoublyLinkedList()
+	c.graph = NewGraph()
+	c.runList = NewDoublyLinkedList()
 	c.logger = logger
 
 	// Main thread channels
@@ -216,6 +219,10 @@ func (e *Endure) Register(vertex interface{}) error {
 
 // Init container and all service edges.
 func (e *Endure) Init() error {
+	return e.fsm.Transition(Initialize)
+}
+
+func (e *Endure) init() error {
 	const op = errors.Op("Init")
 	// traverse the graph
 	err := e.addEdges()
@@ -226,14 +233,14 @@ func (e *Endure) Init() error {
 	// if failed - continue, just send warning to a user
 	// visualize is not critical
 	if e.visualize {
-		err = structures.Visualize(e.graph.Vertices)
+		err = e.Visualize(e.graph.Vertices)
 		if err != nil {
 			e.logger.Warn("failed to visualize the graph", zap.Error(err))
 		}
 	}
 
-	// we should build init list in the reverse order
-	sorted, err := structures.TopologicalSort(e.graph.Vertices)
+	// we should build internal_init list in the reverse order
+	sorted, err := TopologicalSort(e.graph.Vertices)
 	if err != nil {
 		e.logger.Error("error sorting the graph", zap.Error(err))
 		return errors.E(op, errors.Init, err)
@@ -244,7 +251,7 @@ func (e *Endure) Init() error {
 		return errors.E(op, errors.Init, errors.Errorf("graph should contain at least 1 vertex, possibly you forget to invoke registers"))
 	}
 
-	e.runList = structures.NewDoublyLinkedList()
+	e.runList = NewDoublyLinkedList()
 	for i := len(sorted) - 1; i >= 0; i-- {
 		e.runList.Push(sorted[i])
 	}
@@ -252,9 +259,9 @@ func (e *Endure) Init() error {
 	head := e.runList.Head
 	headCopy := head
 	for headCopy != nil {
-		err = e.init(headCopy.Vertex)
+		err = e.internalInit(headCopy.Vertex)
 		if err != nil {
-			e.logger.Error("error during the init", zap.Error(err))
+			e.logger.Error("error during the internal_init", zap.Error(err))
 			return errors.E(op, errors.Init, err)
 		}
 		headCopy = headCopy.Next
@@ -263,9 +270,7 @@ func (e *Endure) Init() error {
 	return nil
 }
 
-// Serve starts serving the graph
-// This is the initial serve, if error produced immediately in the initial serve, endure will traverse deps back, call stop and exit
-func (e *Endure) Serve() (<-chan *Result, error) {
+func (e *Endure) serve() (<-chan *Result, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
@@ -282,7 +287,7 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 			continue
 		}
 		atLeastOne = true
-		err := e.serve(nCopy)
+		err := e.serveInternal(nCopy)
 		if err != nil {
 			e.traverseBackStop(nCopy)
 			return nil, errors.E(op, errors.Serve, err)
@@ -291,9 +296,15 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 	}
 	// all vertices disabled
 	if atLeastOne == false {
-		return nil, errors.E(op, errors.Disabled, errors.Str("all vertices disabled, nothing to serve"))
+		return nil, errors.E(op, errors.Disabled, errors.Str("all vertices disabled, nothing to serveInternal"))
 	}
 	return e.userResultsCh, nil
+}
+
+// Serve starts serving the graph
+// This is the initial serveInternal, if error produced immediately in the initial serveInternal, endure will traverse deps back, call stop and exit
+func (e *Endure) Serve() (<-chan *Result, error) {
+	return e.serve()
 }
 
 // Stop stops the execution and call Stop on every vertex

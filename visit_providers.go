@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
 
-func (e *Endure) traverseProviders(depsEntry structures.Entry, depVertex *structures.Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
+func (e *Endure) traverseProviders(depsEntry Entry, depVertex *Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
 	const op = errors.Op("internal_traverse_providers")
 	err := e.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID, depID)
 	if err != nil {
@@ -26,7 +25,7 @@ func (e *Endure) traverseProviders(depsEntry structures.Entry, depVertex *struct
 	return in, nil
 }
 
-func (e *Endure) appendProviderFuncArgs(depsEntry structures.Entry, providedEntry structures.ProvidedEntry, in []reflect.Value) []reflect.Value {
+func (e *Endure) appendProviderFuncArgs(depsEntry Entry, providedEntry ProvidedEntry, in []reflect.Value) []reflect.Value {
 	switch {
 	case *providedEntry.IsReference == *depsEntry.IsReference:
 		in = append(in, *providedEntry.Value)
@@ -51,7 +50,7 @@ func (e *Endure) appendProviderFuncArgs(depsEntry structures.Entry, providedEntr
 	return in
 }
 
-func (e *Endure) traverseCallProvider(vertex *structures.Vertex, in []reflect.Value, callerID, depId string) error {
+func (e *Endure) traverseCallProvider(vertex *Vertex, in []reflect.Value, callerID, depId string) error {
 	const op = errors.Op("internal_traverse_call_provider")
 	// to index function name in defer
 	i := 0

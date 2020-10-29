@@ -4,7 +4,6 @@ import (
 	"reflect"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
@@ -17,7 +16,7 @@ func (e *Endure) sendResultToUser(res *result) {
 }
 
 // traverseBackStop used to visit every Prev node and stop vertices
-func (e *Endure) traverseBackStop(n *structures.DllNode) {
+func (e *Endure) traverseBackStop(n *DllNode) {
 	const op = errors.Op("traverse_back_stop")
 	e.logger.Debug("stopping vertex in the first Serve call", zap.String("vertex id", n.Vertex.ID))
 	nCopy := n
@@ -39,7 +38,7 @@ func (e *Endure) retryHandler(res *result) {
 		e.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
 		e.userResultsCh <- &Result{
 			Error:    errors.E(op, errors.Traverse, errors.Str("failed to get vertex from the graph, vertex is nil")),
-			VertexID: "",
+			VertexID: res.vertexID,
 		}
 		return
 	}
@@ -49,7 +48,7 @@ func (e *Endure) retryHandler(res *result) {
 	vertices := e.graph.Reset(vertex)
 
 	// Topologically sort the graph
-	sorted, err := structures.TopologicalSort(vertices)
+	sorted, err := TopologicalSort(vertices)
 	if err != nil {
 		e.logger.Error("error sorting the graph", zap.Error(err))
 		return
@@ -72,12 +71,12 @@ func (e *Endure) retryHandler(res *result) {
 	b.MaxElapsedTime = e.maxInterval
 	b.InitialInterval = e.initialInterval
 
-	affectedRunList := structures.NewDoublyLinkedList()
+	affectedRunList := NewDoublyLinkedList()
 	for i := 0; i <= len(sorted)-1; i++ {
 		affectedRunList.Push(sorted[i])
 	}
 
-	// call init
+	// call internal_init
 	headCopy := affectedRunList.Head
 	for headCopy != nil {
 		berr := backoff.Retry(e.backoffInit(headCopy.Vertex), b)
@@ -92,26 +91,25 @@ func (e *Endure) retryHandler(res *result) {
 		headCopy = headCopy.Next
 	}
 
-	// call serve
+	// call serveInternal
 	headCopy = affectedRunList.Head
 	for headCopy != nil {
-		err = e.serve(headCopy)
+		err = e.serveInternal(headCopy)
 		if err != nil {
 			e.userResultsCh <- &Result{
 				Error:    errors.E(op, errors.FunctionCall, errors.Errorf("error during the Serve function call")),
 				VertexID: headCopy.Vertex.ID,
 			}
-			e.logger.Error("fatal error during the serve in the main thread", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(err))
+			e.logger.Error("fatal error during the serveInternal in the main thread", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(err))
 			return
 		}
-
 		headCopy = headCopy.Next
 	}
 
 	e.sendResultToUser(res)
 }
 
-func (e *Endure) backoffInit(v *structures.Vertex) func() error {
+func (e *Endure) backoffInit(v *Vertex) func() error {
 	return func() error {
 		const op = errors.Op("internal_backoff_init")
 		// we already checked the Interface satisfaction

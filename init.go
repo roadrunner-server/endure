@@ -3,7 +3,6 @@ package endure
 import (
 	"reflect"
 
-	"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
@@ -12,7 +11,7 @@ import (
    Traverse the DLL in the forward direction
 
 */
-func (e *Endure) init(vertex *structures.Vertex) error {
+func (e *Endure) internalInit(vertex *Vertex) error {
 	const op = errors.Op("internal_init")
 	if vertex.IsDisabled {
 		e.logger.Warn("vertex is disabled due to error.Disabled in the Init func or due to Endure decision (Disabled dependency)", zap.String("vertex id", vertex.ID))
@@ -35,7 +34,7 @@ func (e *Endure) init(vertex *structures.Vertex) error {
 Here we also track the Disabled vertices. If the vertex is disabled we should re-calculate the tree
 
 */
-func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) error {
+func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
 	const op = errors.Op("internal_call_init_function")
 	in, err := e.findInitParameters(vertex)
 	if err != nil {
@@ -65,7 +64,7 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 				// Disabled is actually to an error, just notification to the graph, that it has some vertices which are disabled
 				return nil
 			} else {
-				e.logger.Error("error calling init", zap.String("vertex id", vertex.ID), zap.Error(err))
+				e.logger.Error("error calling internal_init", zap.String("vertex id", vertex.ID), zap.Error(err))
 				return errors.E(op, errors.FunctionCall, err)
 			}
 		} else {
@@ -108,7 +107,7 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *structures.Vertex) erro
 	return nil
 }
 
-func (e *Endure) findInitParameters(vertex *structures.Vertex) ([]reflect.Value, error) {
+func (e *Endure) findInitParameters(vertex *Vertex) ([]reflect.Value, error) {
 	const op = errors.Op("internal_find_init_parameters")
 	in := make([]reflect.Value, 0, 2)
 

@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
 
-func (e *Endure) traverseCallCollectorsInterface(vertex *structures.Vertex) error {
+func (e *Endure) traverseCallCollectorsInterface(vertex *Vertex) error {
 	const op = errors.Op("internal_traverse_call_collectors_interface")
 	for i := 0; i < len(vertex.Meta.CollectsDepsToInvoke); i++ {
 		// get dependency id (vertex id)
@@ -33,12 +32,12 @@ func (e *Endure) traverseCallCollectorsInterface(vertex *structures.Vertex) erro
 				if depID != vertexKey {
 					continue
 				}
-				// init
+				// internal_init
 				inInterface := make([]reflect.Value, 0, 2)
 				// add service itself
 				inInterface = append(inInterface, reflect.ValueOf(vertex.Iface))
 				// if type provides needed type
-				// value - reference and init dep also reference
+				// value - reference and internal_init dep also reference
 				switch {
 				case *vertexVal.IsReference == *vertex.Meta.CollectsDepsToInvoke[i].IsReference:
 					inInterface = append(inInterface, *vertexVal.Value)
@@ -72,7 +71,7 @@ func (e *Endure) traverseCallCollectorsInterface(vertex *structures.Vertex) erro
 	return nil
 }
 
-func (e *Endure) traverseCallCollectors(vertex *structures.Vertex) error {
+func (e *Endure) traverseCallCollectors(vertex *Vertex) error {
 	const op = "internal_traverse_call_collectors"
 	in := make([]reflect.Value, 0, 2)
 	// add service itself
@@ -122,7 +121,7 @@ func (e *Endure) traverseCallCollectors(vertex *structures.Vertex) error {
 	return nil
 }
 
-func (e *Endure) callCollectorFns(vertex *structures.Vertex, in []reflect.Value) error {
+func (e *Endure) callCollectorFns(vertex *Vertex, in []reflect.Value) error {
 	const op = errors.Op("internal_call_collector_functions")
 	// type implements Collector interface
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Collector)(nil)).Elem()) {
