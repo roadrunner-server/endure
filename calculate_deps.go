@@ -82,7 +82,7 @@ func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 
 // addEdges calculates simple graph for the dependencies
 func (e *Endure) addEdges() error {
-	const Op = "add_edges"
+	const Op = errors.Op("add_edges")
 	// vertexID for example S2
 	for vertexID, vrtx := range e.graph.VerticesMap {
 		// we already checked the interface satisfaction
@@ -124,7 +124,7 @@ func (e *Endure) addEdges() error {
 }
 
 func (e *Endure) addCollectorsDeps(vertexID string, vertex interface{}) error {
-	const Op = "add_collectors_deps"
+	const Op = errors.Op("add_collectors_deps")
 	if register, ok := vertex.(Collector); ok {
 		for _, fn := range register.Collects() {
 			// what type it might depend on?
@@ -194,7 +194,7 @@ func (e *Endure) addCollectorsDeps(vertexID string, vertex interface{}) error {
 }
 
 func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
-	const Op = "add_init_deps"
+	const Op = errors.Op("add_init_deps")
 	// Init function in arguments
 	initArgs := functionParameters(initMethod)
 
@@ -227,7 +227,7 @@ func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
 		if err != nil {
 			return errors.E(Op, err)
 		}
-		e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vertexID), zap.String("depends", initArg.String()))
+		e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vertexID), zap.String("depends on", initArg.String()))
 	}
 	return nil
 }
