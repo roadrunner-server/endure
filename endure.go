@@ -219,7 +219,7 @@ func (e *Endure) Register(vertex interface{}) error {
 
 // Init container and all service edges.
 func (e *Endure) Init() error {
-	return e.fsm.Transition(Initialize)
+	return e.init()
 }
 
 func (e *Endure) init() error {
