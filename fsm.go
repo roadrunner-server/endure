@@ -1,6 +1,7 @@
 package endure
 
 import (
+	"reflect"
 	"sync/atomic"
 
 	//"github.com/spiral/endure/structures"
@@ -8,33 +9,31 @@ import (
 )
 
 type FSM interface {
-	Initial()
-	Transition(event Event) error
+	CurrentState() State
+	InitialState(st State)
+	Transition(event Event, args ...interface{}) (interface{}, error)
 }
 
-type FSMImpl struct {
-	container    *Endure
-	currentState *uint32
-}
-
-func NewFSM(e *Endure) FSM {
-	tmp := uint32(0)
+func NewFSM(initialState State, callbacks map[Event]reflect.Method) FSM {
+	// callbacks is the pairs EVENT -> Func to invoke
+	st := uint32(initialState)
 	return &FSMImpl{
-		currentState: &tmp,
-		container:    e,
+		callbacks:    callbacks,
+		currentState: &st,
 	}
 }
 
-func (f *FSMImpl) Initial() {
-
+type FSMImpl struct {
+	currentState *uint32
+	callbacks    map[Event]reflect.Method
 }
 
 type Event uint32
 
 const (
-	Initialize Event = iota
-	Start
-	Stop
+	Initialize Event = iota // Init func
+	Start                   // Serve func
+	Stop                    // Stop func
 )
 
 type State uint32
@@ -50,23 +49,21 @@ const (
 	Error // ??
 )
 
-type state struct{}
-
 // Acceptors (also called detectors or recognizers) produce binary output,
 // indicating whether or not the received input is accepted.
 // Each event of an acceptor is either accepting or non accepting.
 func (f *FSMImpl) recognizer(event Event) error {
 	switch event {
 	case Initialize:
-		if f.current() > Uninitialized {
+		if f.current() != Uninitialized {
 			return errors.E("wrong state")
 		}
 	case Start:
-		if f.current() > Initialized {
+		if f.current() != Initialized {
 			return errors.E("wrong state")
 		}
 	case Stop:
-		if f.current() > Started {
+		if f.current() != Started {
 			return errors.E("wrong state")
 		}
 	}
@@ -84,6 +81,14 @@ func (f *FSMImpl) current() State {
 	return State(atomic.LoadUint32(f.currentState))
 }
 
+func (f *FSMImpl) InitialState(st State) {
+	f.set(st)
+}
+
+func (f *FSMImpl) CurrentState() State {
+	return f.current()
+}
+
 /*
 Rules:
 Transition table:
@@ -94,28 +99,70 @@ Event -> Start. Error on other events (Initialize, Stop)
 Event -> Stop. Error on other events (Start, Initialize)
 3. Stopping -> Stopped
 */
-func (f *FSMImpl) Transition(event Event) error {
+func (f *FSMImpl) Transition(event Event, args ...interface{}) (interface{}, error) {
 	err := f.recognizer(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	switch event {
 	case Initialize:
 		f.set(Initializing)
-		err := f.container.Init()
-		// run Init
-		if err != nil {
-			return err
+		method := f.callbacks[event]
+		values := make([]reflect.Value, 0, len(args))
+		for _, v := range args {
+			values = append(values, reflect.ValueOf(v))
 		}
+
+		ret := method.Func.Call(values)
+		if ret[0].Interface() != nil {
+			if ret[0].Interface().(error) != nil {
+				f.set(Error)
+				return nil, ret[0].Interface().(error)
+			}
+		}
+
 		f.set(Initialized)
-		return nil
+		return nil, nil
 	case Start:
+		f.set(Starting)
+		method := f.callbacks[event]
+		values := make([]reflect.Value, 0, len(args))
+		for _, v := range args {
+			values = append(values, reflect.ValueOf(v))
+		}
+
+		ret := method.Func.Call(values)
+		if ret[1].Interface() != nil {
+			if ret[1].Interface().(error) != nil {
+				f.set(Error)
+				return nil, ret[1].Interface().(error)
+			}
+		}
+
+		f.set(Started)
+		return ret[0].Interface(), nil
 	//run Serve
 	case Stop:
-	//run stop
+		f.set(Stopping)
+		method := f.callbacks[event]
+		values := make([]reflect.Value, 0, len(args))
+		for _, v := range args {
+			values = append(values, reflect.ValueOf(v))
+		}
+
+		ret := method.Func.Call(values)
+		if ret[0].Interface() != nil {
+			if ret[0].Interface().(error) != nil {
+				f.set(Error)
+				return nil, ret[0].Interface().(error)
+			}
+		}
+
+		f.set(Stopped)
+		return nil, nil
+	//run internal_stop
 	default:
-		return errors.E("can't be here")
+		return nil, errors.E("can't be here")
 	}
-	return nil
 }

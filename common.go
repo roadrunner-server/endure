@@ -15,15 +15,15 @@ func (e *Endure) sendResultToUser(res *result) {
 	}
 }
 
-// traverseBackStop used to visit every Prev node and stop vertices
+// traverseBackStop used to visit every Prev node and internalStop vertices
 func (e *Endure) traverseBackStop(n *DllNode) {
 	const op = errors.Op("traverse_back_stop")
 	e.logger.Debug("stopping vertex in the first Serve call", zap.String("vertex id", n.Vertex.ID))
 	nCopy := n
 	for nCopy != nil {
-		err := e.stop(nCopy.Vertex.ID)
+		err := e.internalStop(nCopy.Vertex.ID)
 		if err != nil {
-			// ignore errors from stop
+			// ignore errors from internal_stop
 			e.logger.Error("failed to traverse vertex back", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(errors.E(op, err)))
 		}
 		nCopy = nCopy.Prev
@@ -63,7 +63,7 @@ func (e *Endure) retryHandler(res *result) {
 	}
 
 	// send exit signal only to sorted and involved vertices
-	// stop will be called inside poller
+	// internal_stop will be called inside poller
 	e.sendStopSignal(sorted)
 
 	// Init backoff

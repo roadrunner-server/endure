@@ -26,7 +26,7 @@ func (e *Endure) poll(r *result) {
 				if n.stop {
 					e.mutex.Lock()
 					e.logger.Info("vertex got exit signal", zap.String("vertex id", res.vertexID))
-					err := e.stop(res.vertexID)
+					err := e.internalStop(res.vertexID)
 					if err != nil {
 						e.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexID), zap.Error(err))
 						e.mutex.Unlock()
@@ -43,7 +43,7 @@ func (e *Endure) poll(r *result) {
 func (e *Endure) startMainThread() {
 	/*
 		Main thread is the main Endure unit of work
-		It used to handle errors from vertices, notify user about result, re-calculating graph according to failed vertices and sending stop signals
+		It used to handle errors from vertices, notify user about result, re-calculating graph according to failed vertices and sending internal_stop signals
 	*/
 	go func() {
 		for {

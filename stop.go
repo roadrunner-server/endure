@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (e *Endure) stop(vID string) error {
+func (e *Endure) internalStop(vID string) error {
 	const op = errors.Op("internal_stop")
 	vertex := e.graph.GetVertex(vID)
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
@@ -30,7 +30,7 @@ func (e *Endure) stop(vID string) error {
 func (e *Endure) callStopFn(vertex *Vertex, in []reflect.Value) error {
 	const op = errors.Op("internal_call_stop_function")
 	// Call Stop() method, which returns only error (or nil)
-	e.logger.Debug("calling stop function on the vertex", zap.String("vertex id", vertex.ID))
+	e.logger.Debug("calling internal_stop function on the vertex", zap.String("vertex id", vertex.ID))
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(StopMethodName)
 	ret := m.Func.Call(in)
 	rErr := ret[0].Interface()
@@ -65,7 +65,7 @@ func (e *Endure) sendStopSignal(sorted []*Vertex) {
 }
 
 func (e *Endure) shutdown(n *DllNode) {
-	// channel with nodes to stop
+	// channel with nodes to internal_stop
 	sh := make(chan *DllNode)
 	// todo remove magic time const
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
@@ -91,8 +91,8 @@ func (e *Endure) forceExitHandler(ctx context.Context, data chan *DllNode) {
 	for {
 		select {
 		case node := <-data:
-			// stop vertex
-			err := e.stop(node.Vertex.ID)
+			// internal_stop vertex
+			err := e.internalStop(node.Vertex.ID)
 			if err != nil {
 				// TODO do not return until finished
 				// just log the errors
@@ -107,7 +107,7 @@ func (e *Endure) forceExitHandler(ctx context.Context, data chan *DllNode) {
 
 			channel := tmp.(*result)
 			channel.signal <- notify{
-				// false because we called stop already
+				// false because we called internal_stop already
 				stop: false,
 			}
 

@@ -56,7 +56,7 @@ type Endure struct {
 	// option to visualize resulted (before internalInit) graph
 	visualize bool
 
-	fsm FSM
+	FSM
 
 	mutex *sync.RWMutex
 
@@ -91,7 +91,19 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 		results:         sync.Map{},
 	}
 
-	c.fsm = NewFSM(c)
+	transitionMap := make(map[Event]reflect.Method)
+	init, _ := reflect.TypeOf(c).MethodByName("Initialize")
+	transitionMap[Initialize] = init
+
+	serve, _ := reflect.TypeOf(c).MethodByName("Start")
+	transitionMap[Start] = serve
+
+	shutdown, _ := reflect.TypeOf(c).MethodByName("Shutdown")
+	transitionMap[Stop] = shutdown
+
+	c.FSM = NewFSM(Uninitialized, transitionMap)
+
+	//c.fsm = NewFSM(c)
 
 	var lvl zap.AtomicLevel
 	switch logLevel {
@@ -219,10 +231,14 @@ func (e *Endure) Register(vertex interface{}) error {
 
 // Init container and all service edges.
 func (e *Endure) Init() error {
-	return e.init()
+	_, err := e.Transition(Initialize, e)
+	if err != nil {
+		panic(err)
+	}
+	return nil
 }
 
-func (e *Endure) init() error {
+func (e *Endure) Initialize() error {
 	const op = errors.Op("Init")
 	// traverse the graph
 	err := e.addEdges()
@@ -270,7 +286,7 @@ func (e *Endure) init() error {
 	return nil
 }
 
-func (e *Endure) serve() (<-chan *Result, error) {
+func (e *Endure) Start() (<-chan *Result, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
@@ -302,13 +318,26 @@ func (e *Endure) serve() (<-chan *Result, error) {
 }
 
 // Serve starts serving the graph
-// This is the initial serveInternal, if error produced immediately in the initial serveInternal, endure will traverse deps back, call stop and exit
+// This is the initial serveInternal, if error produced immediately in the initial serveInternal, endure will traverse deps back, call internal_stop and exit
 func (e *Endure) Serve() (<-chan *Result, error) {
-	return e.serve()
+	data, err := e.Transition(Start, e)
+	if err != nil {
+		return nil, err
+	}
+	// god save this construction
+	return data.(<-chan *Result), nil
 }
 
 // Stop stops the execution and call Stop on every vertex
 func (e *Endure) Stop() error {
+	_, err := e.Transition(Stop, e)
+	if err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func (e *Endure) Shutdown() error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 

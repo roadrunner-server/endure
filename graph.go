@@ -65,6 +65,7 @@ type Entry struct {
 // since we can have cyclic dependencies
 // when we traverse the VerticesMap, we should mark nodes as visited or not to detect cycle
 type Vertex struct {
+	FSM
 	// ID of the vertex, currently string representation of the structure name
 	ID string
 	// Vertex (Registered structure)

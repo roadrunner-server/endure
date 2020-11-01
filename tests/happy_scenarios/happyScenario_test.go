@@ -66,11 +66,11 @@ func TestEndure_Init_OK(t *testing.T) {
 	assert.NoError(t, c.Register(&plugin1.S1{}))
 	assert.NoError(t, c.Register(&plugin5.S5{}))
 	assert.NoError(t, c.Register(&plugin6.S6Interface{}))
+
 	assert.NoError(t, c.Init())
 
 	res, err := c.Serve()
 	assert.NoError(t, err)
-
 	go func() {
 		for r := range res {
 			if r.Error != nil {
