@@ -115,6 +115,39 @@ func TestEndure_DoubleInitDoubleServe_OK(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
+func TestEndure_WrongOrder(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	assert.NoError(t, err)
+
+	assert.Error(t, c.Stop()) //recognizer: can't transition from state: Uninitialized by event Stop
+	assert.NoError(t, c.Register(&plugin4.S4{}))
+	assert.NoError(t, c.Register(&plugin2.S2{}))
+	assert.NoError(t, c.Register(&plugin3.S3{}))
+	assert.NoError(t, c.Register(&plugin1.S1{}))
+	assert.NoError(t, c.Register(&plugin5.S5{}))
+	assert.NoError(t, c.Register(&plugin6.S6Interface{}))
+
+	_, err = c.Serve()
+	assert.Error(t, err)
+
+	assert.NoError(t, c.Init())
+	assert.Error(t, c.Init())
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
+	go func() {
+		for r := range res {
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+	assert.NoError(t, c.Stop())
+}
+
 func TestEndure_Init_1_Element(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, nil)
 	assert.NoError(t, err)

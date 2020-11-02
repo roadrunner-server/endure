@@ -50,8 +50,8 @@ func (e *Endure) retryHandler(res *result) {
 	n := e.runList.Head
 	e.shutdown(n)
 
-	//reset vertex and dependencies to the initial state
-	//numOfDeps and visited/visiting
+	// reset vertex and dependencies to the initial state
+	// numOfDeps and visited/visiting
 	vertices := e.graph.Reset(vertex)
 
 	// Topologically sort the graph
