@@ -22,6 +22,18 @@ func TestEndure_Init_Err(t *testing.T) {
 	assert.Error(t, c.Init())
 }
 
+func TestEndure_DoubleStop_Err(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(false))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&InitErr.S1Err{}))
+	assert.NoError(t, c.Register(&InitErr.S2Err{})) // should produce an error during the Init
+	assert.Error(t, c.Init())
+	assert.NoError(t, c.Stop())
+	// recognizer: can't transition from state: Stopped by event Stop
+	assert.Error(t, c.Stop())
+}
+
 func TestEndure_Serve_Err(t *testing.T) {
 	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(false))
 	assert.NoError(t, err)
