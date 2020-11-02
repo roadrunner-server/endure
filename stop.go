@@ -3,7 +3,6 @@ package endure
 import (
 	"context"
 	"reflect"
-	"time"
 
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
@@ -42,12 +41,15 @@ func (e *Endure) callStopFn(vertex *Vertex, in []reflect.Value) error {
 	return nil
 }
 
-func (e *Endure) shutdown(n *DllNode) {
+// true -> next
+// false -> prev
+func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
+	const op = errors.Op("shutdown")
 	numOfVertices := len(e.graph.Vertices)
 	if numOfVertices == 0 {
-		return
+		return nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	ctx, cancel := context.WithTimeout(context.Background(), e.stopTimeout)
 	defer cancel()
 	c := make(chan string)
 
@@ -59,42 +61,47 @@ func (e *Endure) shutdown(n *DllNode) {
 		// process all nodes one by one
 		nCopy := n
 		for nCopy != nil {
-			// if vertex is disabled, just skip it, but send to the channel ID
-			if nCopy.Vertex.IsDisabled == true {
-				c <- nCopy.Vertex.ID
+			go func(v *Vertex) {
+				// if vertex is disabled, just skip it, but send to the channel ID
+				if v.IsDisabled == true {
+					c <- v.ID
+					return
+				}
+
+				// if vertex is Uninitialized or already stopped
+				if v.GetState() == Uninitialized || v.GetState() == Stopped {
+					c <- v.ID
+					return
+				}
+
+				v.SetState(Stopping)
+
+				// if we have a running poller, exit from it
+				tmp, ok := e.results.Load(v.ID)
+				if ok {
+					channel := tmp.(*result)
+
+					// exit from vertex poller
+					channel.signal <- notify{}
+					e.results.Delete(v.ID)
+				}
+
+				// call Stop on the Vertex
+				err := e.internalStop(v.ID)
+				if err != nil {
+					v.SetState(Error)
+					c <- v.ID
+					e.logger.Error("error stopping vertex", zap.String("vertex id", v.ID), zap.Error(err))
+					return
+				}
+				v.SetState(Stopped)
+				c <- v.ID
+			}(nCopy.Vertex)
+			if traverseNext {
 				nCopy = nCopy.Next
-				continue
+			} else {
+				nCopy = nCopy.Prev
 			}
-
-			// if vertex is Uninitialized or already stopped
-			if nCopy.Vertex.GetState() == Uninitialized || nCopy.Vertex.GetState() == Stopped {
-				c <- nCopy.Vertex.ID
-				nCopy = nCopy.Next
-				continue
-			}
-
-			// if we have a running poller, exit from it
-			tmp, ok := e.results.Load(nCopy.Vertex.ID)
-			if ok {
-				channel := tmp.(*result)
-
-				// exit from vertex poller
-				channel.signal <- notify{}
-				e.results.Delete(nCopy.Vertex.ID)
-			}
-
-			// call Stop on the Vertex
-			err := e.internalStop(nCopy.Vertex.ID)
-			if err != nil {
-				c <- nCopy.Vertex.ID
-				e.logger.Error("error stopping vertex", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
-				nCopy = nCopy.Next
-				continue
-			}
-
-			c <- nCopy.Vertex.ID
-			nCopy.Vertex.SetState(Stopped)
-			nCopy = nCopy.Next
 		}
 	}()
 
@@ -105,11 +112,23 @@ func (e *Endure) shutdown(n *DllNode) {
 			e.logger.Info("vertex stopped", zap.String("vertex id", vid))
 			stopped += 1
 			if stopped == numOfVertices {
-				return
+				return nil
 			}
 		case <-ctx.Done():
 			e.logger.Info("timeout exceed, some vertices are not stopped", zap.Error(ctx.Err()))
-			return
+			// iterate to see vertices, which are not stopped
+			VIDs := make([]string, 0, 1)
+			for i := 0; i < len(e.graph.Vertices); i++ {
+				state := e.graph.Vertices[i].GetState()
+				if state == Started || state == Stopping {
+					VIDs = append(VIDs, e.graph.Vertices[i].ID)
+				}
+			}
+			if len(VIDs) > 0 {
+				e.logger.Error("vertices which are not stopped", zap.Any("vertex id", VIDs))
+			}
+
+			return errors.E(op, errors.Str("timeout exceed, some vertices are not stopped and can cause memory leak"))
 		}
 	}
 }

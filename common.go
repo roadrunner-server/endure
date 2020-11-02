@@ -20,16 +20,11 @@ func (e *Endure) traverseBackStop(n *DllNode) {
 	const op = errors.Op("traverse_back_stop")
 	e.logger.Debug("stopping vertex in the first Serve call", zap.String("vertex id", n.Vertex.ID))
 	nCopy := n
-	for nCopy != nil {
-		nCopy.Vertex.SetState(Stopping)
-		err := e.internalStop(nCopy.Vertex.ID)
-		if err != nil {
-			nCopy.Vertex.SetState(Error)
-			// ignore errors from internal_stop
-			e.logger.Error("failed to traverse vertex back", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(errors.E(op, err)))
-		}
-		nCopy.Vertex.SetState(Stopped)
-		nCopy = nCopy.Prev
+	err := e.shutdown(nCopy, false)
+	if err != nil {
+		nCopy.Vertex.SetState(Error)
+		// ignore errors from internal_stop
+		e.logger.Error("failed to traverse vertex back", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(errors.E(op, err)))
 	}
 }
 
@@ -48,7 +43,10 @@ func (e *Endure) retryHandler(res *result) {
 
 	// stop without setting Stopped state to the Endure
 	n := e.runList.Head
-	e.shutdown(n)
+	err := e.shutdown(n, true)
+	if err != nil {
+		e.logger.Error("error happened during shutdown", zap.Error(err))
+	}
 
 	// reset vertex and dependencies to the initial state
 	// numOfDeps and visited/visiting

@@ -384,6 +384,5 @@ func (e *Endure) Start() (<-chan *Result, error) {
 func (e *Endure) Shutdown() error {
 	e.logger.Info("exiting from the Endure")
 	n := e.runList.Head
-	e.shutdown(n)
-	return nil
+	return e.shutdown(n, true)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/spiral/endure/tests/stress/InitErr"
 	"github.com/spiral/endure/tests/stress/ServeErr"
 	"github.com/spiral/endure/tests/stress/ServeRetryErr"
+	"github.com/spiral/endure/tests/stress/mixed"
 	"github.com/spiral/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -228,4 +229,17 @@ func TestEndure_CollectorFuncReturnError(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Stop())
+}
+
+func TestEndure_ForceExit(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(false)) // stop timeout 10 seconds
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&mixed.Foo{})) // sleep for 15 seconds
+	assert.NoError(t, c.Init())
+
+	_, err = c.Serve()
+	assert.NoError(t, err)
+
+	assert.Error(t, c.Stop()) // shutdown: timeout exceed, some vertices are not stopped and can cause memory leak
 }
