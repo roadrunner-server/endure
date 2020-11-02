@@ -45,10 +45,11 @@ func (e *Endure) callStopFn(vertex *Vertex, in []reflect.Value) error {
 // false -> prev
 func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 	const op = errors.Op("shutdown")
-	numOfVertices := len(e.graph.Vertices)
+	numOfVertices := calculateNum(n, traverseNext)
 	if numOfVertices == 0 {
 		return nil
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), e.stopTimeout)
 	defer cancel()
 	c := make(chan string)
@@ -69,7 +70,8 @@ func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 				}
 
 				// if vertex is Uninitialized or already stopped
-				if v.GetState() == Uninitialized || v.GetState() == Stopped {
+				// Skip vertices which are not Started
+				if v.GetState() != Started {
 					c <- v.ID
 					return
 				}
@@ -130,5 +132,25 @@ func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 
 			return errors.E(op, errors.Str("timeout exceed, some vertices are not stopped and can cause memory leak"))
 		}
+	}
+}
+
+// Using to calculate number of Vertices in DLL
+func calculateNum(n *DllNode, traverse bool) int {
+	num := 0
+	if traverse {
+		tmp := n
+		for tmp != nil {
+			num += 1
+			tmp = tmp.Next
+		}
+		return num
+	} else {
+		tmp := n
+		for tmp != nil {
+			num += 1
+			tmp = tmp.Prev
+		}
+		return num
 	}
 }
