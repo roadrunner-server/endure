@@ -18,7 +18,7 @@ func (e *Endure) callServeFn(vertex *Vertex, in []reflect.Value) (*result, error
 		if e, ok := res.(chan error); ok && e != nil {
 			// error come right after we start serving the vertex
 			if len(e) > 0 {
-				return nil, errors.E(op, errors.FunctionCall, errors.Str("got first run error from vertex, stopping serveInternal execution"))
+				return nil, errors.E(op, errors.FunctionCall, errors.Errorf("got first run error from vertex %s, stopping execution", vertex.ID))
 			}
 			return &result{
 				errCh:    e,

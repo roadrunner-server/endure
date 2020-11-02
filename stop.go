@@ -23,7 +23,6 @@ func (e *Endure) internalStop(vID string) error {
 			return errors.E(op, errors.FunctionCall, err)
 		}
 	}
-
 	return nil
 }
 
@@ -43,75 +42,73 @@ func (e *Endure) callStopFn(vertex *Vertex, in []reflect.Value) error {
 	return nil
 }
 
-func (e *Endure) sendStopSignal(sorted []*Vertex) {
-	for _, v := range sorted {
-		// get result by vertex ID
-		tmp, ok := e.results.Load(v.ID)
-		if !ok {
-			continue
-		}
-		res := tmp.(*result)
-		if tmp == nil {
-			continue
-		}
-		// send exit signal to the goroutine in sorted order
-		e.logger.Debug("sending exit signal to the vertex from the main thread", zap.String("vertex id", res.vertexID))
-		res.signal <- notify{
-			stop: true,
-		}
-
-		e.results.Delete(v.ID)
-	}
-}
-
 func (e *Endure) shutdown(n *DllNode) {
-	// channel with nodes to internal_stop
-	sh := make(chan *DllNode)
-	// todo remove magic time const
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	numOfVertices := len(e.graph.Vertices)
+	if numOfVertices == 0 {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+	c := make(chan string)
+
+	// used to properly exit
+	// if the total number of vertices equal to the stopped, it means, that we stopped all
+	stopped := 0
+
 	go func() {
 		// process all nodes one by one
 		nCopy := n
 		for nCopy != nil {
+			// if vertex is disabled, just skip it, but send to the channel ID
 			if nCopy.Vertex.IsDisabled == true {
+				c <- nCopy.Vertex.ID
 				nCopy = nCopy.Next
 				continue
 			}
-			sh <- nCopy
-			nCopy = nCopy.Next
-		}
-		// after all nodes will be processed, send ctx.Done signal to finish the stopHandler
-		cancel()
-	}()
-	// block until process all nodes
-	e.forceExitHandler(ctx, sh)
-}
 
-func (e *Endure) forceExitHandler(ctx context.Context, data chan *DllNode) {
-	for {
-		select {
-		case node := <-data:
-			// internal_stop vertex
-			err := e.internalStop(node.Vertex.ID)
-			if err != nil {
-				// TODO do not return until finished
-				// just log the errors
-				// stack it in slice and if slice is not empty, visualize it ??
-				e.logger.Error("error occurred during the services stopping", zap.String("vertex id", node.Vertex.ID), zap.Error(err))
-			}
-			// exit from vertex poller
-			tmp, ok := e.results.Load(node.Vertex.ID)
-			if !ok {
+			// if vertex is Uninitialized or already stopped
+			if nCopy.Vertex.GetState() == Uninitialized || nCopy.Vertex.GetState() == Stopped {
+				c <- nCopy.Vertex.ID
+				nCopy = nCopy.Next
 				continue
 			}
 
-			channel := tmp.(*result)
-			channel.signal <- notify{
-				// false because we called internal_stop already
-				stop: false,
+			// if we have a running poller, exit from it
+			tmp, ok := e.results.Load(nCopy.Vertex.ID)
+			if ok {
+				channel := tmp.(*result)
+
+				// exit from vertex poller
+				channel.signal <- notify{}
+				e.results.Delete(nCopy.Vertex.ID)
 			}
 
+			// call Stop on the Vertex
+			err := e.internalStop(nCopy.Vertex.ID)
+			if err != nil {
+				c <- nCopy.Vertex.ID
+				e.logger.Error("error stopping vertex", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(err))
+				nCopy = nCopy.Next
+				continue
+			}
+
+			c <- nCopy.Vertex.ID
+			nCopy.Vertex.SetState(Stopped)
+			nCopy = nCopy.Next
+		}
+	}()
+
+	for {
+		select {
+		// get notification about stopped vertex
+		case vid := <-c:
+			e.logger.Info("vertex stopped", zap.String("vertex id", vid))
+			stopped += 1
+			if stopped == numOfVertices {
+				return
+			}
 		case <-ctx.Done():
+			e.logger.Info("timeout exceed, some vertices are not stopped", zap.Error(ctx.Err()))
 			return
 		}
 	}

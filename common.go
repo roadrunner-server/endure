@@ -21,11 +21,14 @@ func (e *Endure) traverseBackStop(n *DllNode) {
 	e.logger.Debug("stopping vertex in the first Serve call", zap.String("vertex id", n.Vertex.ID))
 	nCopy := n
 	for nCopy != nil {
+		nCopy.Vertex.SetState(Stopping)
 		err := e.internalStop(nCopy.Vertex.ID)
 		if err != nil {
+			nCopy.Vertex.SetState(Error)
 			// ignore errors from internal_stop
 			e.logger.Error("failed to traverse vertex back", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(errors.E(op, err)))
 		}
+		nCopy.Vertex.SetState(Stopped)
 		nCopy = nCopy.Prev
 	}
 }
@@ -43,8 +46,12 @@ func (e *Endure) retryHandler(res *result) {
 		return
 	}
 
-	// reset vertex and dependencies to the initial state
-	// numOfDeps and visited/visiting
+	// stop without setting Stopped state to the Endure
+	n := e.runList.Head
+	e.shutdown(n)
+
+	//reset vertex and dependencies to the initial state
+	//numOfDeps and visited/visiting
 	vertices := e.graph.Reset(vertex)
 
 	// Topologically sort the graph
@@ -61,10 +68,6 @@ func (e *Endure) retryHandler(res *result) {
 		}
 		return
 	}
-
-	// send exit signal only to sorted and involved vertices
-	// internal_stop will be called inside poller
-	e.sendStopSignal(sorted)
 
 	// Init backoff
 	b := backoff.NewExponentialBackOff()
@@ -94,7 +97,7 @@ func (e *Endure) retryHandler(res *result) {
 	// call serveInternal
 	headCopy = affectedRunList.Head
 	for headCopy != nil {
-		err = e.serveInternal(headCopy)
+		err := e.serveInternal(headCopy)
 		if err != nil {
 			e.userResultsCh <- &Result{
 				Error:    errors.E(op, errors.FunctionCall, errors.Errorf("error during the Serve function call")),
@@ -115,13 +118,15 @@ func (e *Endure) backoffInit(v *Vertex) func() error {
 		// we already checked the Interface satisfaction
 		// at this step absence of Init() is impossible
 		init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)
-
+		v.SetState(Initializing)
 		err := e.callInitFn(init, v)
 		if err != nil {
+			v.SetState(Error)
 			e.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.ID), zap.Error(err))
 			return errors.E(op, errors.FunctionCall, err)
 		}
 
+		v.SetState(Initialized)
 		return nil
 	}
 }

@@ -22,18 +22,8 @@ func (e *Endure) poll(r *result) {
 					e.handleErrorCh <- res
 				}
 			// exit from the goroutine
-			case n := <-res.signal:
-				if n.stop {
-					e.mutex.Lock()
-					e.logger.Info("vertex got exit signal", zap.String("vertex id", res.vertexID))
-					err := e.internalStop(res.vertexID)
-					if err != nil {
-						e.logger.Error("error during exit signal", zap.String("error while stopping the vertex:", res.vertexID), zap.Error(err))
-						e.mutex.Unlock()
-					}
-					e.mutex.Unlock()
-					return
-				}
+			case <-res.signal:
+				e.logger.Info("vertex got exit signal, exiting from poller", zap.String("vertex id", res.vertexID))
 				return
 			}
 		}
@@ -63,7 +53,10 @@ func (e *Endure) startMainThread() {
 				} else {
 					e.logger.Info("retry is turned off, sending exit signal to every vertex in the graph")
 					// send exit signal to whole graph
-					e.sendStopSignal(e.graph.Vertices)
+					err := e.Stop()
+					if err != nil {
+						e.logger.Error("error during stopping vertex", zap.String("vertex id", res.vertexID), zap.Error(err))
+					}
 					e.sendResultToUser(res)
 				}
 			}

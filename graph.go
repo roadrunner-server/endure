@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync/atomic"
 )
 
 type Kind int
@@ -65,7 +66,6 @@ type Entry struct {
 // since we can have cyclic dependencies
 // when we traverse the VerticesMap, we should mark nodes as visited or not to detect cycle
 type Vertex struct {
-	FSM
 	// ID of the vertex, currently string representation of the structure name
 	ID string
 	// Vertex (Registered structure)
@@ -76,6 +76,9 @@ type Vertex struct {
 	Dependencies []*Vertex
 	// Set of entries which can vertex provide (for example, foo4 vertex can provide DB instance and logger)
 	Provides map[string]ProvidedEntry
+
+	// current state
+	state uint32
 
 	// If vertex disabled it removed from the processing (Init, Serve, Stop), but present in the graph
 	IsDisabled bool
@@ -104,6 +107,14 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 		Value:       &value,
 		Kind:        kind,
 	}
+}
+
+func (v *Vertex) SetState(st State) {
+	atomic.StoreUint32(&v.state, uint32(st))
+}
+
+func (v *Vertex) GetState() State {
+	return State(atomic.LoadUint32(&v.state))
 }
 
 func (g *Graph) DisableById(vid string) {
@@ -283,6 +294,7 @@ func (g *Graph) Reset(vertex *Vertex) []*Vertex {
 	vertex.numOfDeps = len(vertex.Dependencies)
 	vertex.visiting = false
 	vertex.visited = false
+	vertex.SetState(Uninitialized)
 	vertices := make([]*Vertex, 0, 5)
 	vertices = append(vertices, vertex)
 
@@ -308,12 +320,15 @@ func (g *Graph) depthFirstSearch(deps []*Vertex, tmp map[string]*Vertex) {
 }
 
 func (g *Graph) AddVertex(vertexID string, vertexIface interface{}, meta Meta) {
-	g.VerticesMap[vertexID] = &Vertex{
+	v := &Vertex{
 		ID:           vertexID,
 		Iface:        vertexIface,
 		Meta:         meta,
 		Dependencies: nil,
 	}
+	v.SetState(Uninitialized)
+	g.VerticesMap[vertexID] = v
+
 	g.Vertices = append(g.Vertices, g.VerticesMap[vertexID])
 }
 

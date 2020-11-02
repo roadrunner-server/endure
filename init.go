@@ -36,6 +36,9 @@ Here we also track the Disabled vertices. If the vertex is disabled we should re
 */
 func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
 	const op = errors.Op("internal_call_init_function")
+	if vertex.GetState() != Initializing {
+		return errors.E("vertex should be in Initializing state")
+	}
 	in, err := e.findInitParameters(vertex)
 	if err != nil {
 		return errors.E(op, errors.FunctionCall, err)

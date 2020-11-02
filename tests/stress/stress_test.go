@@ -14,7 +14,7 @@ import (
 )
 
 func TestEndure_Init_Err(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&InitErr.S1Err{}))
@@ -23,7 +23,7 @@ func TestEndure_Init_Err(t *testing.T) {
 }
 
 func TestEndure_Serve_Err(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeErr.S4ServeError{})) // should produce an error during the Serve
@@ -48,7 +48,7 @@ time X is 0s
 4. In case of S1Err vertices S5 -> S4V -> S2ServeErr (with error in Serve in X+5s) -> S1Err should be restarted
 */
 func TestEndure_Serve_Retry_Err(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
@@ -99,7 +99,7 @@ time X is 0s
 5. Test should receive at least 100 errors
 */
 func TestEndure_Serve_Retry_100_Err(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
@@ -147,7 +147,7 @@ func TestEndure_Serve_Retry_100_Err(t *testing.T) {
 }
 
 func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
@@ -193,7 +193,7 @@ func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
 }
 
 func TestEndure_NoRegisterInvoke(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.Error(t, c.Init())
@@ -205,7 +205,7 @@ func TestEndure_NoRegisterInvoke(t *testing.T) {
 }
 
 func TestEndure_CollectorFuncReturnError(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&CollectorFuncReturn.FooDep{}))

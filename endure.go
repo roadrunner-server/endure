@@ -62,6 +62,7 @@ type Endure struct {
 	retry           bool
 	maxInterval     time.Duration
 	initialInterval time.Duration
+	stopTimeout     time.Duration
 	// option to visualize resulted (before internalInit) graph
 	visualize bool
 
@@ -91,13 +92,14 @@ type Options func(endure *Endure)
    7 - Disabled disables the logger.
    see the endure.Level
 */
-func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
+func NewContainer(logLevel Level, logger *zap.Logger, options ...Options) (*Endure, error) {
 	const op = errors.Op("NewContainer")
 	c := &Endure{
 		mutex:           &sync.RWMutex{},
 		initialInterval: time.Second * 1,
 		maxInterval:     time.Second * 60,
 		results:         sync.Map{},
+		stopTimeout:     time.Second * 10,
 	}
 
 	// Transition map
@@ -116,6 +118,33 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 
 	c.FSM = NewFSM(Uninitialized, transitionMap)
 
+	if logger == nil {
+		log, err := internalLogger(logLevel)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+		c.logger = log
+	} else {
+		c.logger = logger
+	}
+
+	c.graph = NewGraph()
+	c.runList = NewDoublyLinkedList()
+
+	// Main thread channels
+	c.handleErrorCh = make(chan *result)
+	c.userResultsCh = make(chan *Result)
+
+	// append options
+	for _, option := range options {
+		option(c)
+	}
+
+	return c, nil
+}
+
+func internalLogger(logLevel Level) (*zap.Logger, error) {
+	const op = errors.Op("internal_logger")
 	var lvl zap.AtomicLevel
 	switch logLevel {
 	case DebugLevel:
@@ -159,22 +188,8 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 	if err != nil {
 		return nil, errors.E(op, errors.Logger, err)
 	}
-	c.logger = logger
 
-	c.graph = NewGraph()
-	c.runList = NewDoublyLinkedList()
-	c.logger = logger
-
-	// Main thread channels
-	c.handleErrorCh = make(chan *result)
-	c.userResultsCh = make(chan *Result)
-
-	// append options
-	for _, option := range options {
-		option(c)
-	}
-
-	return c, nil
+	return logger, nil
 }
 
 func pprof() {
@@ -199,6 +214,12 @@ func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) O
 func Visualize(print bool) Options {
 	return func(endure *Endure) {
 		endure.visualize = print
+	}
+}
+
+func SetStopTimeOut(to time.Duration) Options {
+	return func(endure *Endure) {
+		endure.stopTimeout = to
 	}
 }
 
@@ -308,11 +329,14 @@ func (e *Endure) Initialize() error {
 	head := e.runList.Head
 	headCopy := head
 	for headCopy != nil {
+		headCopy.Vertex.SetState(Initializing)
 		err = e.internalInit(headCopy.Vertex)
 		if err != nil {
+			headCopy.Vertex.SetState(Error)
 			e.logger.Error("error during the internal_init", zap.Error(err))
 			return errors.E(op, errors.Init, err)
 		}
+		headCopy.Vertex.SetState(Initialized)
 		headCopy = headCopy.Next
 	}
 
@@ -338,11 +362,14 @@ func (e *Endure) Start() (<-chan *Result, error) {
 			continue
 		}
 		atLeastOne = true
+		nCopy.Vertex.SetState(Starting)
 		err := e.serveInternal(nCopy)
 		if err != nil {
+			nCopy.Vertex.SetState(Error)
 			e.traverseBackStop(nCopy)
 			return nil, errors.E(op, errors.Serve, err)
 		}
+		nCopy.Vertex.SetState(Started)
 		nCopy = nCopy.Next
 	}
 	// all vertices disabled
@@ -355,9 +382,6 @@ func (e *Endure) Start() (<-chan *Result, error) {
 // Shutdown used to shutdown the Endure
 // Do not change this method name, sync with constants in the beginning of this file
 func (e *Endure) Shutdown() error {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-
 	e.logger.Info("exiting from the Endure")
 	n := e.runList.Head
 	e.shutdown(n)

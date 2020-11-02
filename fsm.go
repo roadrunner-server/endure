@@ -15,7 +15,6 @@ type FSM interface {
 }
 
 func NewFSM(initialState State, callbacks map[Event]reflect.Method) FSM {
-	// callbacks is the pairs EVENT -> Func to invoke
 	st := uint32(initialState)
 	return &FSMImpl{
 		callbacks:    callbacks,
