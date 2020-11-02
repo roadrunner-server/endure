@@ -233,7 +233,27 @@ func (e *Endure) Register(vertex interface{}) error {
 func (e *Endure) Init() error {
 	_, err := e.Transition(Initialize, e)
 	if err != nil {
-		panic(err)
+		return err
+	}
+	return nil
+}
+
+// Serve starts serving the graph
+// This is the initial serveInternal, if error produced immediately in the initial serveInternal, endure will traverse deps back, call internal_stop and exit
+func (e *Endure) Serve() (<-chan *Result, error) {
+	data, err := e.Transition(Start, e)
+	if err != nil {
+		return nil, err
+	}
+	// god save this construction
+	return data.(<-chan *Result), nil
+}
+
+// Stop stops the execution and call Stop on every vertex
+func (e *Endure) Stop() error {
+	_, err := e.Transition(Stop, e)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -315,26 +335,6 @@ func (e *Endure) Start() (<-chan *Result, error) {
 		return nil, errors.E(op, errors.Disabled, errors.Str("all vertices disabled, nothing to serveInternal"))
 	}
 	return e.userResultsCh, nil
-}
-
-// Serve starts serving the graph
-// This is the initial serveInternal, if error produced immediately in the initial serveInternal, endure will traverse deps back, call internal_stop and exit
-func (e *Endure) Serve() (<-chan *Result, error) {
-	data, err := e.Transition(Start, e)
-	if err != nil {
-		return nil, err
-	}
-	// god save this construction
-	return data.(<-chan *Result), nil
-}
-
-// Stop stops the execution and call Stop on every vertex
-func (e *Endure) Stop() error {
-	_, err := e.Transition(Stop, e)
-	if err != nil {
-		panic(err)
-	}
-	return nil
 }
 
 func (e *Endure) Shutdown() error {
