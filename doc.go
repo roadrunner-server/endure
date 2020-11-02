@@ -1,4 +1,5 @@
 package endure
+
 /*
 
 MIT License
@@ -26,4 +27,4 @@ SOFTWARE.
 
 
 
- */
+*/

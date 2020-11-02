@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	//"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 )
 
@@ -185,7 +184,6 @@ func (f *FSMImpl) Transition(event Event, args ...interface{}) (interface{}, err
 
 		f.set(Started)
 		return ret[0].Interface(), nil
-	//run Serve
 	case Stop:
 		f.set(Stopping)
 		method := f.callbacks[event]

@@ -17,6 +17,15 @@ import (
 
 var order int = 1
 
+const (
+	// InitializeMethodName is the method name to invoke in transition map
+	InitializeMethodName = "Initialize"
+	// StartMethodName is the method name to invoke in transition map
+	StartMethodName = "Start"
+	// ShutdownMethodName is the method name to invoke in transition map
+	ShutdownMethodName = "Shutdown"
+)
+
 // A Level is a logging priority. Higher levels are more important.
 type Level int8
 
@@ -91,19 +100,21 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 		results:         sync.Map{},
 	}
 
+	// Transition map
 	transitionMap := make(map[Event]reflect.Method)
-	init, _ := reflect.TypeOf(c).MethodByName("Initialize")
+	init, _ := reflect.TypeOf(c).MethodByName(InitializeMethodName)
+	// event -> Initialize
 	transitionMap[Initialize] = init
 
-	serve, _ := reflect.TypeOf(c).MethodByName("Start")
+	serve, _ := reflect.TypeOf(c).MethodByName(StartMethodName)
+	// event -> Start
 	transitionMap[Start] = serve
 
-	shutdown, _ := reflect.TypeOf(c).MethodByName("Shutdown")
+	shutdown, _ := reflect.TypeOf(c).MethodByName(ShutdownMethodName)
+	// event -> Stop
 	transitionMap[Stop] = shutdown
 
 	c.FSM = NewFSM(Uninitialized, transitionMap)
-
-	//c.fsm = NewFSM(c)
 
 	var lvl zap.AtomicLevel
 	switch logLevel {
@@ -258,6 +269,8 @@ func (e *Endure) Stop() error {
 	return nil
 }
 
+// Initialize used to add edges between vertices, sort graph topologically
+// Do not change this method name, sync with constants in the beginning of this file
 func (e *Endure) Initialize() error {
 	const op = errors.Op("Init")
 	// traverse the graph
@@ -306,6 +319,8 @@ func (e *Endure) Initialize() error {
 	return nil
 }
 
+// Start used to start serving vertices
+// Do not change this method name, sync with constants in the beginning of this file
 func (e *Endure) Start() (<-chan *Result, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -337,6 +352,8 @@ func (e *Endure) Start() (<-chan *Result, error) {
 	return e.userResultsCh, nil
 }
 
+// Shutdown used to shutdown the Endure
+// Do not change this method name, sync with constants in the beginning of this file
 func (e *Endure) Shutdown() error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
