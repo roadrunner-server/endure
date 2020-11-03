@@ -262,7 +262,7 @@ func TestEndure_VisualizeFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// string(data) is safe because here not used any non 1-byte symbols
+	// string(data) is safe because there are non 1-byte symbols in the file
 	assert.Equal(t, string(data), golden)
 }
 
