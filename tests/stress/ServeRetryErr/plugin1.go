@@ -18,7 +18,7 @@ func (s *S1ServeErr) Serve() chan error {
 	var op = errors.Op("S1 Serve")
 	errCh := make(chan error, 1)
 	go func() {
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second)
 		err := errors.E(op, errors.Serve, "test serve error")
 		errCh <- err
 	}()

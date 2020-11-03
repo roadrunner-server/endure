@@ -15,7 +15,7 @@ import (
 
 // Provided structure instead of function
 func TestEndure_Issue33(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.Error(t, c.Register(&issue33.Plugin1{}))
@@ -27,7 +27,7 @@ func TestEndure_Issue33(t *testing.T) {
 // Call Stop on the container
 // Should be only 1 stop
 func TestEndure_Issue55(t *testing.T) {
-	container, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
+	container, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	assert.NoError(t, container.Register(&issue55_p1.Plugin1{}))

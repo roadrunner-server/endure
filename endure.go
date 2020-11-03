@@ -10,13 +10,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spiral/endure/structures"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 var order int = 1
+
+const (
+	// InitializeMethodName is the method name to invoke in transition map
+	InitializeMethodName = "Initialize"
+	// StartMethodName is the method name to invoke in transition map
+	StartMethodName = "Start"
+	// ShutdownMethodName is the method name to invoke in transition map
+	ShutdownMethodName = "Shutdown"
+)
 
 // A Level is a logging priority. Higher levels are more important.
 type Level int8
@@ -44,9 +52,9 @@ const (
 
 type Endure struct {
 	// Dependency graph
-	graph *structures.Graph
+	graph *Graph
 	// DLL used as run list to run in order
-	runList *structures.DoublyLinkedList
+	runList *DoublyLinkedList
 	// logger
 	logger *zap.Logger
 	// OPTIONS
@@ -54,8 +62,11 @@ type Endure struct {
 	retry           bool
 	maxInterval     time.Duration
 	initialInterval time.Duration
-	// option to visualize resulted (before init) graph
+	stopTimeout     time.Duration
+	// option to visualize resulted (before internalInit) graph
 	visualize bool
+
+	FSM
 
 	mutex *sync.RWMutex
 
@@ -81,15 +92,59 @@ type Options func(endure *Endure)
    7 - Disabled disables the logger.
    see the endure.Level
 */
-func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
+func NewContainer(logLevel Level, logger *zap.Logger, options ...Options) (*Endure, error) {
 	const op = errors.Op("NewContainer")
 	c := &Endure{
 		mutex:           &sync.RWMutex{},
 		initialInterval: time.Second * 1,
 		maxInterval:     time.Second * 60,
 		results:         sync.Map{},
+		stopTimeout:     time.Second * 10,
 	}
 
+	// Transition map
+	transitionMap := make(map[Event]reflect.Method)
+	init, _ := reflect.TypeOf(c).MethodByName(InitializeMethodName)
+	// event -> Initialize
+	transitionMap[Initialize] = init
+
+	serve, _ := reflect.TypeOf(c).MethodByName(StartMethodName)
+	// event -> Start
+	transitionMap[Start] = serve
+
+	shutdown, _ := reflect.TypeOf(c).MethodByName(ShutdownMethodName)
+	// event -> Stop
+	transitionMap[Stop] = shutdown
+
+	c.FSM = NewFSM(Uninitialized, transitionMap)
+
+	if logger == nil {
+		log, err := internalLogger(logLevel)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+		c.logger = log
+	} else {
+		c.logger = logger
+	}
+
+	c.graph = NewGraph()
+	c.runList = NewDoublyLinkedList()
+
+	// Main thread channels
+	c.handleErrorCh = make(chan *result)
+	c.userResultsCh = make(chan *Result)
+
+	// append options
+	for _, option := range options {
+		option(c)
+	}
+
+	return c, nil
+}
+
+func internalLogger(logLevel Level) (*zap.Logger, error) {
+	const op = errors.Op("internal_logger")
 	var lvl zap.AtomicLevel
 	switch logLevel {
 	case DebugLevel:
@@ -133,22 +188,8 @@ func NewContainer(logLevel Level, options ...Options) (*Endure, error) {
 	if err != nil {
 		return nil, errors.E(op, errors.Logger, err)
 	}
-	c.logger = logger
 
-	c.graph = structures.NewGraph()
-	c.runList = structures.NewDoublyLinkedList()
-	c.logger = logger
-
-	// Main thread channels
-	c.handleErrorCh = make(chan *result)
-	c.userResultsCh = make(chan *Result)
-
-	// append options
-	for _, option := range options {
-		option(c)
-	}
-
-	return c, nil
+	return logger, nil
 }
 
 func pprof() {
@@ -173,6 +214,12 @@ func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) O
 func Visualize(print bool) Options {
 	return func(endure *Endure) {
 		endure.visualize = print
+	}
+}
+
+func SetStopTimeOut(to time.Duration) Options {
+	return func(endure *Endure) {
+		endure.stopTimeout = to
 	}
 }
 
@@ -216,6 +263,36 @@ func (e *Endure) Register(vertex interface{}) error {
 
 // Init container and all service edges.
 func (e *Endure) Init() error {
+	_, err := e.Transition(Initialize, e)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Serve starts serving the graph
+// This is the initial serveInternal, if error produced immediately in the initial serveInternal, endure will traverse deps back, call internal_stop and exit
+func (e *Endure) Serve() (<-chan *Result, error) {
+	data, err := e.Transition(Start, e)
+	if err != nil {
+		return nil, err
+	}
+	// god save this construction
+	return data.(<-chan *Result), nil
+}
+
+// Stop stops the execution and call Stop on every vertex
+func (e *Endure) Stop() error {
+	_, err := e.Transition(Stop, e)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Initialize used to add edges between vertices, sort graph topologically
+// Do not change this method name, sync with constants in the beginning of this file
+func (e *Endure) Initialize() error {
 	const op = errors.Op("Init")
 	// traverse the graph
 	err := e.addEdges()
@@ -226,14 +303,14 @@ func (e *Endure) Init() error {
 	// if failed - continue, just send warning to a user
 	// visualize is not critical
 	if e.visualize {
-		err = structures.Visualize(e.graph.Vertices)
+		err = e.Visualize(e.graph.Vertices)
 		if err != nil {
 			e.logger.Warn("failed to visualize the graph", zap.Error(err))
 		}
 	}
 
-	// we should build init list in the reverse order
-	sorted, err := structures.TopologicalSort(e.graph.Vertices)
+	// we should build internal_init list in the reverse order
+	sorted, err := TopologicalSort(e.graph.Vertices)
 	if err != nil {
 		e.logger.Error("error sorting the graph", zap.Error(err))
 		return errors.E(op, errors.Init, err)
@@ -244,7 +321,7 @@ func (e *Endure) Init() error {
 		return errors.E(op, errors.Init, errors.Errorf("graph should contain at least 1 vertex, possibly you forget to invoke registers"))
 	}
 
-	e.runList = structures.NewDoublyLinkedList()
+	e.runList = NewDoublyLinkedList()
 	for i := len(sorted) - 1; i >= 0; i-- {
 		e.runList.Push(sorted[i])
 	}
@@ -252,20 +329,23 @@ func (e *Endure) Init() error {
 	head := e.runList.Head
 	headCopy := head
 	for headCopy != nil {
-		err = e.init(headCopy.Vertex)
+		headCopy.Vertex.SetState(Initializing)
+		err = e.internalInit(headCopy.Vertex)
 		if err != nil {
-			e.logger.Error("error during the init", zap.Error(err))
+			headCopy.Vertex.SetState(Error)
+			e.logger.Error("error during the internal_init", zap.Error(err))
 			return errors.E(op, errors.Init, err)
 		}
+		headCopy.Vertex.SetState(Initialized)
 		headCopy = headCopy.Next
 	}
 
 	return nil
 }
 
-// Serve starts serving the graph
-// This is the initial serve, if error produced immediately in the initial serve, endure will traverse deps back, call stop and exit
-func (e *Endure) Serve() (<-chan *Result, error) {
+// Start used to start serving vertices
+// Do not change this method name, sync with constants in the beginning of this file
+func (e *Endure) Start() (<-chan *Result, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
@@ -282,27 +362,27 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 			continue
 		}
 		atLeastOne = true
-		err := e.serve(nCopy)
+		nCopy.Vertex.SetState(Starting)
+		err := e.serveInternal(nCopy)
 		if err != nil {
+			nCopy.Vertex.SetState(Error)
 			e.traverseBackStop(nCopy)
 			return nil, errors.E(op, errors.Serve, err)
 		}
+		nCopy.Vertex.SetState(Started)
 		nCopy = nCopy.Next
 	}
 	// all vertices disabled
 	if atLeastOne == false {
-		return nil, errors.E(op, errors.Disabled, errors.Str("all vertices disabled, nothing to serve"))
+		return nil, errors.E(op, errors.Disabled, errors.Str("all vertices disabled, nothing to serveInternal"))
 	}
 	return e.userResultsCh, nil
 }
 
-// Stop stops the execution and call Stop on every vertex
-func (e *Endure) Stop() error {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-
+// Shutdown used to shutdown the Endure
+// Do not change this method name, sync with constants in the beginning of this file
+func (e *Endure) Shutdown() error {
 	e.logger.Info("exiting from the Endure")
 	n := e.runList.Head
-	e.shutdown(n)
-	return nil
+	return e.shutdown(n, true)
 }

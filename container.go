@@ -15,10 +15,7 @@ type Result struct {
 	VertexID string
 }
 
-type notify struct {
-	// stop used to notify vertex goroutine, that we need to stop vertex and return from goroutine
-	stop bool
-}
+type notify struct{}
 
 type result struct {
 	// error channel from vertex

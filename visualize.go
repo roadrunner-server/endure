@@ -1,13 +1,13 @@
 // +build !windows
 
-package structures
+package endure
 
 import (
 	"github.com/goccy/go-graphviz"
 	"github.com/spiral/errors"
 )
 
-func Visualize(vertices []*Vertex) error {
+func (e *Endure) Visualize(vertices []*Vertex) error {
 	const op = errors.Op("print_graph")
 	gr := graphviz.New()
 	graph, err := gr.Graph()

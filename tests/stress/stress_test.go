@@ -9,12 +9,13 @@ import (
 	"github.com/spiral/endure/tests/stress/InitErr"
 	"github.com/spiral/endure/tests/stress/ServeErr"
 	"github.com/spiral/endure/tests/stress/ServeRetryErr"
+	"github.com/spiral/endure/tests/stress/mixed"
 	"github.com/spiral/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEndure_Init_Err(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&InitErr.S1Err{}))
@@ -22,8 +23,20 @@ func TestEndure_Init_Err(t *testing.T) {
 	assert.Error(t, c.Init())
 }
 
+func TestEndure_DoubleStop_Err(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(false))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&InitErr.S1Err{}))
+	assert.NoError(t, c.Register(&InitErr.S2Err{})) // should produce an error during the Init
+	assert.Error(t, c.Init())
+	assert.NoError(t, c.Stop())
+	// recognizer: can't transition from state: Stopped by event Stop
+	assert.Error(t, c.Stop())
+}
+
 func TestEndure_Serve_Err(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeErr.S4ServeError{})) // should produce an error during the Serve
@@ -48,7 +61,7 @@ time X is 0s
 4. In case of S1Err vertices S5 -> S4V -> S2ServeErr (with error in Serve in X+5s) -> S1Err should be restarted
 */
 func TestEndure_Serve_Retry_Err(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
@@ -99,7 +112,7 @@ time X is 0s
 5. Test should receive at least 100 errors
 */
 func TestEndure_Serve_Retry_100_Err(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
@@ -147,7 +160,7 @@ func TestEndure_Serve_Retry_100_Err(t *testing.T) {
 }
 
 func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
@@ -193,7 +206,7 @@ func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
 }
 
 func TestEndure_NoRegisterInvoke(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.Error(t, c.Init())
@@ -205,7 +218,7 @@ func TestEndure_NoRegisterInvoke(t *testing.T) {
 }
 
 func TestEndure_CollectorFuncReturnError(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&CollectorFuncReturn.FooDep{}))
@@ -216,4 +229,17 @@ func TestEndure_CollectorFuncReturnError(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Stop())
+}
+
+func TestEndure_ForceExit(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(false)) // stop timeout 10 seconds
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&mixed.Foo{})) // sleep for 15 seconds
+	assert.NoError(t, c.Init())
+
+	_, err = c.Serve()
+	assert.NoError(t, err)
+
+	assert.Error(t, c.Stop()) // shutdown: timeout exceed, some vertices are not stopped and can cause memory leak
 }

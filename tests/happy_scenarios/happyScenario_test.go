@@ -29,7 +29,7 @@ func TestEndure_DifferentLogLevels(t *testing.T) {
 }
 
 func testLog(t *testing.T, level endure.Level) {
-	c, err := endure.NewContainer(level)
+	c, err := endure.NewContainer(level, nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin4.S4{}))
@@ -57,7 +57,7 @@ func testLog(t *testing.T, level endure.Level) {
 }
 
 func TestEndure_Init_OK(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, endure.Visualize(true))
+	c, err := endure.NewContainer(endure.DebugLevel, nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin4.S4{}))
@@ -66,11 +66,75 @@ func TestEndure_Init_OK(t *testing.T) {
 	assert.NoError(t, c.Register(&plugin1.S1{}))
 	assert.NoError(t, c.Register(&plugin5.S5{}))
 	assert.NoError(t, c.Register(&plugin6.S6Interface{}))
+
 	assert.NoError(t, c.Init())
 
 	res, err := c.Serve()
 	assert.NoError(t, err)
+	go func() {
+		for r := range res {
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
+				return
+			}
+		}
+	}()
 
+	time.Sleep(time.Second * 2)
+	assert.NoError(t, c.Stop())
+}
+
+func TestEndure_DoubleInitDoubleServe_OK(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&plugin4.S4{}))
+	assert.NoError(t, c.Register(&plugin2.S2{}))
+	assert.NoError(t, c.Register(&plugin3.S3{}))
+	assert.NoError(t, c.Register(&plugin1.S1{}))
+	assert.NoError(t, c.Register(&plugin5.S5{}))
+	assert.NoError(t, c.Register(&plugin6.S6Interface{}))
+
+	assert.NoError(t, c.Init())
+	assert.Error(t, c.Init())
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
+	res, err = c.Serve()
+	assert.Error(t, err)
+	go func() {
+		for r := range res {
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+	assert.NoError(t, c.Stop())
+}
+
+func TestEndure_WrongOrder(t *testing.T) {
+	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	assert.NoError(t, err)
+
+	assert.Error(t, c.Stop()) //recognizer: can't transition from state: Uninitialized by event Stop
+	assert.NoError(t, c.Register(&plugin4.S4{}))
+	assert.NoError(t, c.Register(&plugin2.S2{}))
+	assert.NoError(t, c.Register(&plugin3.S3{}))
+	assert.NoError(t, c.Register(&plugin1.S1{}))
+	assert.NoError(t, c.Register(&plugin5.S5{}))
+	assert.NoError(t, c.Register(&plugin6.S6Interface{}))
+
+	_, err = c.Serve()
+	assert.Error(t, err)
+
+	assert.NoError(t, c.Init())
+	assert.Error(t, c.Init())
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
 	go func() {
 		for r := range res {
 			if r.Error != nil {
@@ -85,7 +149,7 @@ func TestEndure_Init_OK(t *testing.T) {
 }
 
 func TestEndure_Init_1_Element(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel)
+	c, err := endure.NewContainer(endure.DebugLevel, nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin7.Plugin7{}))
@@ -110,7 +174,7 @@ func TestEndure_Init_1_Element(t *testing.T) {
 }
 
 func TestEndure_ProvidedValueButNeedPointer(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel)
+	c, err := endure.NewContainer(endure.DebugLevel, nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin12.Plugin1{}))
@@ -141,7 +205,7 @@ func TestEndure_PrimitiveTypes(t *testing.T) {
 			println("test should panic")
 		}
 	}()
-	c, err := endure.NewContainer(endure.DebugLevel)
+	c, err := endure.NewContainer(endure.DebugLevel, nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&primitive.Plugin8{}))

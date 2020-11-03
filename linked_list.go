@@ -1,4 +1,4 @@
-package structures
+package endure
 
 // Vertex of the DoublyLL
 type DllNode struct {
