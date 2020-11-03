@@ -45,7 +45,7 @@ func (e *Endure) callStopFn(vertex *Vertex, in []reflect.Value) error {
 // false -> prev
 func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 	const op = errors.Op("shutdown")
-	numOfVertices := calculateNum(n, traverseNext)
+	numOfVertices := calculateDepth(n, traverseNext)
 	if numOfVertices == 0 {
 		return nil
 	}
@@ -130,13 +130,13 @@ func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 				e.logger.Error("vertices which are not stopped", zap.Any("vertex id", VIDs))
 			}
 
-			return errors.E(op, errors.Str("timeout exceed, some vertices are not stopped and can cause memory leak"))
+			return errors.E(op, errors.TimeOut, errors.Str("timeout exceed, some vertices may not be stopped and can cause memory leak"))
 		}
 	}
 }
 
 // Using to calculate number of Vertices in DLL
-func calculateNum(n *DllNode, traverse bool) int {
+func calculateDepth(n *DllNode, traverse bool) int {
 	num := 0
 	if traverse {
 		tmp := n
