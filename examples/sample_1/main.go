@@ -14,35 +14,20 @@ import (
 )
 
 func main() {
-	container, err := endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(true), endure.Visualize(true))
+	// no external logger
+	container, err := endure.NewContainer(nil, endure.RetryOnFail(true), endure.Visualize(true), endure.SetLogLevel(endure.DebugLevel))
 	if err != nil {
 		panic(err)
 	}
 
-	err = container.Register(&http.Http{})
-	if err != nil {
-		panic(err)
-	}
-	err = container.Register(&db.DB{})
-	if err != nil {
-		panic(err)
-	}
-	err = container.Register(&logger.Logger{})
-	if err != nil {
-		panic(err)
-	}
-	err = container.Register(&gzip.Gzip{})
-	if err != nil {
-		panic(err)
-	}
-	err = container.Register(&headers.Headers{})
-	if err != nil {
-		panic(err)
-	}
-	err = container.Init()
-	if err != nil {
-		panic(err)
-	}
+	err = InitApp(
+		container,
+		&http.Http{},
+		&db.DB{},
+		&logger.Logger{},
+		&gzip.Gzip{},
+		&headers.Headers{},
+	)
 
 	errCh, err := container.Serve()
 	if err != nil {
@@ -70,4 +55,21 @@ func main() {
 			return
 		}
 	}
+}
+
+// InitApp with a list of provided services.
+func InitApp(container endure.Container, service ...interface{}) error {
+	for _, svc := range service {
+		err := container.Register(svc)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := container.Init()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
