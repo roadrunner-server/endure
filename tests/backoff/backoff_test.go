@@ -13,7 +13,7 @@ import (
 )
 
 func TestEndure_MainThread_Serve_Backoff(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(nil, endure.RetryOnFail(true))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin4.Plugin4{}))
@@ -37,7 +37,7 @@ func TestEndure_MainThread_Serve_Backoff(t *testing.T) {
 }
 
 func TestEndure_MainThread_Init_Backoff(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true), endure.SetBackoffTimes(time.Second, time.Second*10))
+	c, err := endure.NewContainer(nil, endure.RetryOnFail(true), endure.SetBackoffTimes(time.Second, time.Second*10))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin3.Plugin3{}))
@@ -66,7 +66,7 @@ func TestEndure_MainThread_Init_Backoff(t *testing.T) {
 }
 
 func TestEndure_BackoffTimers(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil, endure.RetryOnFail(true), endure.SetBackoffTimes(time.Second, time.Second*5))
+	c, err := endure.NewContainer(nil, endure.RetryOnFail(true), endure.SetBackoffTimes(time.Second, time.Second*5))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin2.Plugin2{}))

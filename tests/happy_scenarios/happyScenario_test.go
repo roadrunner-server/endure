@@ -29,7 +29,7 @@ func TestEndure_DifferentLogLevels(t *testing.T) {
 }
 
 func testLog(t *testing.T, level endure.Level) {
-	c, err := endure.NewContainer(level, nil)
+	c, err := endure.NewContainer(nil, endure.SetLogLevel(level))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin4.S4{}))
@@ -57,7 +57,7 @@ func testLog(t *testing.T, level endure.Level) {
 }
 
 func TestEndure_Init_OK(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin4.S4{}))
@@ -85,7 +85,7 @@ func TestEndure_Init_OK(t *testing.T) {
 }
 
 func TestEndure_DoubleInitDoubleServe_OK(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin4.S4{}))
@@ -116,7 +116,7 @@ func TestEndure_DoubleInitDoubleServe_OK(t *testing.T) {
 }
 
 func TestEndure_WrongOrder(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.Error(t, c.Stop()) //recognizer: can't transition from state: Uninitialized by event Stop
@@ -149,7 +149,7 @@ func TestEndure_WrongOrder(t *testing.T) {
 }
 
 func TestEndure_Init_1_Element(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin7.Plugin7{}))
@@ -174,7 +174,7 @@ func TestEndure_Init_1_Element(t *testing.T) {
 }
 
 func TestEndure_ProvidedValueButNeedPointer(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin12.Plugin1{}))
@@ -205,7 +205,7 @@ func TestEndure_PrimitiveTypes(t *testing.T) {
 			println("test should panic")
 		}
 	}()
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&primitive.Plugin8{}))

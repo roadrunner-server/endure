@@ -19,7 +19,7 @@ import (
 )
 
 func TestEndure_Interfaces_OK(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin1.Plugin1{}))
@@ -48,7 +48,7 @@ func TestEndure_Interfaces_OK(t *testing.T) {
 }
 
 func TestEndure_InterfacesCollects_Ok(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin3.Plugin3{}))
@@ -64,7 +64,7 @@ func TestEndure_InterfacesCollects_Ok(t *testing.T) {
 }
 
 func TestEndure_NamedProvides_Ok(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&registers.Plugin2{}))
@@ -79,7 +79,7 @@ func TestEndure_NamedProvides_Ok(t *testing.T) {
 }
 
 func TestEndure_NamedProvides_NotImplement_Ok(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&randominterface.Plugin2{}))
@@ -99,7 +99,7 @@ func TestEndure_NamedProvides_WrongType_Fail(t *testing.T) {
 			println("test should panic")
 		}
 	}()
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&registersfail.Plugin2{}))
@@ -114,7 +114,7 @@ func TestEndure_NamedProvides_WrongType_Fail(t *testing.T) {
 }
 
 func TestEndure_ServiceInterface_NotImplemented_Ok(t *testing.T) {
-	c, err := endure.NewContainer(endure.DebugLevel, nil)
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&notImplPlugin1.Foo{}))

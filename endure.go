@@ -66,6 +66,10 @@ type Endure struct {
 	// option to visualize resulted (before internalInit) graph
 	visualize bool
 
+	// internal loglevel in case if used internal logger. default -> Debug
+	loglevel Level
+
+	// Endure state machine
 	FSM
 
 	mutex *sync.RWMutex
@@ -92,7 +96,7 @@ type Options func(endure *Endure)
    7 - Disabled disables the logger.
    see the endure.Level
 */
-func NewContainer(logLevel Level, logger *zap.Logger, options ...Options) (*Endure, error) {
+func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 	const op = errors.Op("NewContainer")
 	c := &Endure{
 		mutex:           &sync.RWMutex{},
@@ -100,6 +104,7 @@ func NewContainer(logLevel Level, logger *zap.Logger, options ...Options) (*Endu
 		maxInterval:     time.Second * 60,
 		results:         sync.Map{},
 		stopTimeout:     time.Second * 10,
+		loglevel:        DebugLevel,
 	}
 
 	// Transition map
@@ -118,16 +123,6 @@ func NewContainer(logLevel Level, logger *zap.Logger, options ...Options) (*Endu
 
 	c.FSM = NewFSM(Uninitialized, transitionMap)
 
-	if logger == nil {
-		log, err := internalLogger(logLevel)
-		if err != nil {
-			return nil, errors.E(op, err)
-		}
-		c.logger = log
-	} else {
-		c.logger = logger
-	}
-
 	c.graph = NewGraph()
 	c.runList = NewDoublyLinkedList()
 
@@ -140,13 +135,23 @@ func NewContainer(logLevel Level, logger *zap.Logger, options ...Options) (*Endu
 		option(c)
 	}
 
+	if logger == nil {
+		log, err := c.internalLogger()
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+		c.logger = log
+	} else {
+		c.logger = logger
+	}
+
 	return c, nil
 }
 
-func internalLogger(logLevel Level) (*zap.Logger, error) {
+func (e *Endure) internalLogger() (*zap.Logger, error) {
 	const op = errors.Op("internal_logger")
 	var lvl zap.AtomicLevel
-	switch logLevel {
+	switch e.loglevel {
 	case DebugLevel:
 		lvl = zap.NewAtomicLevelAt(zap.DebugLevel)
 		// start pprof
@@ -196,6 +201,12 @@ func pprof() {
 	go func() {
 		_ = http.ListenAndServe("0.0.0.0:6061", nil)
 	}()
+}
+
+func SetLogLevel(lvl Level) Options {
+	return func(endure *Endure) {
+		endure.loglevel = lvl
+	}
 }
 
 func RetryOnFail(retry bool) Options {
