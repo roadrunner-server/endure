@@ -9,16 +9,20 @@ import (
 
 func (e *Endure) callServeFn(vertex *Vertex, in []reflect.Value) (*result, error) {
 	const op = errors.Op("call_serve_fn")
-	e.logger.Debug("preparing to serveInternal the vertex", zap.String("vertex id", vertex.ID))
+	e.logger.Debug("preparing to calling Serve on the Vertex", zap.String("vertex id", vertex.ID))
+	// find Serve method
 	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ServeMethodName)
+	// call with needed number of `in` parameters
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
+	e.logger.Debug("called Serve on the vertex", zap.String("vertex id", vertex.ID))
 	if res != nil {
-		e.logger.Debug("called serveInternal on the vertex", zap.String("vertex id", vertex.ID))
 		if e, ok := res.(chan error); ok && e != nil {
 			// error come right after we start serving the vertex
 			if len(e) > 0 {
-				return nil, errors.E(op, errors.FunctionCall, errors.Errorf("got first run error from vertex %s, stopping execution", vertex.ID))
+				// read the error
+				err := <-e
+				return nil, errors.E(op, errors.FunctionCall, errors.Errorf("got initial serve error from the Vertex %s, stopping execution, error: %v", vertex.ID, err))
 			}
 			return &result{
 				errCh:    e,
