@@ -63,8 +63,12 @@ type Endure struct {
 	maxInterval     time.Duration
 	initialInterval time.Duration
 	stopTimeout     time.Duration
-	// option to visualize resulted (before internalInit) graph
-	visualize bool
+
+	// Graph visualizer
+	// option to out to os.stdout or write data to file
+	output Output
+	// in case of file -> provide path to the file
+	path string
 
 	// internal loglevel in case if used internal logger. default -> Debug
 	loglevel Level
@@ -105,6 +109,9 @@ func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 		results:         sync.Map{},
 		stopTimeout:     time.Second * 10,
 		loglevel:        DebugLevel,
+		path:            "",
+		// default empty -> no output
+		output: Empty,
 	}
 
 	// Transition map
@@ -222,9 +229,13 @@ func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) O
 	}
 }
 
-func Visualize(print bool) Options {
+// output: can be file or stdout
+func Visualize(output Output, path string) Options {
 	return func(endure *Endure) {
-		endure.visualize = print
+		endure.output = output
+		if path != "" {
+			endure.path = path
+		}
 	}
 }
 
@@ -313,7 +324,7 @@ func (e *Endure) Initialize() error {
 
 	// if failed - continue, just send warning to a user
 	// visualize is not critical
-	if e.visualize {
+	if e.output != Empty {
 		err = e.Visualize(e.graph.Vertices)
 		if err != nil {
 			e.logger.Warn("failed to visualize the graph", zap.Error(err))

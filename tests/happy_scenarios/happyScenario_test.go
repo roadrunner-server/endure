@@ -1,6 +1,8 @@
 package happy_scenarios
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -215,4 +217,65 @@ func TestEndure_PrimitiveTypes(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Stop())
+}
+
+func TestEndure_VisualizeFile(t *testing.T) {
+	golden :=
+		`digraph endure {
+	rankdir=TB;
+	graph [compound=true];
+		"plugin4.S4" -> "plugin5.S5";
+		"plugin4.S4" -> "plugin6.S6Interface";
+		"plugin2.S2" -> "plugin4.S4";
+		"plugin3.S3" -> "plugin4.S4";
+		"plugin3.S3" -> "plugin2.S2";
+		"plugin1.S1" -> "plugin4.S4";
+		"plugin1.S1" -> "plugin2.S2";
+}
+`
+	filename := "graph.txt"
+	c, err := endure.NewContainer(nil, endure.Visualize(endure.File, filename), endure.SetLogLevel(endure.PanicLevel))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&plugin4.S4{}))
+	assert.NoError(t, c.Register(&plugin2.S2{}))
+	assert.NoError(t, c.Register(&plugin3.S3{}))
+	assert.NoError(t, c.Register(&plugin1.S1{}))
+	assert.NoError(t, c.Register(&plugin5.S5{}))
+	assert.NoError(t, c.Register(&plugin6.S6Interface{}))
+
+	assert.NoError(t, c.Init())
+
+	// should exist
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err = os.Remove(filename)
+		if err != nil {
+			assert.Fail(t, "can't delete file")
+		}
+	}()
+
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// string(data) is safe because there are non 1-byte symbols in the file
+	assert.Equal(t, string(data), golden)
+}
+
+func TestEndure_VisualizeStdOut(t *testing.T) {
+	c, err := endure.NewContainer(nil, endure.Visualize(endure.StdOut, ""), endure.SetLogLevel(endure.PanicLevel))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&plugin4.S4{}))
+	assert.NoError(t, c.Register(&plugin2.S2{}))
+	assert.NoError(t, c.Register(&plugin3.S3{}))
+	assert.NoError(t, c.Register(&plugin1.S1{}))
+	assert.NoError(t, c.Register(&plugin5.S5{}))
+	assert.NoError(t, c.Register(&plugin6.S6Interface{}))
+
+	assert.NoError(t, c.Init())
 }
