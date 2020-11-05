@@ -10,71 +10,157 @@ import (
 
 /*
 addProviders:
-Adds a provided type via the Provider interface. And adding:
+Adds a provided type via the Provider interface:
 1. Key to the 'Vertex Provides' map with empty ProvidedEntry, because we use key at the Init stage and fill the map with
 actual type after FnsProviderToInvoke will be invoked
-2. FnsProviderToInvoke --> is the list of the Provided function to invoke via the reflection
+2. FnsProviderToInvoke --> is the list of the functions to invoke via the reflection to get the actual provided type
 */
 func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
-	op := errors.Op("add_providers")
-	// if vertex provides some deps via Provides, calculate it
-	if provider, ok := vertex.(Provider); ok {
-		for _, fn := range provider.Provides() {
-			// Check return types
-			ret, err := providersReturnType(fn)
+	// hot path
+	if _, ok := vertex.(Provider); !ok {
+		return nil
+	}
+
+	// vertex implements Provider interface
+	return e.implProvidesPath(vertexID, vertex)
+}
+
+// vertex implements provider
+func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
+	const op = errors.Op("add_providers")
+	provider := vertex.(Provider)
+	for _, fn := range provider.Provides() {
+		// Check return types
+		ret, err := providersReturnType(fn)
+		if err != nil {
+			return errors.E(op, err)
+		}
+
+		// remove asterisk from the type string representation *Foo1 -> Foo1
+		typeStr := removePointerAsterisk(ret.String())
+		// get the Vertex from the graph (v)
+		v := e.graph.GetVertex(vertexID)
+		if v.Provides == nil {
+			v.Provides = make(map[string]ProvidedEntry)
+		}
+
+		// Make a slice
+		if v.Meta.FnsProviderToInvoke == nil {
+			v.Meta.FnsProviderToInvoke = make([]ProviderEntry, 0, 1)
+		}
+
+		// TODO merge function calls into one. Plugin1 -> fn's to invoke ProvideDB, ProvideDB2
+		// Append functions which we will invoke when we start calling the structure functions after Init stage
+		v.Meta.FnsProviderToInvoke = append(v.Meta.FnsProviderToInvoke, ProviderEntry{
+			/*
+				For example:
+				we need to invoke function ProvideDB - that will be FunctionName
+				ReturnTypeId will be DB (in that case)
+				We need return type to filter it in Init call, because in Init we may have one struct which returns
+				two different types.
+			*/
+			FunctionName: getFunctionName(fn), // function name to invoke
+			ReturnTypeId: typeStr,             // return type ID
+		})
+
+		/*
+			   For the interface dependencies
+				If Provided type is interface
+				1. Check that type implement interface
+				2. Write record, that this particular type also provides Interface dep
+		*/
+		if ret.Kind() == reflect.Interface {
+			tmpValue := reflect.ValueOf(vertex)
+			tmpIsRef := isReference(ret)
+			v.Provides[typeStr] = ProvidedEntry{
+				IsReference: &tmpIsRef,
+				Value:       &tmpValue,
+			}
+			return nil
+		}
+
+		// just init map value
+		v.Provides[typeStr] = ProvidedEntry{
+			IsReference: nil,
+			Value:       nil,
+		}
+	}
+	return nil
+}
+
+func (e *Endure) addCollectorsDeps(vertexID string, vertex interface{}) error {
+	// hot path
+	if _, ok := vertex.(Collector); !ok {
+		return nil
+	}
+
+	// vertex implements Collector interface
+	return e.implCollectorPath(vertexID, vertex)
+}
+
+func (e *Endure) implCollectorPath(vertexID string, vertex interface{}) error {
+	const op = errors.Op("add_collectors_deps")
+	collector := vertex.(Collector)
+	for _, fn := range collector.Collects() {
+		// what type it might depend on?
+		argsTypes, err := argType(fn)
+		if err != nil {
+			return errors.E(op, err)
+		}
+
+		// we already checked argsTypes len
+		for _, at := range argsTypes {
+			// check if type is primitive type
+			if isPrimitive(at.String()) {
+				e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", at.String()))
+			}
+			atStr := at.String()
+			if vertexID == atStr {
+				continue
+			}
+			// depends at interface via Collectors
+			/*
+				In this case we should do the following:
+				1. Find all types, which implement this interface
+				2. Make this type depend from all these types
+				3.
+			*/
+			if at.Kind() == reflect.Interface {
+				// go over all dependencies
+				for i := 0; i < len(e.graph.Vertices); i++ {
+					if reflect.TypeOf(e.graph.Vertices[i].Iface).Implements(at) {
+						tmpIsRef := isReference(at)
+						tmpValue := reflect.ValueOf(e.graph.Vertices[i].Iface)
+						e.graph.Vertices[i].AddProvider(removePointerAsterisk(atStr), tmpValue, tmpIsRef, at.Kind())
+					}
+				}
+			}
+			// if we found, that some structure depends on some type
+			// we also save it in the `depends` section
+			// name s1 (for example)
+			// vertex - S4 func
+
+			// we store pointer in the Deps structure in the isRef field
+			err = e.graph.AddDep(vertexID, removePointerAsterisk(atStr), Collects, isReference(at), at.Kind())
 			if err != nil {
 				return errors.E(op, err)
 			}
-
-			// remove asterisk from the type string representation *Foo1 -> Foo1
-			typeStr := removePointerAsterisk(ret.String())
-			// get the Vertex from the graph (gVertex)
-			gVertex := e.graph.GetVertex(vertexID)
-			if gVertex.Provides == nil {
-				gVertex.Provides = make(map[string]ProvidedEntry)
-			}
-
-			// Make a slice
-			if gVertex.Meta.FnsProviderToInvoke == nil {
-				gVertex.Meta.FnsProviderToInvoke = make([]ProviderEntry, 0, 1)
-			}
-
-			// TODO merge function calls into one. Plugin1 -> fn's to invoke ProvideDB, ProvideDB2
-			// Append functions which we will invoke when we start calling the structure functions after Init stage
-			gVertex.Meta.FnsProviderToInvoke = append(gVertex.Meta.FnsProviderToInvoke, ProviderEntry{
-				/*
-					For example:
-					we need to invoke function ProvideDB - that will be FunctionName
-					ReturnTypeId will be DB (in that case)
-					We need return type to filter it in Init call, because in Init we may have one struct which returns
-					two different types.
-				*/
-				FunctionName: getFunctionName(fn), // function name to invoke
-				ReturnTypeId: typeStr,             // return type ID
-			})
-
-			/*
-				   For the interface dependencies
-					If Provided type is interface
-					1. Check that type implement interface
-					2. Write record, that this particular type also provides Interface
-			*/
-			if ret.Kind() == reflect.Interface {
-				if reflect.TypeOf(vertex).Implements(ret) {
-					tmpValue := reflect.ValueOf(vertex)
-					tmpIsRef := isReference(ret)
-					gVertex.Provides[typeStr] = ProvidedEntry{
-						IsReference: &tmpIsRef,
-						Value:       &tmpValue,
-					}
-				}
-			} else {
-				gVertex.Provides[typeStr] = ProvidedEntry{
-					IsReference: nil,
-					Value:       nil,
-				}
-			}
+			e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vertexID), zap.String("depends", atStr))
 		}
+
+		// get the Vertex from the graph (v)
+		v := e.graph.GetVertex(vertexID)
+		if v.Provides == nil {
+			v.Provides = make(map[string]ProvidedEntry)
+		}
+
+		if v.Meta.FnsCollectorToInvoke == nil {
+			v.Meta.FnsCollectorToInvoke = make([]string, 0, 5)
+		}
+
+		e.logger.Debug("appending collector function to invoke later", zap.String("vertex id", vertexID), zap.String("function name", getFunctionName(fn)))
+
+		v.Meta.FnsCollectorToInvoke = append(v.Meta.FnsCollectorToInvoke, getFunctionName(fn))
 	}
 	return nil
 }
@@ -116,76 +202,6 @@ func (e *Endure) addEdges() error {
 		err = e.addInitDeps(vertexID, init)
 		if err != nil {
 			return errors.E(Op, err)
-		}
-	}
-
-	return nil
-}
-
-func (e *Endure) addCollectorsDeps(vertexID string, vertex interface{}) error {
-	const Op = errors.Op("add_collectors_deps")
-	if register, ok := vertex.(Collector); ok {
-		for _, fn := range register.Collects() {
-			// what type it might depend on?
-			argsTypes, err := argType(fn)
-			if err != nil {
-				return errors.E(Op, err)
-			}
-
-			// at is like foo2.S2
-			// we already checked argsTypes len
-			for _, at := range argsTypes {
-				// check if type is primitive type
-				if isPrimitive(at.String()) {
-					e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", at.String()))
-				}
-				atStr := at.String()
-				if vertexID == atStr {
-					continue
-				}
-				// depends at interface via Collectors
-				/*
-					In this case we should do the following:
-					1. Find all types, which implement this interface
-					2. Make this type depend from all these types
-					3.
-				*/
-				if at.Kind() == reflect.Interface {
-					// go over all dependencies
-					for i := 0; i < len(e.graph.Vertices); i++ {
-						if reflect.TypeOf(e.graph.Vertices[i].Iface).Implements(at) {
-							tmpIsRef := isReference(at)
-							tmpValue := reflect.ValueOf(e.graph.Vertices[i].Iface)
-							e.graph.Vertices[i].AddProvider(removePointerAsterisk(atStr), tmpValue, tmpIsRef, at.Kind())
-						}
-					}
-				}
-				// if we found, that some structure depends on some type
-				// we also save it in the `depends` section
-				// name s1 (for example)
-				// vertex - S4 func
-
-				// we store pointer in the Deps structure in the isRef field
-				err = e.graph.AddDep(vertexID, removePointerAsterisk(atStr), Collects, isReference(at), at.Kind())
-				if err != nil {
-					return errors.E(Op, err)
-				}
-				e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vertexID), zap.String("depends", atStr))
-			}
-
-			// get the Vertex from the graph (gVertex)
-			gVertex := e.graph.GetVertex(vertexID)
-			if gVertex.Provides == nil {
-				gVertex.Provides = make(map[string]ProvidedEntry)
-			}
-
-			if gVertex.Meta.FnsCollectorToInvoke == nil {
-				gVertex.Meta.FnsCollectorToInvoke = make([]string, 0, 5)
-			}
-
-			e.logger.Debug("appending collector function to invoke later", zap.String("vertex id", vertexID), zap.String("function name", getFunctionName(fn)))
-
-			gVertex.Meta.FnsCollectorToInvoke = append(gVertex.Meta.FnsCollectorToInvoke, getFunctionName(fn))
 		}
 	}
 
