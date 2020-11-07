@@ -64,7 +64,7 @@ The start will proceed in topological order (`Logger` -> `DB` -> `HTTP`), and th
 package sample
 
 type (
-	// this is the main service interface with should implement every plugin
+	// This is the main Endure service interface which may be implemented to Start (Serve) and Stop plugin (OPTIONAL)
 	Service interface {
 		// Serve
 		Serve() chan error
@@ -72,21 +72,28 @@ type (
 		Stop() error
 	}
 
-	// Name of the service
+	// Name of the service (OPTIONAL)
 	Named interface {
 		Name() string
 	}
 
-	// Provider declares the ability to provide service edges of declared types.
+	// Provider declares the ability to provide dependencies to other plugins (OPTIONAL)
 	Provider interface {
 		Provides() []interface{}
 	}
 
-	// Collector declares the ability to accept the plugins which match the provided method signature.
+	// Collector declares the ability to accept the plugins which match the provided method signature (OPTIONAL)
 	Collector interface {
 		Collects() []interface{}
 	}
 )  
+
+// Init is mandatory to implement
+type Plugin struct{}
+
+func (p *Plugin) Init(/* deps here */) error {
+	return nil
+}
 ```
 Order is the following:
 1. `Init() error` - is mandatory to implement. In your structure (which you pass to Endure), you should have this method as a receiver. It can accept as parameter any passed to the `Endure` structure (see samples) or interface (with limitations).  
