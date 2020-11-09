@@ -46,7 +46,7 @@ jobs:
           files: backoff.txt, happy_scenarios.txt, interfaces.txt, issues.txt, stress.txt, disabled_vertices.txt
           flags: unittests
           name: codecov-umbrella
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           verbose: true
 
   golangci-check:
