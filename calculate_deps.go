@@ -76,7 +76,7 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 				IsReference: &tmpIsRef,
 				Value:       &tmpValue,
 			}
-			return nil
+			continue
 		}
 
 		// just init map value

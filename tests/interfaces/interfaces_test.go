@@ -13,6 +13,7 @@ import (
 	"github.com/spiral/endure/tests/interfaces/plugins/plugin3"
 	"github.com/spiral/endure/tests/interfaces/plugins/plugin4"
 	"github.com/spiral/endure/tests/interfaces/plugins/plugin5"
+	"github.com/spiral/endure/tests/interfaces/plugins/plugin6"
 	notImplPlugin1 "github.com/spiral/endure/tests/interfaces/service/not_implemented_service/plugin1"
 	notImplPlugin2 "github.com/spiral/endure/tests/interfaces/service/not_implemented_service/plugin2"
 	"github.com/stretchr/testify/assert"
@@ -126,4 +127,33 @@ func TestEndure_ServiceInterface_NotImplemented_Ok(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Stop())
+}
+
+func Endure_MultiplyProvidesSameInterface(t *testing.T) {
+	c, err := endure.NewContainer(nil)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&plugin6.Plugin{}))
+	assert.NoError(t, c.Register(&plugin6.Plugin2{}))
+	err = c.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
+
+	go func() {
+		for r := range res {
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	assert.NoError(t, c.Stop())
+	time.Sleep(time.Second * 1)
 }
