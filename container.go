@@ -1,12 +1,12 @@
 package endure
 
-// InitMethodName is the function name for the reflection
+// InitMethodName is the function fn for the reflection
 const InitMethodName = "Init"
 
-// ServeMethodName is the function name for the Serve
+// ServeMethodName is the function fn for the Serve
 const ServeMethodName = "Serve"
 
-// StopMethodName is the function name for the reflection to Stop the service
+// StopMethodName is the function fn for the reflection to Stop the service
 const StopMethodName = "Stop"
 
 // Result is the information which endure send to the user

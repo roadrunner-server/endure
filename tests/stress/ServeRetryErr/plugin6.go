@@ -12,7 +12,7 @@ type DBServeErr struct {
 type S2ServeErr struct {
 }
 
-func (s2 *S2ServeErr) Init(svc S4) error {
+func (s2 *S2ServeErr) Init(svc *S4) error {
 	s := rand.Intn(10)
 	// just random
 	if s == 5 {

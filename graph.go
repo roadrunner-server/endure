@@ -14,9 +14,17 @@ const (
 	Collects
 )
 
+type Vertices []*Vertex
+
 type disabler interface {
 	// DisableById used to disable all vertices in which dependencies presents passed vertex id
 	DisableById(vertexId string)
+}
+
+type key struct {
+	t reflect.Type
+
+	name string
 }
 
 // manages the set of services and their edges
@@ -26,6 +34,9 @@ type Graph struct {
 	VerticesMap map[string]*Vertex
 	// List of all Vertices
 	Vertices []*Vertex
+
+	providers map[string]reflect.Value
+	values    map[key]reflect.Value
 }
 
 // Meta information included into the Vertex
@@ -38,7 +49,7 @@ type Meta struct {
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
 	FnsProviderToInvoke []ProviderEntry
 	// FnsCollectorToInvoke is the function names to invoke if type implements Collector() interface
-	FnsCollectorToInvoke []string
+	FnsCollectorToInvoke []CollectorProvider
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
@@ -46,7 +57,17 @@ type Meta struct {
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Collects() method
-	CollectsDepsToInvoke []Entry
+	CollectsDepsToInvoke map[string][]Entry
+}
+
+type CollectorProvider struct {
+	in []In
+	fn string
+}
+
+type In struct {
+	in  reflect.Value
+	dep string
 }
 
 type ProviderEntry struct {
@@ -66,7 +87,7 @@ type Entry struct {
 // since we can have cyclic dependencies
 // when we traverse the VerticesMap, we should mark nodes as visited or not to detect cycle
 type Vertex struct {
-	// ID of the vertex, currently string representation of the structure name
+	// ID of the vertex, currently string representation of the structure fn
 	ID string
 	// Vertex (Registered structure)
 	Iface interface{}
@@ -92,7 +113,7 @@ type ProvidedEntry struct {
 	Str string
 	// we need to distinguish false (default bool value) and nil --> we don't know information about reference
 	IsReference *bool
-	Value       *reflect.Value
+	Value       reflect.Value
 	Kind        reflect.Kind
 }
 
@@ -104,9 +125,13 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 	v.Provides[valueKey] = ProvidedEntry{
 		Str:         valueKey,
 		IsReference: &isRef,
-		Value:       &value,
+		Value:       value,
 		Kind:        kind,
 	}
+}
+
+func (v *Vertex) RemoveProvider(valueKey string) {
+	delete(v.Provides, valueKey)
 }
 
 func (v *Vertex) SetState(st State) {
@@ -145,7 +170,13 @@ func (g *Graph) disablerHelper(vertex *Vertex, disabled *Vertex) bool {
 func NewGraph() *Graph {
 	return &Graph{
 		VerticesMap: make(map[string]*Vertex),
+		providers:   make(map[string]reflect.Value),
+		values:      make(map[key]reflect.Value),
 	}
+}
+
+func (g *Graph) AddGlobalProvider(providedId string, val reflect.Value) {
+	g.providers[providedId] = val
 }
 
 func (g *Graph) HasVertex(name string) bool {
@@ -185,9 +216,14 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 
 	// here can be a lot of deps
 	depVertices := g.FindProviders(depID)
-
 	if depVertices == nil {
 		return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID)
+	}
+
+	for i := 0; i < len(depVertices); i++ {
+		if depVertices[i].ID == vertexID {
+			depVertices = append(depVertices[:i], depVertices[i+1:]...)
+		}
 	}
 
 	for i := 0; i < len(depVertices); i++ {
@@ -196,11 +232,12 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 		// because we should know Init method parameters for every Vertex
 		// for example, we should know http.Middleware dependency and later invoke all types which it implement
 		// OR know Collects methods to invoke
-		g.addToList(method, vertex, depID, isRef, depVertices[i].ID, reflect.Interface)
+		if g.addToList(method, vertex, depID, isRef, depVertices[i].ID, reflect.Interface) == false {
+			return nil
+		}
 
-		// append depID vertex
 		for j := 0; j < len(depVertices[i].Dependencies); j++ {
-			tmpID := depVertices[i].Dependencies[i].ID
+			tmpID := depVertices[i].Dependencies[j].ID
 			if tmpID == vertex.ID {
 				return nil
 			}
@@ -213,7 +250,7 @@ func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool)
 }
 
 // Add meta information to the InitDepsToInvoke or CollectsDepsToInvoke
-func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool, refId string, kind reflect.Kind) {
+func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool, refId string, kind reflect.Kind) bool {
 	switch method {
 	case Init:
 		if vertex.Meta.InitDepsToInvoke == nil {
@@ -227,8 +264,9 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool,
 		})
 	case Collects:
 		if vertex.Meta.CollectsDepsToInvoke == nil {
-			vertex.Meta.CollectsDepsToInvoke = make([]Entry, 0, 1)
-			vertex.Meta.CollectsDepsToInvoke = append(vertex.Meta.CollectsDepsToInvoke, Entry{
+			vertex.Meta.CollectsDepsToInvoke = make(map[string][]Entry)
+
+			vertex.Meta.CollectsDepsToInvoke[refId] = append(vertex.Meta.CollectsDepsToInvoke[refId], Entry{
 				RefId:       refId,
 				Name:        depID,
 				IsReference: &isRef,
@@ -236,20 +274,25 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool,
 			})
 		} else {
 			// search if CollectsDepsToInvoke already contains interface dep
-			for _, v := range vertex.Meta.CollectsDepsToInvoke {
-				if v.Name == depID {
-					continue
-				}
+			//for _, v := range vertex.Meta.CollectsDepsToInvoke {
+			//if v.Name == depID {
+			//	continue
+			//}
 
-				vertex.Meta.CollectsDepsToInvoke = append(vertex.Meta.CollectsDepsToInvoke, Entry{
-					RefId:       refId,
-					Name:        depID,
-					IsReference: &isRef,
-					Kind:        kind,
-				})
+			if _, ok := vertex.Meta.CollectsDepsToInvoke[refId]; ok {
+				return false
 			}
+
+			vertex.Meta.CollectsDepsToInvoke[refId] = append(vertex.Meta.CollectsDepsToInvoke[refId], Entry{
+				RefId:       refId,
+				Name:        depID,
+				IsReference: &isRef,
+				Kind:        kind,
+			})
+			//}
 		}
 	}
+	return true
 }
 
 func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) error {
@@ -346,18 +389,6 @@ func (g *Graph) FindProviders(depID string) []*Vertex {
 		}
 	}
 	return ret
-}
-
-type Vertices []*Vertex
-
-func (v Vertices) Len() int {
-	return len(v)
-}
-func (v Vertices) Less(i, j int) bool {
-	return v[i].Meta.Order < v[j].Meta.Order
-}
-func (v Vertices) Swap(i, j int) {
-	v[i], v[j] = v[j], v[i]
 }
 
 func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {

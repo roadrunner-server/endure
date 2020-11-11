@@ -59,7 +59,7 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 				We need return type to filter it in Init call, because in Init we may have one struct which returns
 				two different types.
 			*/
-			FunctionName: getFunctionName(fn), // function name to invoke
+			FunctionName: getFunctionName(fn), // function fn to invoke
 			ReturnTypeId: typeStr,             // return type ID
 		})
 
@@ -74,7 +74,7 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 			tmpIsRef := isReference(ret)
 			v.Provides[typeStr] = ProvidedEntry{
 				IsReference: &tmpIsRef,
-				Value:       &tmpValue,
+				Value:       tmpValue,
 			}
 			continue
 		}
@@ -82,7 +82,7 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 		// just init map value
 		v.Provides[typeStr] = ProvidedEntry{
 			IsReference: nil,
-			Value:       nil,
+			//Value:       nil,
 		}
 	}
 	return nil
@@ -98,69 +98,204 @@ func (e *Endure) addCollectorsDeps(vertexID string, vertex interface{}) error {
 	return e.implCollectorPath(vertexID, vertex)
 }
 
+func (e *Endure) walk(params []reflect.Type, v *Vertex, index int) bool {
+	onlyStructs := true
+	for _, param := range params {
+		if param.Kind() == reflect.Interface {
+			onlyStructs = false
+			if reflect.TypeOf(v.Iface).Implements(param) {
+				continue
+			}
+			return false
+		} else {
+			continue
+		}
+	}
+
+	if onlyStructs {
+		return false
+	}
+	return true
+
+	//// reach the end, everything is fine
+	//if index == len(params) {
+	//	return true
+	//}
+	//// interface
+	//if params[index].Kind() == reflect.Interface {
+	//	if reflect.TypeOf(v.Iface).Implements(params[index]) {
+	//		index++
+	//		return e.walk(params, v, index)
+	//	} else {
+	//		return false
+	//	}
+	//	// structure in parameters, just walk over
+	//} else {
+	//	index++
+	//	return e.walk(params, v, index)
+	//}
+}
+
 func (e *Endure) implCollectorPath(vertexID string, vertex interface{}) error {
 	const op = errors.Op("add_collectors_deps")
 	collector := vertex.(Collector)
+	// range Collectors functions
 	for _, fn := range collector.Collects() {
+		haveInterfaceDeps := false
 		// what type it might depend on?
-		argsTypes, err := argType(fn)
+		params, err := paramsList(fn)
 		if err != nil {
 			return errors.E(op, err)
 		}
 
-		// we already checked argsTypes len
-		for _, at := range argsTypes {
-			// check if type is primitive type
-			if isPrimitive(at.String()) {
-				e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", at.String()))
-			}
-			atStr := at.String()
-			if vertexID == atStr {
+		compatible := make(Vertices, 0, len(params))
+
+		// check if we have Interface deps in the params
+		// filter out interfaces, leave only structs
+		for i := 0; i < len(e.graph.Vertices); i++ {
+			// skip self
+			if e.graph.Vertices[i].ID == vertexID {
 				continue
 			}
-			// depends at interface via Collectors
-			/*
-				In this case we should do the following:
-				1. Find all types, which implement this interface
-				2. Make this type depend from all these types
-				3.
-			*/
-			if at.Kind() == reflect.Interface {
-				// go over all dependencies
-				for i := 0; i < len(e.graph.Vertices); i++ {
-					if reflect.TypeOf(e.graph.Vertices[i].Iface).Implements(at) {
-						tmpIsRef := isReference(at)
-						tmpValue := reflect.ValueOf(e.graph.Vertices[i].Iface)
-						e.graph.Vertices[i].AddProvider(removePointerAsterisk(atStr), tmpValue, tmpIsRef, at.Kind())
-					}
+			if e.walk(params, e.graph.Vertices[i], 0) == true {
+				compatible = append(compatible, e.graph.Vertices[i])
+				// set, that we have interface deps
+				haveInterfaceDeps = true
+			}
+		}
+		// traverse
+		if haveInterfaceDeps {
+			for _, compat := range compatible {
+				// add vertex itself
+				cp := CollectorProvider{
+					in: make([]In, 0, 0),
+					fn: getFunctionName(fn),
 				}
+				cp.in = append(cp.in, In{
+					in:  reflect.ValueOf(vertex),
+					dep: vertexID,
+				})
+
+				for _, param := range params {
+					// check if type is primitive type
+					if isPrimitive(param.String()) {
+						e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", param.String()))
+					}
+
+					atStr := param.String()
+					if vertexID == atStr {
+						continue
+					}
+
+					dep := e.graph.FindProviders(removePointerAsterisk(atStr))
+					if len(dep) == 1 {
+						tmpIsRef := isReference(param)
+						tmpValue := reflect.ValueOf(dep[0].Iface)
+						e.graph.AddGlobalProvider(removePointerAsterisk(atStr), tmpValue)
+						e.graph.VerticesMap[dep[0].ID].AddProvider(removePointerAsterisk(atStr), tmpValue, tmpIsRef, param.Kind())
+
+						err = e.graph.AddDep(vertexID, removePointerAsterisk(atStr), Collects, isReference(param), param.Kind())
+						if err != nil {
+							return errors.E(op, err)
+						}
+
+						e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vertexID), zap.String("depends", atStr))
+						continue
+					}
+
+					if param.Kind() == reflect.Ptr {
+						if param.Elem().Kind() == reflect.Struct {
+							dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
+							if dep == nil {
+								panic("can't find provider")
+							}
+
+							cp.in = append(cp.in, In{
+								in:  reflect.ValueOf(dep.Iface),
+								dep: dep.ID,
+							})
+						}
+					} else if param.Kind() == reflect.Interface {
+						cp.in = append(cp.in, In{
+							in:  reflect.ValueOf(compat.Iface),
+							dep: compat.ID,
+						})
+					} else if param.Kind() == reflect.Struct {
+						dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
+						if dep == nil {
+							panic("can't find provider")
+						}
+
+						cp.in = append(cp.in, In{
+							in:  reflect.ValueOf(dep.Iface),
+							dep: dep.ID,
+						})
+					}
+
+				}
+				v := e.graph.GetVertex(vertexID)
+				v.Meta.FnsCollectorToInvoke = append(v.Meta.FnsCollectorToInvoke, cp)
 			}
-			// if we found, that some structure depends on some type
-			// we also save it in the `depends` section
-			// name s1 (for example)
-			// vertex - S4 func
-
-			// we store pointer in the Deps structure in the isRef field
-			err = e.graph.AddDep(vertexID, removePointerAsterisk(atStr), Collects, isReference(at), at.Kind())
-			if err != nil {
-				return errors.E(op, err)
+		} else {
+			cp := CollectorProvider{
+				in: make([]In, 0, 0),
+				fn: getFunctionName(fn),
 			}
-			e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vertexID), zap.String("depends", atStr))
+			cp.in = append(cp.in, In{
+				in:  reflect.ValueOf(vertex),
+				dep: vertexID,
+			})
+
+			for _, param := range params {
+				// check if type is primitive type
+				if isPrimitive(param.String()) {
+					e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", param.String()))
+				}
+
+				// skip self
+				paramStr := param.String()
+				if vertexID == paramStr {
+					continue
+				}
+
+				dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
+				if dep == nil {
+					depIds := e.graph.FindProviders(removePointerAsterisk(paramStr))
+					if len(depIds) == 0 {
+						panic("can't find provider for dep")
+					}
+					dep = depIds[0]
+					for k, v := range dep.Provides {
+						if k == removePointerAsterisk(paramStr) {
+							cp.in = append(cp.in, In{
+								in:  reflect.Zero(reflect.TypeOf(v)),
+								dep: k,
+							})
+						}
+					}
+				} else {
+					cp.in = append(cp.in, In{
+						in:  reflect.ValueOf(dep.Iface),
+						dep: dep.ID,
+					})
+				}
+
+				tmpIsRef := isReference(param)
+				tmpValue := reflect.ValueOf(dep.Iface)
+				e.graph.AddGlobalProvider(removePointerAsterisk(paramStr), tmpValue)
+				e.graph.VerticesMap[dep.ID].AddProvider(removePointerAsterisk(paramStr), tmpValue, tmpIsRef, param.Kind())
+
+				err = e.graph.AddDep(vertexID, removePointerAsterisk(paramStr), Collects, isReference(param), param.Kind())
+				if err != nil {
+					return errors.E(op, err)
+				}
+
+				e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vertexID), zap.String("depends", paramStr))
+			}
+
+			v := e.graph.GetVertex(vertexID)
+			v.Meta.FnsCollectorToInvoke = append(v.Meta.FnsCollectorToInvoke, cp)
 		}
-
-		// get the Vertex from the graph (v)
-		v := e.graph.GetVertex(vertexID)
-		if v.Provides == nil {
-			v.Provides = make(map[string]ProvidedEntry)
-		}
-
-		if v.Meta.FnsCollectorToInvoke == nil {
-			v.Meta.FnsCollectorToInvoke = make([]string, 0, 5)
-		}
-
-		e.logger.Debug("appending collector function to invoke later", zap.String("vertex id", vertexID), zap.String("function name", getFunctionName(fn)))
-
-		v.Meta.FnsCollectorToInvoke = append(v.Meta.FnsCollectorToInvoke, getFunctionName(fn))
 	}
 	return nil
 }
@@ -184,7 +319,7 @@ func (e *Endure) addEdges() error {
 		1. vertexID
 		2. Vertex structure value (interface)
 		3. Provided type
-		4. Provided type String name
+		4. Provided type String fn
 		5. FunctionName of the dependencies which we should found
 		We add 3 and 4 points to the Vertex
 		*/
@@ -233,6 +368,7 @@ func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
 					}
 					tmpIsRef := isReference(initArg)
 					tmpValue := reflect.ValueOf(e.graph.Vertices[i].Iface)
+					e.graph.AddGlobalProvider(removePointerAsterisk(initArg.String()), tmpValue)
 					e.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
 				}
 			}

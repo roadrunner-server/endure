@@ -4,7 +4,7 @@ type S4 struct {
 }
 
 // No deps
-func (s *S4) Init(foo5 S5) error {
+func (s *S4) Init(foo5 *S5) error {
 	return nil
 }
 

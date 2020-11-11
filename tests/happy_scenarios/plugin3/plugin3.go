@@ -14,12 +14,12 @@ func (s3 *S3) Collects() []interface{} {
 	}
 }
 
-func (s3 *S3) SomeOtherDep(svc *plugin4.S4, svc2 plugin2.S2) error {
+func (s3 *S3) SomeOtherDep(svc *plugin4.S4, svc2 *plugin2.S2) error {
 	return nil
 }
 
 // Collects on S3
-func (s3 *S3) Init(svc plugin2.S2) error {
+func (s3 *S3) Init(svc *plugin2.S2) error {
 	return nil
 }
 

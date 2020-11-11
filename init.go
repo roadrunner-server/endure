@@ -84,29 +84,60 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
 			2. if value already exists, AddProvider will replace it with new one
 		*/
 		vertex.AddProvider(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()), in[0].Kind())
+		e.graph.AddGlobalProvider(removePointerAsterisk(in[0].Type().String()), in[0])
 		e.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("parameter", in[0].Type().String()))
 	} else {
 		e.logger.Error("0 or less parameters for Init", zap.String("vertex id", vertex.ID))
 		return errors.E(op, errors.ArgType, errors.Str("0 or less parameters for Init"))
 	}
 
-	if len(vertex.Meta.CollectsDepsToInvoke) > 0 {
-		for i := 0; i < len(vertex.Meta.CollectsDepsToInvoke); i++ {
-			// Interface dependency
-			if vertex.Meta.CollectsDepsToInvoke[i].Kind == reflect.Interface {
-				err = e.traverseCallCollectorsInterface(vertex)
-				if err != nil {
-					return errors.E(op, errors.Traverse, err)
+	//entries := make([]Entry, 0, 0)
+
+	if len(vertex.Meta.FnsCollectorToInvoke) > 0 {
+		for i := 0; i < len(vertex.Meta.FnsCollectorToInvoke); i++ {
+			// try to find nil IN args and get it from global
+			for j := 0; j < len(vertex.Meta.FnsCollectorToInvoke[i].in); j++ {
+				if vertex.Meta.FnsCollectorToInvoke[i].in[j].in.IsZero() {
+					ddd, ok := e.graph.providers[vertex.Meta.FnsCollectorToInvoke[i].in[j].dep]
+					if !ok {
+						panic("not ok")
+					}
+					vertex.Meta.FnsCollectorToInvoke[i].in[j].in = ddd
 				}
-			} else {
-				// structure dependence
-				err = e.traverseCallCollectors(vertex)
-				if err != nil {
-					return errors.E(op, errors.Traverse, err)
-				}
+			}
+
+			in := make([]reflect.Value, 0, len(vertex.Meta.FnsCollectorToInvoke[i].in))
+			for _, v := range vertex.Meta.FnsCollectorToInvoke[i].in {
+				in = append(in, v.in)
+			}
+			err = e.callCollectorFns(vertex, in, vertex.Meta.FnsCollectorToInvoke[i].fn)
+			if err != nil {
+				return errors.E(op, errors.Traverse, err)
 			}
 		}
 	}
+	//if len(vertex.Meta.CollectsDepsToInvoke) > 0 {
+	//	entries = append(entries)
+	//for _, v := range vertex.Meta.CollectsDepsToInvoke {
+	//for i := 0; i < len(v); i++ {
+
+	// Interface dependency
+	//if v[i].Kind == reflect.Interface {
+	//	err = e.traverseCallCollectorsInterface(vertex)
+	//	if err != nil {
+	//		return errors.E(op, errors.Traverse, err)
+	//	}
+	//} else {
+	//	// structure dependence
+	//	err = e.traverseCallCollectors(vertex)
+	//	if err != nil {
+	//		return errors.E(op, errors.Traverse, err)
+	//	}
+	//}
+	//}
+	//}
+	//}
+
 	return nil
 }
 

@@ -25,7 +25,7 @@ func (f *FooDep) Collects() []interface{} {
 	}
 }
 
-func (f *FooDep) AddService(dep2 FooDep2) error {
+func (f *FooDep) AddService(dep2 *FooDep2) error {
 	return errors.New("test collectors error")
 }
 

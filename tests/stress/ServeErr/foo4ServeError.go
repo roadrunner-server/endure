@@ -10,7 +10,7 @@ type S4ServeError struct {
 }
 
 // No deps
-func (s *S4ServeError) Init(s5 S5) error {
+func (s *S4ServeError) Init(s5 *S5) error {
 	return nil
 }
 

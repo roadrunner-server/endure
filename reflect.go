@@ -27,8 +27,8 @@ func providersReturnType(m interface{}) (reflect.Type, error) {
 	return r.Out(0), nil
 }
 
-func argType(m interface{}) ([]reflect.Type, error) {
-	const op = errors.Op("arg_type")
+func paramsList(m interface{}) ([]reflect.Type, error) {
+	const op = errors.Op("parameters list get")
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
 		return nil, errors.E(op, errors.ArgType, errors.Errorf("unable to reflect `%s`, expected func", r.String()))
@@ -63,10 +63,10 @@ func getFunctionName(i interface{}) string {
 	/* This seems to have become -fm on tip, by the way.
 
 	Your code is getting a method value. p.beHappy is the beHappy method bound to the specific value of p.
-	That is implemented by creating a function closure, and the code for that closure needs a name.
-	The compiler happens to make that name by sticking fm on the end,
-	but it could be anything that won't conflict with any other function name.
-	There isn't any way to name that function in Go, so the name is irrelevant for anything other than the debugger or, as you see, FuncForPC.
+	That is implemented by creating a function closure, and the code for that closure needs a fn.
+	The compiler happens to make that fn by sticking fm on the end,
+	but it could be anything that won't conflict with any other function fn.
+	There isn't any way to fn that function in Go, so the fn is irrelevant for anything other than the debugger or, as you see, FuncForPC.
 
 	In the reflection, we would have this suffix
 	*/

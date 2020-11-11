@@ -39,7 +39,7 @@ func (s *S4) Collects() []interface{} {
 	}
 }
 
-func (s *S4) AddService(svc plugin5.S5) error {
+func (s *S4) AddService(svc *plugin5.S5) error {
 	return nil
 }
 

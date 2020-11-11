@@ -9,12 +9,12 @@ func (s3 *S3ServeError) Collects() []interface{} {
 	}
 }
 
-func (s3 *S3ServeError) SomeOtherDep(svc *S4ServeError, svc2 S2) error {
+func (s3 *S3ServeError) SomeOtherDep(svc *S4ServeError, svc2 *S2) error {
 	return nil
 }
 
 // Collects on S3
-func (s3 *S3ServeError) Init(svc S2) error {
+func (s3 *S3ServeError) Init(svc *S2) error {
 	return nil
 }
 

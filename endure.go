@@ -18,11 +18,11 @@ import (
 var order int = 1
 
 const (
-	// InitializeMethodName is the method name to invoke in transition map
+	// InitializeMethodName is the method fn to invoke in transition map
 	InitializeMethodName = "Initialize"
-	// StartMethodName is the method name to invoke in transition map
+	// StartMethodName is the method fn to invoke in transition map
 	StartMethodName = "Start"
-	// ShutdownMethodName is the method name to invoke in transition map
+	// ShutdownMethodName is the method fn to invoke in transition map
 	ShutdownMethodName = "Shutdown"
 )
 
@@ -271,7 +271,7 @@ func (e *Endure) Register(vertex interface{}) error {
 	1. vertexID
 	2. Vertex structure value (interface)
 	3. Provided type
-	4. Provided type String name
+	4. Provided type String fn
 	We add 3 and 4 points to the Vertex
 	*/
 	err = e.addProviders(vertexID, vertex)
@@ -313,7 +313,7 @@ func (e *Endure) Stop() error {
 }
 
 // Initialize used to add edges between vertices, sort graph topologically
-// Do not change this method name, sync with constants in the beginning of this file
+// Do not change this method fn, sync with constants in the beginning of this file
 func (e *Endure) Initialize() error {
 	const op = errors.Op("Init")
 	// traverse the graph
@@ -366,7 +366,7 @@ func (e *Endure) Initialize() error {
 }
 
 // Start used to start serving vertices
-// Do not change this method name, sync with constants in the beginning of this file
+// Do not change this method fn, sync with constants in the beginning of this file
 func (e *Endure) Start() (<-chan *Result, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -402,7 +402,7 @@ func (e *Endure) Start() (<-chan *Result, error) {
 }
 
 // Shutdown used to shutdown the Endure
-// Do not change this method name, sync with constants in the beginning of this file
+// Do not change this method fn, sync with constants in the beginning of this file
 func (e *Endure) Shutdown() error {
 	e.logger.Info("exiting from the Endure")
 	n := e.runList.Head

@@ -15,7 +15,7 @@ func (s3 *S3) Collects() []interface{} {
 	}
 }
 
-func (s3 *S3) SomeOtherDep(svc *S4, svc2 S2) error {
+func (s3 *S3) SomeOtherDep(svc *S4, svc2 *S2) error {
 	return nil
 }
 
@@ -42,7 +42,7 @@ func (s3 *S3Init) Collects() []interface{} {
 	}
 }
 
-func (s3 *S3Init) SomeOtherDep(svc *S4, svc2 S2) error {
+func (s3 *S3Init) SomeOtherDep(svc *S4, svc2 *S2) error {
 	return nil
 }
 
