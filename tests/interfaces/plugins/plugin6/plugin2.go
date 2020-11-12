@@ -16,3 +16,7 @@ func (p *Plugin2) Serve() chan error {
 func (p *Plugin2) Stop() error {
 	return nil
 }
+
+func (p *Plugin2) Name() string {
+	return "Plugin2"
+}

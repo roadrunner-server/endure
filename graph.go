@@ -49,7 +49,7 @@ type Meta struct {
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
 	FnsProviderToInvoke []ProviderEntry
 	// FnsCollectorToInvoke is the function names to invoke if type implements Collector() interface
-	FnsCollectorToInvoke []CollectorProvider
+	FnsCollectorToInvoke []CollectorEntry
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
@@ -60,7 +60,7 @@ type Meta struct {
 	CollectsDepsToInvoke map[string][]Entry
 }
 
-type CollectorProvider struct {
+type CollectorEntry struct {
 	in []In
 	fn string
 }

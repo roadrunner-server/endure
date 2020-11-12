@@ -40,6 +40,12 @@ func (p *Plugin) ProvideWithName(named endure.Named) (SuperInterface, error) {
 	return NewSomeOtherStruct(), nil
 }
 
+func (p *Plugin) ProvideWithInterfaceAndStruct(named endure.Named, p3 *Plugin3) (SuperInterface, error) {
+	println("this is the case, when we need the name and struct")
+	println(p3.Boo())
+	return NewSomeOtherStruct(), nil
+}
+
 func (p *Plugin) ProvideWithOutName() (SuperInterface, error) {
 	println("this is the case, when we don't need the name")
 	return NewSomeOtherStruct(), nil
@@ -48,7 +54,8 @@ func (p *Plugin) ProvideWithOutName() (SuperInterface, error) {
 // Provides declares factory methods.
 func (p *Plugin) Provides() []interface{} {
 	return []interface{}{
-		p.ProvideWithName,
 		p.ProvideWithOutName,
+		p.ProvideWithName,
+		p.ProvideWithInterfaceAndStruct,
 	}
 }

@@ -35,7 +35,7 @@ Here we also track the Disabled vertices. If the vertex is disabled we should re
 
 */
 func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
-	const op = errors.Op("internal_call_init_function")
+	const op = errors.Op("call init and collects")
 	if vertex.GetState() != Initializing {
 		return errors.E("vertex should be in Initializing state")
 	}
@@ -91,18 +91,17 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
 		return errors.E(op, errors.ArgType, errors.Str("0 or less parameters for Init"))
 	}
 
-	//entries := make([]Entry, 0, 0)
-
 	if len(vertex.Meta.FnsCollectorToInvoke) > 0 {
 		for i := 0; i < len(vertex.Meta.FnsCollectorToInvoke); i++ {
 			// try to find nil IN args and get it from global
 			for j := 0; j < len(vertex.Meta.FnsCollectorToInvoke[i].in); j++ {
 				if vertex.Meta.FnsCollectorToInvoke[i].in[j].in.IsZero() {
-					ddd, ok := e.graph.providers[vertex.Meta.FnsCollectorToInvoke[i].in[j].dep]
+					global, ok := e.graph.providers[vertex.Meta.FnsCollectorToInvoke[i].in[j].dep]
 					if !ok {
-						panic("not ok")
+						e.logger.Error("can't find in arg to Call Collects on the vertex", zap.String("vertex id", vertex.ID))
+						return errors.E(op, errors.Errorf("vertex id: %s", vertex.ID))
 					}
-					vertex.Meta.FnsCollectorToInvoke[i].in[j].in = ddd
+					vertex.Meta.FnsCollectorToInvoke[i].in[j].in = global
 				}
 			}
 
@@ -116,28 +115,6 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
 			}
 		}
 	}
-	//if len(vertex.Meta.CollectsDepsToInvoke) > 0 {
-	//	entries = append(entries)
-	//for _, v := range vertex.Meta.CollectsDepsToInvoke {
-	//for i := 0; i < len(v); i++ {
-
-	// Interface dependency
-	//if v[i].Kind == reflect.Interface {
-	//	err = e.traverseCallCollectorsInterface(vertex)
-	//	if err != nil {
-	//		return errors.E(op, errors.Traverse, err)
-	//	}
-	//} else {
-	//	// structure dependence
-	//	err = e.traverseCallCollectors(vertex)
-	//	if err != nil {
-	//		return errors.E(op, errors.Traverse, err)
-	//	}
-	//}
-	//}
-	//}
-	//}
-
 	return nil
 }
 

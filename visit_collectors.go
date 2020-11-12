@@ -35,6 +35,5 @@ func (e *Endure) callCollectorFns(vertex *Vertex, in []reflect.Value, methodName
 		}
 
 	}
-	//}
 	return nil
 }
