@@ -127,7 +127,7 @@ func (e *Endure) findInitParameters(vertex *Vertex) ([]reflect.Value, error) {
 
 	// add dependencies
 	if len(vertex.Meta.InitDepsToInvoke) > 0 {
-		for depID, _ := range vertex.Meta.InitDepsToInvoke {
+		for depID := range vertex.Meta.InitDepsToInvoke {
 			fnReceiver := e.graph.VerticesMap[depID]
 			calleeVertexId := vertex.ID
 			err := e.traverseProviders(fnReceiver, calleeVertexId)
@@ -136,19 +136,13 @@ func (e *Endure) findInitParameters(vertex *Vertex) ([]reflect.Value, error) {
 			}
 		}
 
+		// TODO algorithm of minimum compatibility
 		for _, o := range vertex.Meta.InitDepsOrd {
 			entries := vertex.Meta.InitDepsToInvoke[o]
 			for i := 0; i < len(entries); i++ {
 				in = append(in, e.graph.providers[entries[i].Name])
 			}
 		}
-
-		//add values from global providers
-		//for _, entries := range vertex.Meta.InitDepsToInvoke {
-		//	for i := 0; i < len(entries); i++ {
-		//		in = append(in, e.graph.providers[entries[i].Name])
-		//	}
-		//}
 	}
 
 	return in, nil

@@ -16,17 +16,6 @@ const (
 
 type Vertices []*Vertex
 
-type disabler interface {
-	// DisableById used to disable all vertices in which dependencies presents passed vertex id
-	DisableById(vertexId string)
-}
-
-type key struct {
-	t reflect.Type
-
-	name string
-}
-
 // manages the set of services and their edges
 // type of the VerticesMap: directed
 type Graph struct {
@@ -36,7 +25,6 @@ type Graph struct {
 	Vertices []*Vertex
 
 	providers map[string]reflect.Value
-	values    map[key]reflect.Value
 }
 
 type ProviderEntries []ProviderEntry
@@ -82,8 +70,6 @@ type FnsToCall [][]string
 
 func (pe *ProviderEntries) Merge() FnsToCall {
 	res := make(FnsToCall, len(*pe), len(*pe))
-	type Ids []string
-	type Ids2 []string
 	hash := make(map[[10]string][]string)
 	for i := 0; i < len(*pe); i++ {
 		arr := [10]string{}
@@ -202,7 +188,6 @@ func NewGraph() *Graph {
 	return &Graph{
 		VerticesMap: make(map[string]*Vertex),
 		providers:   make(map[string]reflect.Value),
-		values:      make(map[key]reflect.Value),
 	}
 }
 
@@ -321,7 +306,6 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool,
 			if !contains {
 				vertex.Meta.InitDepsOrd = append(vertex.Meta.InitDepsOrd, refId)
 			}
-
 		} else {
 			if _, ok := vertex.Meta.CollectsDepsToInvoke[refId]; ok {
 				return false

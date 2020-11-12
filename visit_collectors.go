@@ -33,7 +33,6 @@ func (e *Endure) callCollectorFns(vertex *Vertex, in []reflect.Value, methodName
 		} else {
 			return errors.E(op, errors.FunctionCall, errors.Str("collector should return Value and error types"))
 		}
-
 	}
 	return nil
 }

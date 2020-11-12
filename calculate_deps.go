@@ -93,7 +93,6 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 		}
 
 		v.Meta.FnsProviderToInvoke = append(v.Meta.FnsProviderToInvoke, pe)
-
 	}
 	return nil
 }
@@ -195,7 +194,8 @@ func (e *Endure) implCollectorPath(vertexID string, vertex interface{}) error {
 						continue
 					}
 
-					if param.Kind() == reflect.Ptr {
+					switch param.Kind() {
+					case reflect.Ptr:
 						if param.Elem().Kind() == reflect.Struct {
 							dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
 							if dep == nil {
@@ -207,12 +207,12 @@ func (e *Endure) implCollectorPath(vertexID string, vertex interface{}) error {
 								dep: dep.ID,
 							})
 						}
-					} else if param.Kind() == reflect.Interface {
+					case reflect.Interface:
 						cp.in = append(cp.in, In{
 							in:  reflect.ValueOf(compat.Iface),
 							dep: compat.ID,
 						})
-					} else if param.Kind() == reflect.Struct {
+					case reflect.Struct:
 						dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
 						if dep == nil {
 							panic("can't find provider")
@@ -223,7 +223,6 @@ func (e *Endure) implCollectorPath(vertexID string, vertex interface{}) error {
 							dep: dep.ID,
 						})
 					}
-
 				}
 				v := e.graph.GetVertex(vertexID)
 				v.Meta.FnsCollectorToInvoke = append(v.Meta.FnsCollectorToInvoke, cp)

@@ -6,9 +6,7 @@ type SuperInterface interface {
 	Yo() string
 }
 
-type SomeOtherStruct struct {
-	name string
-}
+type SomeOtherStruct struct{}
 
 func (s *SomeOtherStruct) Yo() string {
 	return "Yo!"

@@ -171,10 +171,7 @@ func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, ca
 
 func (e *Endure) fnCall(f reflect.Method, in []reflect.Value, vertex *Vertex, callerId string) error {
 	const op = errors.Op("provider fn call")
-
 	ret := f.Func.Call(in)
-	// handle error
-	//if len(ret) > 1 {
 	for i := 0; i < len(ret); i++ {
 		// try to find possible errors
 		r := ret[i].Interface()
