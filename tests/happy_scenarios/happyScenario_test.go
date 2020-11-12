@@ -172,10 +172,14 @@ func TestEndure_Init_1_Element(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	assert.NoError(t, c.Stop())
-	time.Sleep(time.Second * 1)
 }
 
 func TestEndure_ProvidedValueButNeedPointer(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			println("test should panic")
+		}
+	}()
 	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
@@ -198,7 +202,6 @@ func TestEndure_ProvidedValueButNeedPointer(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	assert.NoError(t, c.Stop())
-	time.Sleep(time.Second * 1)
 }
 
 func TestEndure_PrimitiveTypes(t *testing.T) {

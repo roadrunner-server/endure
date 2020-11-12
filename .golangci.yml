@@ -6,7 +6,7 @@ linters:
     - bodyclose
     - depguard
     - dogsled
-    - dupl
+    #    - dupl
     - gochecknoinits
     - goconst
     - gocritic
@@ -27,7 +27,7 @@ linters:
     - scopelint
     - staticcheck
     - structcheck
-#    - stylecheck
+    #    - stylecheck
     - typecheck
     - unconvert
     - unparam

@@ -10,7 +10,7 @@ import (
 type Plugin2 struct {
 }
 
-func (p *Plugin2) Init(p3 plugin3.Plugin3) error {
+func (p *Plugin2) Init(p3 *plugin3.Plugin3) error {
 	return nil
 }
 

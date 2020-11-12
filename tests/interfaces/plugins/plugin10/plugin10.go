@@ -1,5 +1,7 @@
 package plugin10
 
+import "fmt"
+
 type Plugin10 struct {
 }
 
@@ -15,4 +17,8 @@ func (s *Plugin10) Serve() chan error {
 
 func (s *Plugin10) Stop() error {
 	return nil
+}
+
+func (s *Plugin10) Boo() {
+	fmt.Println("Boo")
 }

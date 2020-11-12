@@ -113,7 +113,7 @@ func TestEndure_NamedProvides_WrongType_Fail(t *testing.T) {
 	assert.Error(t, c.Init())
 
 	_, err = c.Serve()
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
 	assert.NoError(t, c.Stop())
 }
@@ -133,12 +133,13 @@ func TestEndure_ServiceInterface_NotImplemented_Ok(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func Endure_MultiplyProvidesSameInterface(t *testing.T) {
+func Test_MultiplyProvidesSameInterface(t *testing.T) {
 	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin6.Plugin{}))
 	assert.NoError(t, c.Register(&plugin6.Plugin2{}))
+	assert.NoError(t, c.Register(&plugin6.Plugin3{}))
 	err = c.Init()
 	if err != nil {
 		t.Fatal(err)

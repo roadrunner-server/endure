@@ -3,26 +3,20 @@ package endure
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
 
-func (e *Endure) traverseProviders(depsEntry Entry, depVertex *Vertex, depID string, calleeID string, in []reflect.Value) ([]reflect.Value, error) {
+func (e *Endure) traverseProviders(fnReceiver *Vertex, calleeVertexId string) error {
 	const op = errors.Op("internal_traverse_providers")
-	err := e.traverseCallProvider(depVertex, []reflect.Value{reflect.ValueOf(depVertex.Iface)}, calleeID, depID)
+	err := e.traverseCallProvider(fnReceiver, []reflect.Value{reflect.ValueOf(fnReceiver.Iface)}, calleeVertexId)
 	if err != nil {
-		return nil, errors.E(op, errors.Traverse, err)
+		return errors.E(op, errors.Traverse, err)
 	}
 
-	// to index function fn in defer
-	for providerID, providedEntry := range depVertex.Provides {
-		if providerID == depID {
-			in = e.appendProviderFuncArgs(depsEntry, providedEntry, in)
-		}
-	}
-
-	return in, nil
+	return nil
 }
 
 func (e *Endure) appendProviderFuncArgs(depsEntry Entry, providedEntry ProvidedEntry, in []reflect.Value) []reflect.Value {
@@ -50,94 +44,156 @@ func (e *Endure) appendProviderFuncArgs(depsEntry Entry, providedEntry ProvidedE
 	return in
 }
 
-func (e *Endure) traverseCallProvider(vertex *Vertex, in []reflect.Value, callerID, depId string) error {
+type Providers []Provide
+
+//
+type Provide struct {
+	m   reflect.Method
+	In  []reflect.Type
+	Out []reflect.Type
+}
+
+func (p Providers) Len() int {
+	return len(p)
+}
+
+func (p Providers) Less(i, j int) bool {
+	return len(p[i].In) > len(p[j].In)
+}
+
+func (p Providers) Swap(i, j int) {
+	p[i].In, p[j].In = p[j].In, p[i].In
+	p[i].Out, p[j].Out = p[j].Out, p[i].Out
+	p[i].m, p[j].m = p[j].m, p[i].m
+}
+
+func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, callerID string) error {
 	const op = errors.Op("internal_traverse_call_provider")
 	// to index function fn in defer
 	i := 0
 	defer func() {
 		if r := recover(); r != nil {
-			e.logger.Error("panic during the function call", zap.String("function fn", vertex.Meta.FnsProviderToInvoke[i].FunctionName), zap.String("error", fmt.Sprint(r)))
+			e.logger.Error("panic during the function call", zap.String("function fn", fnReceiver.Meta.FnsProviderToInvoke[i].FunctionName), zap.String("error", fmt.Sprint(r)))
 		}
 	}()
+
+	callerV := e.graph.GetVertex(callerID)
+	if callerV == nil {
+		return errors.E(op, errors.Traverse, errors.Str("caller fnReceiver is nil"))
+	}
+
 	// type implements Provider interface
-	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
+	if reflect.TypeOf(fnReceiver.Iface).Implements(reflect.TypeOf((*Provider)(nil)).Elem()) {
 		// if type implements Provider() it should has FnsProviderToInvoke
-		if vertex.Meta.FnsProviderToInvoke != nil {
+		if fnReceiver.Meta.FnsProviderToInvoke != nil {
 			// go over all function to invoke
 			// invoke it
 			// and save its return values
-			for i = 0; i < len(vertex.Meta.FnsProviderToInvoke); i++ {
-				m, ok := reflect.TypeOf(vertex.Iface).MethodByName(vertex.Meta.FnsProviderToInvoke[i].FunctionName)
-				if !ok {
-					e.logger.Panic("should implement the Provider interface", zap.String("function fn", vertex.Meta.FnsProviderToInvoke[i].FunctionName))
-				}
-
-				if vertex.Meta.FnsProviderToInvoke[i].ReturnTypeId != depId {
-					continue
-				}
-
-				/*
-				   think about better solution here TODO
-				   We copy IN params here because only in slice is constant
-				*/
-				inCopy := make([]reflect.Value, len(in))
-				copy(inCopy, in)
-
-				/*
-					cases when func NumIn can be more than one
-					is that function accepts some other type except of receiver
-					at the moment we assume, that this "other type" is FunctionName interface
-				*/
-				if m.Func.Type().NumIn() > 1 {
-					/*
-						here we should add type which implement Named interface
-						at the moment we seek for implementation in the callerID only
-					*/
-
-					callerV := e.graph.GetVertex(callerID)
-					if callerV == nil {
-						return errors.E(op, errors.Traverse, errors.Str("caller vertex is nil"))
+			fnsToCall := fnReceiver.Meta.FnsProviderToInvoke.Merge()
+			for i = 0; i < len(fnsToCall); i++ {
+				providers := make(Providers, 0, 0)
+				for ii := 0; ii < len(fnsToCall[i]); ii++ {
+					p := Provide{}
+					m, ok := reflect.TypeOf(fnReceiver.Iface).MethodByName(fnsToCall[i][ii])
+					if !ok {
+						e.logger.Panic("should implement the Provider interface", zap.String("function fn", fnsToCall[i][ii]))
 					}
 
-					// skip function receiver
-					for j := 1; j < m.Func.Type().NumIn(); j++ {
-						// current function IN type (interface)
-						t := m.Func.Type().In(j)
-						if t.Kind() != reflect.Interface {
-							e.logger.Panic("Provider accepts only interfaces", zap.String("function fn", vertex.Meta.FnsProviderToInvoke[i].FunctionName))
-						}
+					p.m = m
 
-						// if Caller struct implements interface -- ok, add it to the inCopy list
-						// else panic
-						if reflect.TypeOf(callerV.Iface).Implements(t) == false {
-							e.logger.Panic("Caller should implement callee interface", zap.String("function fn", vertex.Meta.FnsProviderToInvoke[i].FunctionName))
-						}
-
-						inCopy = append(inCopy, reflect.ValueOf(callerV.Iface))
+					// example ProvideWithName(named endure.Named) (SuperInterface, error)
+					// IN -> endure.Named + struct receiver
+					// OUT -> SuperInterface, error
+					for f := 0; f < m.Func.Type().NumIn(); f++ {
+						p.In = append(p.In, m.Func.Type().In(f))
 					}
+
+					for ot := 0; ot < m.Func.Type().NumOut(); ot++ {
+						// skip error type, record only out type
+						p.Out = append(p.Out, m.Func.Type().Out(ot))
+					}
+
+					providers = append(providers, p)
 				}
 
-				ret := m.Func.Call(inCopy)
-				// handle error
-				if len(ret) > 1 {
-					rErr := ret[1].Interface()
-					if rErr != nil {
-						if err, ok := rErr.(error); ok && e != nil {
-							e.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
-							return errors.E(op, errors.FunctionCall, err)
+				// sort providers, so we will have Provider with most dependencies first
+				sort.Sort(providers)
+
+				// we know, that we  have FnsProviderToInvoke not nil here
+				// we need to compare args
+				for k := 0; k < len(providers); k++ {
+					pr := providers[k]
+					inCopy := make([]reflect.Value, len(in), len(in))
+					copy(inCopy, in)
+
+					// fallback call provided, only 1 IN arg, function receiver
+					if len(pr.In) == 1 {
+						err := e.fnCall(pr.m, inCopy, fnReceiver, callerID)
+						if err != nil {
+							return err
 						}
-						return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
+						continue
 					}
 
-					// add the value to the Providers
-					e.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("caller id", callerID), zap.String("parameter", in[0].Type().String()))
-					e.graph.AddGlobalProvider(removePointerAsterisk(ret[0].Type().String()), ret[0])
-					vertex.AddProvider(removePointerAsterisk(ret[0].Type().String()), ret[0], isReference(ret[0].Type()), in[0].Kind())
-				} else {
-					return errors.E(op, errors.FunctionCall, errors.Str("provider should return Value and error types"))
+					// if we have minimum 2 In args (self and Named for example)
+					// we should check where is function receiver and check if caller implement all other args
+					// if everything ok we just pass first args as the receiver and caller as all the rest args
+					// start from 1, 0-th index is function receiver
+					// check if caller implements all needed interfaces to call func
+					if e.walk(pr.In, callerV) == false {
+						// if not, check for other provider
+						continue
+					}
+
+					for l := 1; l < len(pr.In); l++ {
+						switch pr.In[l].Kind() {
+						case reflect.Struct: // just structure
+							inCopy = append(inCopy, e.graph.providers[pr.In[l].String()])
+						case reflect.Ptr: // Ptr to the structure
+							val := pr.In[l].Elem() // get real value
+							inCopy = append(inCopy, e.graph.providers[val.String()])
+						case reflect.Interface: // we know here, that caller implement all needed to call interfaces
+							inCopy = append(inCopy, reflect.ValueOf(e.graph.VerticesMap[callerID].Iface))
+						}
+					}
+
+					err := e.fnCall(pr.m, inCopy, fnReceiver, callerID)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
+		return nil
 	}
+	return nil
+}
+
+func (e *Endure) fnCall(f reflect.Method, in []reflect.Value, vertex *Vertex, callerId string) error {
+	const op = errors.Op("provider fn call")
+	ret := f.Func.Call(in)
+	for i := 0; i < len(ret); i++ {
+		// try to find possible errors
+		r := ret[i].Interface()
+		if r == nil {
+			continue
+		}
+		if rErr, ok := r.(error); ok {
+			if rErr != nil {
+				if err, ok := rErr.(error); ok && e != nil {
+					e.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
+					return errors.E(op, errors.FunctionCall, err)
+				}
+				return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
+			}
+			continue
+		}
+
+		// add the value to the Providers
+		e.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("caller id", callerId), zap.String("parameter", ret[i].Type().String()))
+		e.graph.AddGlobalProvider(removePointerAsterisk(ret[i].Type().String()), ret[i])
+		vertex.AddProvider(removePointerAsterisk(ret[i].Type().String()), ret[i], isReference(ret[i].Type()), ret[i].Kind())
+	}
+
 	return nil
 }

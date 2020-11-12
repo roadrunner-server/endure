@@ -7,7 +7,7 @@ type SuperInterface interface {
 	Super() string
 }
 
-func (f *Plugin1) Init(db DB) error {
+func (f *Plugin1) Init(db *DB) error {
 	println(db.Name)
 	return nil
 }

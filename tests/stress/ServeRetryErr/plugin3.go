@@ -20,7 +20,7 @@ func (s3 *S3) SomeOtherDep(svc *S4, svc2 *S2) error {
 }
 
 // Collects on S3
-func (s3 *S3) Init(svc S2) error {
+func (s3 *S3) Init(svc *S2) error {
 	return nil
 }
 
@@ -47,7 +47,7 @@ func (s3 *S3Init) SomeOtherDep(svc *S4, svc2 *S2) error {
 }
 
 // Collects on S3
-func (s3 *S3Init) Init(svc S2) error {
+func (s3 *S3Init) Init(svc *S2) error {
 	const Op = "S3Init_Init"
 	s := rand.Intn(10)
 	if s == 5 {

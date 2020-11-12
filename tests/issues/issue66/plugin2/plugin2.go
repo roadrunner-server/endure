@@ -1,10 +1,16 @@
-package plugin6
+package plugin2
+
+import (
+	"fmt"
+
+	"github.com/spiral/endure/tests/issues/issue66/plugin3"
+)
 
 type Plugin2 struct {
 }
 
-func (p *Plugin2) Init(super SuperInterface) error {
-	println(super.Yo())
+func (p *Plugin2) Init(p3 *plugin3.Plugin3DB) error {
+	fmt.Println(p3.Name)
 	return nil
 }
 
@@ -15,8 +21,4 @@ func (p *Plugin2) Serve() chan error {
 
 func (p *Plugin2) Stop() error {
 	return nil
-}
-
-func (p *Plugin2) Name() string {
-	return "Plugin2"
 }

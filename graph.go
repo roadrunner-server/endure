@@ -16,17 +16,6 @@ const (
 
 type Vertices []*Vertex
 
-type disabler interface {
-	// DisableById used to disable all vertices in which dependencies presents passed vertex id
-	DisableById(vertexId string)
-}
-
-type key struct {
-	t reflect.Type
-
-	name string
-}
-
 // manages the set of services and their edges
 // type of the VerticesMap: directed
 type Graph struct {
@@ -36,8 +25,9 @@ type Graph struct {
 	Vertices []*Vertex
 
 	providers map[string]reflect.Value
-	values    map[key]reflect.Value
 }
+
+type ProviderEntries []ProviderEntry
 
 // Meta information included into the Vertex
 // May include:
@@ -47,20 +37,21 @@ type Meta struct {
 	// Position in code while invoking Register
 	Order int
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
-	FnsProviderToInvoke []ProviderEntry
+	FnsProviderToInvoke ProviderEntries
 	// FnsCollectorToInvoke is the function names to invoke if type implements Collector() interface
-	FnsCollectorToInvoke []CollectorProvider
+	FnsCollectorToInvoke []CollectorEntry
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method
-	InitDepsToInvoke []Entry
+	InitDepsToInvoke map[string][]Entry
+	InitDepsOrd      []string
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Collects() method
 	CollectsDepsToInvoke map[string][]Entry
 }
 
-type CollectorProvider struct {
+type CollectorEntry struct {
 	in []In
 	fn string
 }
@@ -71,8 +62,34 @@ type In struct {
 }
 
 type ProviderEntry struct {
-	FunctionName string
-	ReturnTypeId string
+	FunctionName  string
+	ReturnTypeIds []string
+}
+
+type FnsToCall [][]string
+
+func (pe *ProviderEntries) Merge() FnsToCall {
+	res := make(FnsToCall, len(*pe), len(*pe))
+	hash := make(map[[10]string][]string)
+	for i := 0; i < len(*pe); i++ {
+		arr := [10]string{}
+		for j := 0; j < len((*pe)[i].ReturnTypeIds); j++ {
+			arr[j] = (*pe)[i].ReturnTypeIds[j]
+		}
+		hash[arr] = append(hash[arr], (*pe)[i].FunctionName)
+	}
+
+	index := 0
+	for _, v := range hash {
+		for i := 0; i < len(v); i++ {
+			res[index] = append(res[index], v[i])
+		}
+		index++
+	}
+	if index < len(res) {
+		res = res[:index]
+	}
+	return res
 }
 
 type Entry struct {
@@ -171,7 +188,6 @@ func NewGraph() *Graph {
 	return &Graph{
 		VerticesMap: make(map[string]*Vertex),
 		providers:   make(map[string]reflect.Value),
-		values:      make(map[key]reflect.Value),
 	}
 }
 
@@ -254,42 +270,61 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool,
 	switch method {
 	case Init:
 		if vertex.Meta.InitDepsToInvoke == nil {
-			vertex.Meta.InitDepsToInvoke = make([]Entry, 0, 1)
+			vertex.Meta.InitDepsToInvoke = make(map[string][]Entry)
 		}
-		vertex.Meta.InitDepsToInvoke = append(vertex.Meta.InitDepsToInvoke, Entry{
+		vertex.Meta.InitDepsToInvoke[refId] = append(vertex.Meta.InitDepsToInvoke[refId], Entry{
 			RefId:       refId,
 			Name:        depID,
 			IsReference: &isRef,
 			Kind:        kind,
 		})
+		contains := false
+		for _, v := range vertex.Meta.InitDepsOrd {
+			if v == refId {
+				contains = true
+			}
+		}
+		if !contains {
+			vertex.Meta.InitDepsOrd = append(vertex.Meta.InitDepsOrd, refId)
+		}
 	case Collects:
 		if vertex.Meta.CollectsDepsToInvoke == nil {
 			vertex.Meta.CollectsDepsToInvoke = make(map[string][]Entry)
-
 			vertex.Meta.CollectsDepsToInvoke[refId] = append(vertex.Meta.CollectsDepsToInvoke[refId], Entry{
 				RefId:       refId,
 				Name:        depID,
 				IsReference: &isRef,
 				Kind:        kind,
 			})
-		} else {
-			// search if CollectsDepsToInvoke already contains interface dep
-			//for _, v := range vertex.Meta.CollectsDepsToInvoke {
-			//if v.Name == depID {
-			//	continue
-			//}
 
+			contains := false
+			for _, v := range vertex.Meta.InitDepsOrd {
+				if v == refId {
+					contains = true
+				}
+			}
+			if !contains {
+				vertex.Meta.InitDepsOrd = append(vertex.Meta.InitDepsOrd, refId)
+			}
+		} else {
 			if _, ok := vertex.Meta.CollectsDepsToInvoke[refId]; ok {
 				return false
 			}
-
 			vertex.Meta.CollectsDepsToInvoke[refId] = append(vertex.Meta.CollectsDepsToInvoke[refId], Entry{
 				RefId:       refId,
 				Name:        depID,
 				IsReference: &isRef,
 				Kind:        kind,
 			})
-			//}
+			contains := false
+			for _, v := range vertex.Meta.InitDepsOrd {
+				if v == refId {
+					contains = true
+				}
+			}
+			if !contains {
+				vertex.Meta.InitDepsOrd = append(vertex.Meta.InitDepsOrd, refId)
+			}
 		}
 	}
 	return true

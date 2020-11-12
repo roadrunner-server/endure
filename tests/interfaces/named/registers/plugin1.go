@@ -3,7 +3,7 @@ package registers
 type Plugin1 struct {
 }
 
-func (f *Plugin1) Init(db DB, db2 DB2) error {
+func (f *Plugin1) Init(db *DB, db2 *DB2) error {
 	println(db.Name)
 	println(db2.Name)
 	return nil
