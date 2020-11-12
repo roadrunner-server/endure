@@ -33,7 +33,7 @@ func (f *Plugin2) Provides() []interface{} {
 // this is the same type but different packages
 // foo10 invokes foo11
 // foo11 should get the foo10 name or provide vertex id
-func (f *Plugin2) ProvideDB(s S) (*DB, error) {
+func (f *Plugin2) ProvideDB(s *S) (*DB, error) {
 	return &DB{
 		Name: "",
 	}, nil

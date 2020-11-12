@@ -10,6 +10,14 @@ import (
 	issue55_p1 "github.com/spiral/endure/tests/issues/issue55/plugin1"
 	issue55_p2 "github.com/spiral/endure/tests/issues/issue55/plugin2"
 	issue55_p3 "github.com/spiral/endure/tests/issues/issue55/plugin3"
+
+	issue66_p1 "github.com/spiral/endure/tests/issues/issue66/plugin1"
+	issue66_p2 "github.com/spiral/endure/tests/issues/issue66/plugin2"
+	issue66_p3 "github.com/spiral/endure/tests/issues/issue66/plugin3"
+
+	issue54_p1 "github.com/spiral/endure/tests/issues/issue54/plugin1"
+	issue54_p2 "github.com/spiral/endure/tests/issues/issue54/plugin2"
+	issue54_p3 "github.com/spiral/endure/tests/issues/issue54/plugin3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -68,4 +76,66 @@ func TestEndure_Issue55(t *testing.T) {
 			return
 		}
 	}
+}
+
+func TestIssue54(t *testing.T) {
+	c, err := endure.NewContainer(nil)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&issue54_p1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue54_p2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue54_p3.Plugin3{}))
+
+	err = c.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
+
+	go func() {
+		for r := range res {
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	assert.NoError(t, c.Stop())
+	time.Sleep(time.Second * 1)
+}
+
+func TestIssue66(t *testing.T) {
+	c, err := endure.NewContainer(nil)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&issue66_p1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue66_p2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue66_p3.Plugin3{}))
+
+	err = c.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
+
+	go func() {
+		for r := range res {
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	assert.NoError(t, c.Stop())
+	time.Sleep(time.Second * 1)
 }

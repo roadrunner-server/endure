@@ -14,8 +14,8 @@ func (s2 *S2) Provides() []interface{} {
 	return []interface{}{s2.CreateDB}
 }
 
-func (s2 *S2) CreateDB() (DB, error) {
-	return DB{}, nil
+func (s2 *S2) CreateDB() (*DB, error) {
+	return &DB{}, nil
 }
 
 func (s2 *S2) Serve() chan error {

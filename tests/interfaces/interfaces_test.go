@@ -113,7 +113,7 @@ func TestEndure_NamedProvides_WrongType_Fail(t *testing.T) {
 	assert.Error(t, c.Init())
 
 	_, err = c.Serve()
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
 	assert.NoError(t, c.Stop())
 }

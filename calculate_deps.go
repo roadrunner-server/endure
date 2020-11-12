@@ -30,15 +30,6 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 	const op = errors.Op("add_providers")
 	provider := vertex.(Provider)
 	for _, fn := range provider.Provides() {
-		// Check return types
-		ret, err := providersReturnType(fn)
-		if err != nil {
-			return errors.E(op, err)
-		}
-
-		// remove asterisk from the type string representation *Foo1 -> Foo1
-		typeStr := removePointerAsterisk(ret.String())
-		// get the Vertex from the graph (v)
 		v := e.graph.GetVertex(vertexID)
 		if v.Provides == nil {
 			v.Provides = make(map[string]ProvidedEntry)
@@ -51,7 +42,7 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 
 		// TODO merge function calls into one. Plugin1 -> fn's to invoke ProvideDB, ProvideDB2
 		// Append functions which we will invoke when we start calling the structure functions after Init stage
-		v.Meta.FnsProviderToInvoke = append(v.Meta.FnsProviderToInvoke, ProviderEntry{
+		pe := ProviderEntry{
 			/*
 				For example:
 				we need to invoke function ProvideDB - that will be FunctionName
@@ -59,31 +50,50 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 				We need return type to filter it in Init call, because in Init we may have one struct which returns
 				two different types.
 			*/
-			FunctionName: getFunctionName(fn), // function fn to invoke
-			ReturnTypeId: typeStr,             // return type ID
-		})
 
-		/*
-			   For the interface dependencies
-				If Provided type is interface
-				1. Check that type implement interface
-				2. Write record, that this particular type also provides Interface dep
-		*/
-		if ret.Kind() == reflect.Interface {
-			tmpValue := reflect.ValueOf(vertex)
-			tmpIsRef := isReference(ret)
-			v.Provides[typeStr] = ProvidedEntry{
-				IsReference: &tmpIsRef,
-				Value:       tmpValue,
+		}
+		pe.FunctionName = getFunctionName(fn)
+
+		// Check return types
+		ret, err := providersReturnType(fn)
+		if err != nil {
+			return errors.E(op, err)
+		}
+
+		for i := 0; i < len(ret); i++ {
+			// remove asterisk from the type string representation *Foo1 -> Foo1
+			typeStr := removePointerAsterisk(ret[i].String())
+			if typeStr == "error" {
+				continue
 			}
-			continue
+			// get the Vertex from the graph (v)
+
+			pe.ReturnTypeIds = append(pe.ReturnTypeIds, typeStr)
+			// function fn to invoke)
+			/*
+				   For the interface dependencies
+					If Provided type is interface
+					1. Check that type implement interface
+					2. Write record, that this particular type also provides Interface dep
+			*/
+			if ret[i].Kind() == reflect.Interface {
+				tmpValue := reflect.ValueOf(vertex)
+				tmpIsRef := isReference(ret[i])
+				v.Provides[typeStr] = ProvidedEntry{
+					IsReference: &tmpIsRef,
+					Value:       tmpValue,
+				}
+				continue
+			}
+
+			// just init map value
+			v.Provides[typeStr] = ProvidedEntry{
+				IsReference: nil,
+			}
 		}
 
-		// just init map value
-		v.Provides[typeStr] = ProvidedEntry{
-			IsReference: nil,
-			//Value:       nil,
-		}
+		v.Meta.FnsProviderToInvoke = append(v.Meta.FnsProviderToInvoke, pe)
+
 	}
 	return nil
 }

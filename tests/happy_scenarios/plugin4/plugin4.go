@@ -14,7 +14,7 @@ type DB struct {
 }
 
 // No deps
-func (s *S4) Init(foo5 plugin5.S5, fooWriter plugin6.FooWriter) error {
+func (s *S4) Init(foo5 *plugin5.S5, fooWriter plugin6.FooWriter) error {
 	s.fooW = fooWriter
 	return nil
 }

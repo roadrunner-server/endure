@@ -127,15 +127,29 @@ func (e *Endure) findInitParameters(vertex *Vertex) ([]reflect.Value, error) {
 
 	// add dependencies
 	if len(vertex.Meta.InitDepsToInvoke) > 0 {
-		for i := 0; i < len(vertex.Meta.InitDepsToInvoke); i++ {
-			depID := vertex.Meta.InitDepsToInvoke[i].Name
-			v := e.graph.FindProviders(depID)
-			var err error
-			in, err = e.traverseProviders(vertex.Meta.InitDepsToInvoke[i], v[0], depID, vertex.ID, in)
+		for depID, _ := range vertex.Meta.InitDepsToInvoke {
+			fnReceiver := e.graph.VerticesMap[depID]
+			calleeVertexId := vertex.ID
+			err := e.traverseProviders(fnReceiver, calleeVertexId)
 			if err != nil {
 				return nil, errors.E(op, errors.Traverse, err)
 			}
 		}
+
+		for _, o := range vertex.Meta.InitDepsOrd {
+			entries := vertex.Meta.InitDepsToInvoke[o]
+			for i := 0; i < len(entries); i++ {
+				in = append(in, e.graph.providers[entries[i].Name])
+			}
+		}
+
+		//add values from global providers
+		//for _, entries := range vertex.Meta.InitDepsToInvoke {
+		//	for i := 0; i < len(entries); i++ {
+		//		in = append(in, e.graph.providers[entries[i].Name])
+		//	}
+		//}
 	}
+
 	return in, nil
 }

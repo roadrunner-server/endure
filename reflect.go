@@ -9,22 +9,24 @@ import (
 	"github.com/spiral/errors"
 )
 
-func providersReturnType(m interface{}) (reflect.Type, error) {
+func providersReturnType(m interface{}) ([]reflect.Type, error) {
 	const op = errors.Op("providers_return_type")
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
 		return nil, errors.E(op, errors.ArgType, errors.Errorf("unable to reflect `%s`, expected func. tip: provide function, not structre. for example v.Logger", r.String()))
 	}
-
+	ret := make([]reflect.Type, 0, r.NumOut())
+	for i := 0; i < r.NumOut(); i++ {
+		ret = append(ret, r.Out(i))
+	}
 	// should be at least 2 parameters
 	// error --> nil (hope)
 	// type --> initialized
-	if r.NumOut() < 2 {
-		return nil, errors.E(op, errors.ArgType, errors.Errorf("provider should return at least 2 parameters, but returns `%d`", r.NumOut()))
+	if r.NumOut() == 0 {
+		return nil, errors.E(op, errors.ArgType, errors.Errorf("provider should return at least 1 parameter, but returns `%d`", r.NumOut()))
 	}
-
 	// return type, w/o error
-	return r.Out(0), nil
+	return ret, nil
 }
 
 func paramsList(m interface{}) ([]reflect.Type, error) {
