@@ -97,14 +97,14 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 	return nil
 }
 
-func (e *Endure) addCollectorsDeps(vertexID string, vertex interface{}) error {
+func (e *Endure) addCollectorsDeps(vertex *Vertex) error {
 	// hot path
-	if _, ok := vertex.(Collector); !ok {
+	if _, ok := vertex.Iface.(Collector); !ok {
 		return nil
 	}
 
 	// vertex implements Collector interface
-	return e.implCollectorPath(vertexID, vertex)
+	return e.implCollectorPath(vertex)
 }
 
 func (e *Endure) walk(params []reflect.Type, v *Vertex) bool {
@@ -127,9 +127,10 @@ func (e *Endure) walk(params []reflect.Type, v *Vertex) bool {
 	return true
 }
 
-func (e *Endure) implCollectorPath(vertexID string, vertex interface{}) error {
+func (e *Endure) implCollectorPath(vertex *Vertex) error {
+	// vertexID string, vertex interface{} same vertex
 	const op = errors.Op("add_collectors_deps")
-	collector := vertex.(Collector)
+	collector := vertex.Iface.(Collector)
 	// range Collectors functions
 	for _, fn := range collector.Collects() {
 		haveInterfaceDeps := false
@@ -145,149 +146,170 @@ func (e *Endure) implCollectorPath(vertexID string, vertex interface{}) error {
 		// filter out interfaces, leave only structs
 		for i := 0; i < len(e.graph.Vertices); i++ {
 			// skip self
-			if e.graph.Vertices[i].ID == vertexID {
+			if e.graph.Vertices[i].ID == vertex.ID {
 				continue
 			}
 			if e.walk(params, e.graph.Vertices[i]) == true {
 				compatible = append(compatible, e.graph.Vertices[i])
 				// set, that we have interface deps
 				haveInterfaceDeps = true
+				e.logger.Info("vertex is compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vertex.ID))
+				continue
 			}
+			e.logger.Info("vertex is not compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vertex.ID))
 		}
-		// traverse
+
+		if len(compatible) == 0 && haveInterfaceDeps {
+			e.logger.Info("no compatible vertices found", zap.String("collects from vertex", vertex.ID))
+			return nil
+		}
+		// process mixed deps (interfaces + structs)
 		if haveInterfaceDeps {
-			for _, compat := range compatible {
-				// add vertex itself
-				cp := CollectorEntry{
-					in: make([]In, 0, 0),
-					fn: getFunctionName(fn),
-				}
-				cp.in = append(cp.in, In{
-					in:  reflect.ValueOf(vertex),
-					dep: vertexID,
-				})
+			return e.processInterfaceDeps(compatible, fn, vertex, params)
+		}
+		// process only struct deps if not interfaces were found
+		return e.processStructDeps(fn, vertex, params)
+	}
+	return nil
+}
 
-				for _, param := range params {
-					// check if type is primitive type
-					if isPrimitive(param.String()) {
-						e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", param.String()))
-					}
+func (e *Endure) processInterfaceDeps(compatible Vertices, fn interface{}, vertex *Vertex, params []reflect.Type) error {
+	const op = errors.Op("process interface deps")
+	for _, compat := range compatible {
+		// add vertex itself
+		cp := CollectorEntry{
+			in: make([]In, 0, 0),
+			fn: getFunctionName(fn),
+		}
+		cp.in = append(cp.in, In{
+			in:  reflect.ValueOf(vertex.Iface),
+			dep: vertex.ID,
+		})
 
-					paramStr := param.String()
-					if vertexID == paramStr {
-						continue
-					}
-
-					switch param.Kind() {
-					case reflect.Ptr:
-						if param.Elem().Kind() == reflect.Struct {
-							dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
-							if dep == nil {
-								panic("can't find provider")
-							}
-
-							cp.in = append(cp.in, In{
-								in:  reflect.ValueOf(dep.Iface),
-								dep: dep.ID,
-							})
-
-							err = e.graph.AddDep(vertexID, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
-							if err != nil {
-								return errors.E(op, err)
-							}
-						}
-					case reflect.Interface:
-						cp.in = append(cp.in, In{
-							in:  reflect.ValueOf(compat.Iface),
-							dep: compat.ID,
-						})
-
-						err = e.graph.AddDep(vertexID, removePointerAsterisk(compat.ID), Collects, isReference(param), param.Kind())
-						if err != nil {
-							return errors.E(op, err)
-						}
-
-					case reflect.Struct:
-						dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
-						if dep == nil {
-							panic("can't find provider")
-						}
-
-						cp.in = append(cp.in, In{
-							in:  reflect.ValueOf(dep.Iface),
-							dep: dep.ID,
-						})
-
-						err = e.graph.AddDep(vertexID, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
-						if err != nil {
-							return errors.E(op, err)
-						}
-					}
-				}
-				v := e.graph.GetVertex(vertexID)
-				v.Meta.FnsCollectorToInvoke = append(v.Meta.FnsCollectorToInvoke, cp)
+		for _, param := range params {
+			// check if type is primitive type
+			if isPrimitive(param.String()) {
+				e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertex.ID), zap.String("type", param.String()))
 			}
-		} else {
-			cp := CollectorEntry{
-				in: make([]In, 0, 0),
-				fn: getFunctionName(fn),
+
+			paramStr := param.String()
+			if vertex.ID == paramStr {
+				continue
 			}
-			cp.in = append(cp.in, In{
-				in:  reflect.ValueOf(vertex),
-				dep: vertexID,
-			})
 
-			for _, param := range params {
-				// check if type is primitive type
-				if isPrimitive(param.String()) {
-					e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", param.String()))
-				}
-
-				// skip self
-				paramStr := param.String()
-				if vertexID == paramStr {
-					continue
-				}
-
-				dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
-				if dep == nil {
-					depIds := e.graph.FindProviders(removePointerAsterisk(paramStr))
-					if len(depIds) == 0 {
-						panic("can't find provider for dep")
+			switch param.Kind() {
+			case reflect.Ptr:
+				if param.Elem().Kind() == reflect.Struct {
+					dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
+					if dep == nil {
+						return errors.E(op, errors.Errorf("can't find provider for the struct parameter: %s", removePointerAsterisk(param.String())))
 					}
-					dep = depIds[0]
-					for k, v := range dep.Provides {
-						if k == removePointerAsterisk(paramStr) {
-							cp.in = append(cp.in, In{
-								in:  reflect.Zero(reflect.TypeOf(v)),
-								dep: k,
-							})
-						}
-					}
-				} else {
+
 					cp.in = append(cp.in, In{
 						in:  reflect.ValueOf(dep.Iface),
 						dep: dep.ID,
 					})
+
+					err := e.graph.AddDep(vertex.ID, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
+					if err != nil {
+						return errors.E(op, err)
+					}
 				}
+			case reflect.Interface:
+				cp.in = append(cp.in, In{
+					in:  reflect.ValueOf(compat.Iface),
+					dep: compat.ID,
+				})
 
-				tmpIsRef := isReference(param)
-				tmpValue := reflect.ValueOf(dep.Iface)
-				e.graph.AddGlobalProvider(removePointerAsterisk(paramStr), tmpValue)
-				e.graph.VerticesMap[dep.ID].AddProvider(removePointerAsterisk(paramStr), tmpValue, tmpIsRef, param.Kind())
-
-				err = e.graph.AddDep(vertexID, removePointerAsterisk(paramStr), Collects, isReference(param), param.Kind())
+				err := e.graph.AddDep(vertex.ID, removePointerAsterisk(compat.ID), Collects, isReference(param), param.Kind())
 				if err != nil {
 					return errors.E(op, err)
 				}
 
-				e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vertexID), zap.String("depends", paramStr))
-			}
+			case reflect.Struct:
+				dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
+				if dep == nil {
+					return errors.E(op, errors.Errorf("can't find provider for the struct parameter: %s", removePointerAsterisk(param.String())))
+				}
 
-			v := e.graph.GetVertex(vertexID)
-			v.Meta.FnsCollectorToInvoke = append(v.Meta.FnsCollectorToInvoke, cp)
+				cp.in = append(cp.in, In{
+					in:  reflect.ValueOf(dep.Iface),
+					dep: dep.ID,
+				})
+
+				err := e.graph.AddDep(vertex.ID, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
+				if err != nil {
+					return errors.E(op, err)
+				}
+			}
 		}
+		vertex.Meta.CollectorEntries = append(vertex.Meta.CollectorEntries, cp)
 	}
+
+	return nil
+}
+
+func (e *Endure) processStructDeps(fn interface{}, vertex *Vertex, params []reflect.Type) error {
+	const op = errors.Op("process struct deps")
+	// process only struct deps
+	cp := CollectorEntry{
+		in: make([]In, 0, 0),
+		fn: getFunctionName(fn),
+	}
+	cp.in = append(cp.in, In{
+		in:  reflect.ValueOf(vertex.Iface),
+		dep: vertex.ID,
+	})
+
+	for _, param := range params {
+		// check if type is primitive type
+		if isPrimitive(param.String()) {
+			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertex.ID), zap.String("type", param.String()))
+		}
+
+		// skip self
+		paramStr := param.String()
+		if vertex.ID == paramStr {
+			continue
+		}
+
+		dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
+		if dep == nil {
+			depIds := e.graph.FindProviders(removePointerAsterisk(paramStr))
+			if len(depIds) == 0 {
+				e.logger.Warn("can't find any provider for the dependency, collector function on the vertex will not be invoked", zap.String("dep id", removePointerAsterisk(param.String())), zap.String("vertexId", vertex.ID))
+				return nil
+			}
+			dep = depIds[0]
+			for k, v := range dep.Provides {
+				if k == removePointerAsterisk(paramStr) {
+					cp.in = append(cp.in, In{
+						in:  reflect.Zero(reflect.TypeOf(v)),
+						dep: k,
+					})
+				}
+			}
+		} else {
+			cp.in = append(cp.in, In{
+				in:  reflect.ValueOf(dep.Iface),
+				dep: dep.ID,
+			})
+		}
+
+		tmpIsRef := isReference(param)
+		tmpValue := reflect.ValueOf(dep.Iface)
+		e.graph.AddGlobalProvider(removePointerAsterisk(paramStr), tmpValue)
+		e.graph.VerticesMap[dep.ID].AddProvider(removePointerAsterisk(paramStr), tmpValue, tmpIsRef, param.Kind())
+
+		err := e.graph.AddDep(vertex.ID, removePointerAsterisk(paramStr), Collects, isReference(param), param.Kind())
+		if err != nil {
+			return errors.E(op, err)
+		}
+
+		e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vertex.ID), zap.String("depends", paramStr))
+	}
+
+	vertex.Meta.CollectorEntries = append(vertex.Meta.CollectorEntries, cp)
 	return nil
 }
 
@@ -314,7 +336,7 @@ func (e *Endure) addEdges() error {
 		5. FunctionName of the dependencies which we should found
 		We add 3 and 4 points to the Vertex
 		*/
-		err := e.addCollectorsDeps(vertexID, vrtx.Iface)
+		err := e.addCollectorsDeps(vrtx)
 		if err != nil {
 			return errors.E(Op, err)
 		}

@@ -40,6 +40,8 @@ github.com/spiral/endure v1.0.0-beta13 h1:iz0xvAxBsHYQKpJB2IdJaAc29GCR2bEu/NPjNs
 github.com/spiral/endure v1.0.0-beta13/go.mod h1:Kr88l/C5sVrEiJy8cKHA2TndGdbY17wi8SH8qoYQ3XQ=
 github.com/spiral/endure v1.0.0-beta16 h1:URSlwsKbt755cHzN/xPPVW9GI2ETy09EFXHs2EVGPxM=
 github.com/spiral/endure v1.0.0-beta16/go.mod h1:qm3evrNggh26QQhwln2uH/1KJQInFZKJZeD5Yvm2k6Y=
+github.com/spiral/endure v1.0.0-beta17 h1:1vBTUzwHGUBOGr+4e2kTftAPyzCKOMbUtACReuMlrmc=
+github.com/spiral/endure v1.0.0-beta17/go.mod h1:qm3evrNggh26QQhwln2uH/1KJQInFZKJZeD5Yvm2k6Y=
 github.com/spiral/errors v1.0.1 h1:OyKLwQH+42hhaRYuXGzfPKCFOmawA/PYXTY9wsK99n4=
 github.com/spiral/errors v1.0.1/go.mod h1:SwMSZVdZkkJVgXNNafccqOaxWg0XPzVU/dEdUEInE0o=
 github.com/spiral/errors v1.0.2 h1:i/XMmA2VJt9sD64N4/zgQ9Y0cwlNQRLDaxOZPZV09D4=

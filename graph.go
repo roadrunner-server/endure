@@ -29,6 +29,7 @@ type Graph struct {
 }
 
 type ProviderEntries []ProviderEntry
+type CollectorEntries []CollectorEntry
 
 // Meta information included into the Vertex
 // May include:
@@ -39,8 +40,8 @@ type Meta struct {
 	Order int
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
 	FnsProviderToInvoke ProviderEntries
-	// FnsCollectorToInvoke is the function names to invoke if type implements Collector() interface
-	FnsCollectorToInvoke []CollectorEntry
+	// CollectorEntries is the function names to invoke if type implements Collector() interface
+	CollectorEntries CollectorEntries
 
 	// List of the vertex deps
 	// foo4.DB, foo4.S4 etc.. which were found in the Init() method

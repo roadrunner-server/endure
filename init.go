@@ -91,25 +91,25 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
 		return errors.E(op, errors.ArgType, errors.Str("0 or less parameters for Init"))
 	}
 
-	if len(vertex.Meta.FnsCollectorToInvoke) > 0 {
-		for i := 0; i < len(vertex.Meta.FnsCollectorToInvoke); i++ {
+	if len(vertex.Meta.CollectorEntries) > 0 {
+		for i := 0; i < len(vertex.Meta.CollectorEntries); i++ {
 			// try to find nil IN args and get it from global
-			for j := 0; j < len(vertex.Meta.FnsCollectorToInvoke[i].in); j++ {
-				if vertex.Meta.FnsCollectorToInvoke[i].in[j].in.IsZero() {
-					global, ok := e.graph.providers[vertex.Meta.FnsCollectorToInvoke[i].in[j].dep]
+			for j := 0; j < len(vertex.Meta.CollectorEntries[i].in); j++ {
+				if vertex.Meta.CollectorEntries[i].in[j].in.IsZero() {
+					global, ok := e.graph.providers[vertex.Meta.CollectorEntries[i].in[j].dep]
 					if !ok {
 						e.logger.Error("can't find in arg to Call Collects on the vertex", zap.String("vertex id", vertex.ID))
 						return errors.E(op, errors.Errorf("vertex id: %s", vertex.ID))
 					}
-					vertex.Meta.FnsCollectorToInvoke[i].in[j].in = global
+					vertex.Meta.CollectorEntries[i].in[j].in = global
 				}
 			}
 
-			in := make([]reflect.Value, 0, len(vertex.Meta.FnsCollectorToInvoke[i].in))
-			for _, v := range vertex.Meta.FnsCollectorToInvoke[i].in {
+			in := make([]reflect.Value, 0, len(vertex.Meta.CollectorEntries[i].in))
+			for _, v := range vertex.Meta.CollectorEntries[i].in {
 				in = append(in, v.in)
 			}
-			err = e.fnCallCollectors(vertex, in, vertex.Meta.FnsCollectorToInvoke[i].fn)
+			err = e.fnCallCollectors(vertex, in, vertex.Meta.CollectorEntries[i].fn)
 			if err != nil {
 				return errors.E(op, errors.Traverse, err)
 			}
