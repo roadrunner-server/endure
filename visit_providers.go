@@ -69,14 +69,6 @@ func (p Providers) Swap(i, j int) {
 
 func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, callerID string) error {
 	const op = errors.Op("internal_traverse_call_provider")
-	// to index function fn in defer
-	i := 0
-	defer func() {
-		if r := recover(); r != nil {
-			e.logger.Error("panic during the function call", zap.String("function fn", fnReceiver.Meta.FnsProviderToInvoke[i].FunctionName), zap.String("error", fmt.Sprint(r)))
-		}
-	}()
-
 	callerV := e.graph.GetVertex(callerID)
 	if callerV == nil {
 		return errors.E(op, errors.Traverse, errors.Str("caller fnReceiver is nil"))
@@ -90,7 +82,7 @@ func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, ca
 			// invoke it
 			// and save its return values
 			fnsToCall := fnReceiver.Meta.FnsProviderToInvoke.Merge()
-			for i = 0; i < len(fnsToCall); i++ {
+			for i := 0; i < len(fnsToCall); i++ {
 				providers := make(Providers, 0, 0)
 				for ii := 0; ii < len(fnsToCall[i]); ii++ {
 					p := Provide{}
@@ -99,6 +91,7 @@ func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, ca
 						e.logger.Panic("should implement the Provider interface", zap.String("function fn", fnsToCall[i][ii]))
 					}
 
+					// assign current method
 					p.m = m
 
 					// example ProvideWithName(named endure.Named) (SuperInterface, error)
@@ -108,6 +101,8 @@ func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, ca
 						p.In = append(p.In, m.Func.Type().In(f))
 					}
 
+					// collect out args
+					// TODO will be used later, in more intellectual merge
 					for ot := 0; ot < m.Func.Type().NumOut(); ot++ {
 						// skip error type, record only out type
 						p.Out = append(p.Out, m.Func.Type().Out(ot))
@@ -128,7 +123,7 @@ func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, ca
 
 					// fallback call provided, only 1 IN arg, function receiver
 					if len(pr.In) == 1 {
-						err := e.fnCall(pr.m, inCopy, fnReceiver, callerID)
+						err := e.fnProvidersCall(pr.m, inCopy, fnReceiver, callerID)
 						if err != nil {
 							return err
 						}
@@ -157,7 +152,7 @@ func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, ca
 						}
 					}
 
-					err := e.fnCall(pr.m, inCopy, fnReceiver, callerID)
+					err := e.fnProvidersCall(pr.m, inCopy, fnReceiver, callerID)
 					if err != nil {
 						return err
 					}
@@ -169,7 +164,7 @@ func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, ca
 	return nil
 }
 
-func (e *Endure) fnCall(f reflect.Method, in []reflect.Value, vertex *Vertex, callerId string) error {
+func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *Vertex, callerId string) error {
 	const op = errors.Op("provider fn call")
 	ret := f.Func.Call(in)
 	for i := 0; i < len(ret); i++ {

@@ -1,10 +1,11 @@
 package endure
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"sync/atomic"
+
+	"github.com/spiral/errors"
 )
 
 type Kind int
@@ -224,16 +225,17 @@ func (g *Graph) AddDep(vertexID, depID string, method Kind, isRef bool, typeKind
 }
 
 func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool) error {
+	const op = errors.Op("add interface dep")
 	// vertex should always present
 	vertex := g.GetVertex(vertexID)
 	if vertex == nil {
-		return errors.New("vertex should be in the graph")
+		return errors.E(op, errors.Str("vertex should be in the graph"))
 	}
 
 	// here can be a lot of deps
 	depVertices := g.FindProviders(depID)
-	if depVertices == nil {
-		return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID)
+	if len(depVertices) == 0 {
+		return errors.E(op, errors.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID))
 	}
 
 	for i := 0; i < len(depVertices); i++ {
@@ -331,10 +333,11 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool,
 }
 
 func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) error {
+	const op = errors.Op("add structure dep")
 	// vertex should always present
 	vertex := g.GetVertex(vertexID)
 	if vertex == nil {
-		return errors.New("vertex should be in the graph")
+		return errors.E(op, errors.Str("vertex should be in the graph"))
 	}
 	// but depVertex can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
 	depVertex := g.GetVertex(depID)
@@ -423,10 +426,18 @@ func (g *Graph) FindProviders(depID string) []*Vertex {
 			}
 		}
 	}
+
+	// try to find directly in the graph
+	if len(ret) == 0 {
+		if v, ok := g.VerticesMap[depID]; ok {
+			ret = append(ret, v)
+		}
+	}
 	return ret
 }
 
 func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {
+	const op = errors.Op("topological sort")
 	var ord Vertices
 	verticesCopy := vertices
 
@@ -435,7 +446,7 @@ func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {
 		verticesCopy = verticesCopy[:len(verticesCopy)-1]
 		containsCycle := dfs(vertex, &ord)
 		if containsCycle {
-			return nil, errors.New(fmt.Sprintf("cycle detected, please, check vertex: %s", vertex.ID))
+			return nil, errors.E(op, errors.Errorf("cycle detected, please, check vertex: %s", vertex.ID))
 		}
 	}
 

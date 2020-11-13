@@ -109,7 +109,7 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
 			for _, v := range vertex.Meta.FnsCollectorToInvoke[i].in {
 				in = append(in, v.in)
 			}
-			err = e.callCollectorFns(vertex, in, vertex.Meta.FnsCollectorToInvoke[i].fn)
+			err = e.fnCallCollectors(vertex, in, vertex.Meta.FnsCollectorToInvoke[i].fn)
 			if err != nil {
 				return errors.E(op, errors.Traverse, err)
 			}

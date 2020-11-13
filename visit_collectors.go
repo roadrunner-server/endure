@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (e *Endure) callCollectorFns(vertex *Vertex, in []reflect.Value, methodName string) error {
+func (e *Endure) fnCallCollectors(vertex *Vertex, in []reflect.Value, methodName string) error {
 	const op = errors.Op("internal_call_collector_functions")
 	// type implements Collector interface
 	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Collector)(nil)).Elem()) {

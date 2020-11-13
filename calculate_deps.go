@@ -178,22 +178,6 @@ func (e *Endure) implCollectorPath(vertexID string, vertex interface{}) error {
 						continue
 					}
 
-					dep := e.graph.FindProviders(removePointerAsterisk(paramStr))
-					if len(dep) == 1 {
-						tmpIsRef := isReference(param)
-						tmpValue := reflect.ValueOf(dep[0].Iface)
-						e.graph.AddGlobalProvider(removePointerAsterisk(paramStr), tmpValue)
-						e.graph.VerticesMap[dep[0].ID].AddProvider(removePointerAsterisk(paramStr), tmpValue, tmpIsRef, param.Kind())
-
-						err = e.graph.AddDep(vertexID, removePointerAsterisk(paramStr), Collects, isReference(param), param.Kind())
-						if err != nil {
-							return errors.E(op, err)
-						}
-
-						e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vertexID), zap.String("depends", paramStr))
-						continue
-					}
-
 					switch param.Kind() {
 					case reflect.Ptr:
 						if param.Elem().Kind() == reflect.Struct {
@@ -206,12 +190,23 @@ func (e *Endure) implCollectorPath(vertexID string, vertex interface{}) error {
 								in:  reflect.ValueOf(dep.Iface),
 								dep: dep.ID,
 							})
+
+							err = e.graph.AddDep(vertexID, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
+							if err != nil {
+								return errors.E(op, err)
+							}
 						}
 					case reflect.Interface:
 						cp.in = append(cp.in, In{
 							in:  reflect.ValueOf(compat.Iface),
 							dep: compat.ID,
 						})
+
+						err = e.graph.AddDep(vertexID, removePointerAsterisk(compat.ID), Collects, isReference(param), param.Kind())
+						if err != nil {
+							return errors.E(op, err)
+						}
+
 					case reflect.Struct:
 						dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
 						if dep == nil {
@@ -222,6 +217,11 @@ func (e *Endure) implCollectorPath(vertexID string, vertex interface{}) error {
 							in:  reflect.ValueOf(dep.Iface),
 							dep: dep.ID,
 						})
+
+						err = e.graph.AddDep(vertexID, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
+						if err != nil {
+							return errors.E(op, err)
+						}
 					}
 				}
 				v := e.graph.GetVertex(vertexID)

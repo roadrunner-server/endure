@@ -1,5 +1,7 @@
 package plugin3
 
+import "github.com/spiral/endure"
+
 // TODO algo to correctly fill the deps
 type Plugin3 struct {
 }
@@ -43,7 +45,7 @@ func (p *Plugin3) AddDBWithErr() (*Plugin3Dep, error) {
 	return &Plugin3Dep{Name: "Hey Plugin!"}, nil
 }
 
-func (p *Plugin3) OtherType() (*Plugin3Dep, *Plugin3OtherType, error) {
+func (p *Plugin3) OtherType(named endure.Named) (*Plugin3Dep, *Plugin3OtherType, error) {
 	return &Plugin3Dep{Name: "Hey, I'm with other type"}, &Plugin3OtherType{Name: "Hey, I'm other type"}, nil
 }
 
