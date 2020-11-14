@@ -210,7 +210,7 @@ func (e *Endure) processInterfaceDeps(compatible Vertices, fn interface{}, verte
 						dep: dep.ID,
 					})
 
-					err := e.graph.AddDep(vertex.ID, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
+					err := e.graph.AddDep(vertex, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
 					if err != nil {
 						return errors.E(op, err)
 					}
@@ -221,7 +221,7 @@ func (e *Endure) processInterfaceDeps(compatible Vertices, fn interface{}, verte
 					dep: compat.ID,
 				})
 
-				err := e.graph.AddDep(vertex.ID, removePointerAsterisk(compat.ID), Collects, isReference(param), param.Kind())
+				err := e.graph.AddDep(vertex, removePointerAsterisk(compat.ID), Collects, isReference(param), param.Kind())
 				if err != nil {
 					return errors.E(op, err)
 				}
@@ -237,7 +237,7 @@ func (e *Endure) processInterfaceDeps(compatible Vertices, fn interface{}, verte
 					dep: dep.ID,
 				})
 
-				err := e.graph.AddDep(vertex.ID, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
+				err := e.graph.AddDep(vertex, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
 				if err != nil {
 					return errors.E(op, err)
 				}
@@ -301,7 +301,7 @@ func (e *Endure) processStructDeps(fn interface{}, vertex *Vertex, params []refl
 		e.graph.AddGlobalProvider(removePointerAsterisk(paramStr), tmpValue)
 		e.graph.VerticesMap[dep.ID].AddProvider(removePointerAsterisk(paramStr), tmpValue, tmpIsRef, param.Kind())
 
-		err := e.graph.AddDep(vertex.ID, removePointerAsterisk(paramStr), Collects, isReference(param), param.Kind())
+		err := e.graph.AddDep(vertex, removePointerAsterisk(paramStr), Collects, isReference(param), param.Kind())
 		if err != nil {
 			return errors.E(op, err)
 		}
@@ -320,9 +320,9 @@ func (e *Endure) addEdges() error {
 	for vertexID, vrtx := range e.graph.VerticesMap {
 		// we already checked the interface satisfaction
 		// and we can safely skip the OK parameter here
-		init, _ := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
+		initMethod, _ := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
 
-		if init.Type == nil {
+		if initMethod.Type == nil {
 			e.logger.Fatal("internal_init method is absent in struct", zap.String("vertex id", vertexID))
 			return errors.E(Op, fmt.Errorf("internal_init method is absent in struct"))
 		}
@@ -347,7 +347,7 @@ func (e *Endure) addEdges() error {
 			The next step is to calculate dependencies provided by the Init() method
 			for example S1.Init(foo2.DB) S1 --> foo2.S2 (not foo2.DB, because vertex which provides foo2.DB is foo2.S2)
 		*/
-		err = e.addInitDeps(vertexID, init)
+		err = e.addInitDeps(vrtx, initMethod)
 		if err != nil {
 			return errors.E(Op, err)
 		}
@@ -356,7 +356,7 @@ func (e *Endure) addEdges() error {
 	return nil
 }
 
-func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
+func (e *Endure) addInitDeps(vertex *Vertex, initMethod reflect.Method) error {
 	const Op = errors.Op("add_init_deps")
 	// Init function in arguments
 	initArgs := functionParameters(initMethod)
@@ -364,11 +364,11 @@ func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
 	// iterate over all function parameters
 	for _, initArg := range initArgs {
 		if isPrimitive(initArg.String()) {
-			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertexID), zap.String("type", initArg.String()))
+			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertex.ID), zap.String("type", initArg.String()))
 			continue
 		}
 		// receiver
-		if vertexID == removePointerAsterisk(initArg.String()) {
+		if vertex.ID == removePointerAsterisk(initArg.String()) {
 			continue
 		}
 		if initArg.Kind() == reflect.Interface {
@@ -387,11 +387,11 @@ func (e *Endure) addInitDeps(vertexID string, initMethod reflect.Method) error {
 			}
 		}
 
-		err := e.graph.AddDep(vertexID, removePointerAsterisk(initArg.String()), Init, isReference(initArg), initArg.Kind())
+		err := e.graph.AddDep(vertex, removePointerAsterisk(initArg.String()), Init, isReference(initArg), initArg.Kind())
 		if err != nil {
 			return errors.E(Op, err)
 		}
-		e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vertexID), zap.String("depends on", initArg.String()))
+		e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vertex.ID), zap.String("depends on", initArg.String()))
 	}
 	return nil
 }

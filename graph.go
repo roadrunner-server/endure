@@ -208,15 +208,15 @@ AddDepRev doing the following:
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find vertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
-func (g *Graph) AddDep(vertexID, depID string, method Kind, isRef bool, typeKind reflect.Kind) error {
+func (g *Graph) AddDep(vertex *Vertex, depID string, method Kind, isRef bool, typeKind reflect.Kind) error {
 	switch typeKind {
 	case reflect.Interface:
-		err := g.addInterfaceDep(vertexID, depID, method, isRef)
+		err := g.addInterfaceDep(vertex, depID, method, isRef)
 		if err != nil {
 			return err
 		}
 	default:
-		err := g.addStructDep(vertexID, depID, method, isRef)
+		err := g.addStructDep(vertex, depID, method, isRef)
 		if err != nil {
 			return err
 		}
@@ -225,22 +225,18 @@ func (g *Graph) AddDep(vertexID, depID string, method Kind, isRef bool, typeKind
 	return nil
 }
 
-func (g *Graph) addInterfaceDep(vertexID, depID string, method Kind, isRef bool) error {
+func (g *Graph) addInterfaceDep(vertex *Vertex, depID string, method Kind, isRef bool) error {
 	const op = errors.Op("add interface dep")
-	// vertex should always present
-	vertex := g.GetVertex(vertexID)
-	if vertex == nil {
-		return errors.E(op, errors.Str("vertex should be in the graph"))
-	}
 
 	// here can be a lot of deps
 	depVertices := g.FindProviders(depID)
 	if len(depVertices) == 0 {
-		return errors.E(op, errors.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID))
+		return errors.E(op, errors.Errorf("can't find dependency: %s for the vertex: %s", depID, vertex.ID))
 	}
 
+	// skip self
 	for i := 0; i < len(depVertices); i++ {
-		if depVertices[i].ID == vertexID {
+		if depVertices[i].ID == vertex.ID {
 			depVertices = append(depVertices[:i], depVertices[i+1:]...)
 		}
 	}
@@ -333,13 +329,10 @@ func (g *Graph) addToList(method Kind, vertex *Vertex, depID string, isRef bool,
 	return true
 }
 
-func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) error {
+func (g *Graph) addStructDep(vertex *Vertex, depID string, method Kind, isRef bool) error {
 	const op = errors.Op("add structure dep")
 	// vertex should always present
-	vertex := g.GetVertex(vertexID)
-	if vertex == nil {
-		return errors.E(op, errors.Str("vertex should be in the graph"))
-	}
+
 	// but depVertex can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
 	depVertex := g.GetVertex(depID)
 	if depVertex == nil {
@@ -348,14 +341,16 @@ func (g *Graph) addStructDep(vertexID, depID string, method Kind, isRef bool) er
 			// here can be only 1 Dep for the struct, or PANIC!!!
 			depVertex = g.FindProviders(depID)[0]
 		} else {
-			return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertexID)
+			return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertex.ID)
 		}
 	}
 
 	// add Dependency into the List
 	// to call later
 	// because we should know Init method parameters for every Vertex
-	g.addToList(method, vertex, depID, isRef, depVertex.ID, reflect.Struct)
+	if !g.addToList(method, vertex, depID, isRef, depVertex.ID, reflect.Struct) {
+		return nil
+	}
 
 	// append depID vertex
 	for i := 0; i < len(depVertex.Dependencies); i++ {
