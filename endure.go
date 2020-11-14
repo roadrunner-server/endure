@@ -283,6 +283,18 @@ func (e *Endure) Register(vertex interface{}) error {
 	return nil
 }
 
+func (e *Endure) RegisterAll(plugins ...interface{}) error {
+	const op = errors.Op("register all")
+	for _, plugin := range plugins {
+		err := e.Register(plugin)
+		if err != nil {
+			return errors.E(op, err)
+		}
+	}
+
+	return nil
+}
+
 // Init container and all service edges.
 func (e *Endure) Init() error {
 	_, err := e.Transition(Initialize, e)
