@@ -275,12 +275,12 @@ func (e *Endure) processStructDeps(fn interface{}, vertex *Vertex, params []refl
 
 		dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
 		if dep == nil {
-			depIds := e.graph.FindProviders(removePointerAsterisk(paramStr))
-			if len(depIds) == 0 {
+			depVertex := e.graph.FindProviders(removePointerAsterisk(paramStr))
+			if depVertex == nil {
 				e.logger.Warn("can't find any provider for the dependency, collector function on the vertex will not be invoked", zap.String("dep id", removePointerAsterisk(param.String())), zap.String("vertex id", vertex.ID))
 				return nil
 			}
-			dep = depIds[0]
+			dep = depVertex
 			for k, v := range dep.Provides {
 				if k == removePointerAsterisk(paramStr) {
 					cp.in = append(cp.in, In{

@@ -1,7 +1,6 @@
 package endure
 
 import (
-	"fmt"
 	"reflect"
 	"sync/atomic"
 
@@ -229,38 +228,34 @@ func (g *Graph) addInterfaceDep(vertex *Vertex, depID string, method Kind, isRef
 	const op = errors.Op("add interface dep")
 
 	// here can be a lot of deps
-	depVertices := g.FindProviders(depID)
-	if len(depVertices) == 0 {
+	depVertex := g.FindProviders(depID)
+	if depVertex == nil {
 		return errors.E(op, errors.Errorf("can't find dependency: %s for the vertex: %s", depID, vertex.ID))
 	}
 
 	// skip self
-	for i := 0; i < len(depVertices); i++ {
-		if depVertices[i].ID == vertex.ID {
-			depVertices = append(depVertices[:i], depVertices[i+1:]...)
-		}
+	if depVertex.ID == vertex.ID {
+		return nil
 	}
 
-	for i := 0; i < len(depVertices); i++ {
-		// add Dependency into the List
-		// to call later
-		// because we should know Init method parameters for every Vertex
-		// for example, we should know http.Middleware dependency and later invoke all types which it implement
-		// OR know Collects methods to invoke
-		if g.addToList(method, vertex, depID, isRef, depVertices[i].ID, reflect.Interface) == false {
+	// add Dependency into the List
+	// to call later
+	// because we should know Init method parameters for every Vertex
+	// for example, we should know http.Middleware dependency and later invoke all types which it implement
+	// OR know Collects methods to invoke
+	if g.addToList(method, vertex, depID, isRef, depVertex.ID, reflect.Interface) == false {
+		return nil
+	}
+
+	for j := 0; j < len(depVertex.Dependencies); j++ {
+		tmpID := depVertex.Dependencies[j].ID
+		if tmpID == vertex.ID {
 			return nil
 		}
-
-		for j := 0; j < len(depVertices[i].Dependencies); j++ {
-			tmpID := depVertices[i].Dependencies[j].ID
-			if tmpID == vertex.ID {
-				return nil
-			}
-		}
-
-		vertex.numOfDeps++
-		vertex.Dependencies = append(vertex.Dependencies, depVertices[i])
 	}
+
+	vertex.numOfDeps++
+	vertex.Dependencies = append(vertex.Dependencies, depVertex)
 	return nil
 }
 
@@ -337,12 +332,10 @@ func (g *Graph) addStructDep(vertex *Vertex, depID string, method Kind, isRef bo
 	depVertex := g.GetVertex(depID)
 	if depVertex == nil {
 		tmp := g.FindProviders(depID)
-		if len(tmp) > 0 {
-			// here can be only 1 Dep for the struct, or PANIC!!!
-			depVertex = g.FindProviders(depID)[0]
-		} else {
-			return fmt.Errorf("can't find dep: %s for the vertex: %s", depID, vertex.ID)
+		if tmp == nil {
+			return errors.E(op, errors.Errorf("can't find dep: %s for the vertex: %s", depID, vertex.ID))
 		}
+		depVertex = tmp
 	}
 
 	// add Dependency into the List
@@ -413,23 +406,21 @@ func (g *Graph) GetVertex(id string) *Vertex {
 	return g.VerticesMap[id]
 }
 
-func (g *Graph) FindProviders(depID string) []*Vertex {
-	ret := make([]*Vertex, 0, 2)
+func (g *Graph) FindProviders(depID string) *Vertex {
 	for i := 0; i < len(g.Vertices); i++ {
 		for providerID := range g.Vertices[i].Provides {
 			if depID == providerID {
-				ret = append(ret, g.Vertices[i])
+				return g.Vertices[i]
 			}
 		}
 	}
 
 	// try to find directly in the graph
-	if len(ret) == 0 {
-		if v, ok := g.VerticesMap[depID]; ok {
-			ret = append(ret, v)
-		}
+	if _, ok := g.VerticesMap[depID]; ok {
+		return g.VerticesMap[depID]
 	}
-	return ret
+
+	return nil
 }
 
 func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {
