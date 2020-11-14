@@ -277,7 +277,7 @@ func (e *Endure) processStructDeps(fn interface{}, vertex *Vertex, params []refl
 		if dep == nil {
 			depIds := e.graph.FindProviders(removePointerAsterisk(paramStr))
 			if len(depIds) == 0 {
-				e.logger.Warn("can't find any provider for the dependency, collector function on the vertex will not be invoked", zap.String("dep id", removePointerAsterisk(param.String())), zap.String("vertexId", vertex.ID))
+				e.logger.Warn("can't find any provider for the dependency, collector function on the vertex will not be invoked", zap.String("dep id", removePointerAsterisk(param.String())), zap.String("vertex id", vertex.ID))
 				return nil
 			}
 			dep = depIds[0]
