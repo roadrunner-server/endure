@@ -1,7 +1,6 @@
 package endure
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/spiral/errors"
@@ -323,8 +322,8 @@ func (e *Endure) addEdges() error {
 		initMethod, _ := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
 
 		if initMethod.Type == nil {
-			e.logger.Fatal("internal_init method is absent in struct", zap.String("vertex id", vertexID))
-			return errors.E(Op, fmt.Errorf("internal_init method is absent in struct"))
+			e.logger.Fatal("Init method is absent in struct", zap.String("vertex id", vertexID))
+			return errors.E(Op, errors.Errorf("init method is absent in struct"))
 		}
 
 		/* Add the dependencies (if) which this vertex needs to internal_init
