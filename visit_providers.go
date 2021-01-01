@@ -35,7 +35,7 @@ func (e *Endure) appendProviderFuncArgs(depsEntry Entry, providedEntry ProvidedE
 		if providedEntry.Value.CanAddr() {
 			in = append(in, providedEntry.Value.Addr())
 		} else {
-			e.logger.Warn(fmt.Sprintf("value is not addressible. TIP: consider to return a pointer from %s", providedEntry.Value.Type()), zap.String("type", providedEntry.Value.Type().String()))
+			e.logger.Warn(fmt.Sprintf("value is not addressable. TIP: consider to return a pointer from %s", providedEntry.Value.Type()), zap.String("type", providedEntry.Value.Type().String()))
 			e.logger.Warn("making a fresh pointer")
 			nt := reflect.New(providedEntry.Value.Type())
 			in = append(in, nt)
