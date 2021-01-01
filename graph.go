@@ -1,8 +1,10 @@
 package endure
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync/atomic"
 
 	"github.com/spiral/errors"
@@ -473,13 +475,16 @@ func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {
 		verticesCopy = verticesCopy[:len(verticesCopy)-1]
 		containsCycle := dfs(vertex, &ord)
 		if containsCycle {
+			buf := new(bytes.Buffer)
+			defer buf.Truncate(0)
+			buf.WriteString("The following vertices involved:\n")
 			// If we found a cycle, print involved vertices
-			for i := 0; i < len(vertices); i++ {
+			for i := (len(vertices) - 1); i > 0; i-- {
 				if vertices[i].visited == false {
-					fmt.Println(vertices[i].ID)
+					buf.WriteString(fmt.Sprintf("vertex: %s -> ", vertices[i].ID))
 				}
 			}
-			return nil, errors.E(op, errors.Errorf("cycle detected, please, check vertex: %s", vertex.ID))
+			return nil, errors.E(op, errors.Errorf("cycle detected, please, check the path: %s", strings.TrimRight(buf.String(), " -> ")))
 		}
 	}
 
