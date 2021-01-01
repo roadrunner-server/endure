@@ -50,6 +50,7 @@ const (
 	FatalLevel
 )
 
+// Endure struct represent main endure repr
 type Endure struct {
 	// Dependency graph
 	graph *Graph
@@ -86,9 +87,12 @@ type Endure struct {
 	userResultsCh chan *Result
 }
 
+// Options is the endure options
 type Options func(endure *Endure)
 
-/* Input parameters: logLevel
+/*
+NewContainer returns empty endure container
+Input parameters: logLevel
    -1 is the most informative level - DebugLevel --> also turns on pprof endpoint
    0 - InfoLevel defines info log level.
    1 -
@@ -210,18 +214,21 @@ func pprof() {
 	}()
 }
 
+// SetLogLevel option sets the log level in the Endure
 func SetLogLevel(lvl Level) Options {
 	return func(endure *Endure) {
 		endure.loglevel = lvl
 	}
 }
 
+// RetryOnFail if set to true, endure will try to stop and restart graph if one or more vertices are failed
 func RetryOnFail(retry bool) Options {
 	return func(endure *Endure) {
 		endure.retry = retry
 	}
 }
 
+// SetBackoffTimes sets initial and maximum backoff interval for retry
 func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) Options {
 	return func(endure *Endure) {
 		endure.maxInterval = maxInterval
@@ -229,7 +236,7 @@ func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) O
 	}
 }
 
-// output: can be file or stdout
+// Visualize visualize current graph. Output: can be file or stdout
 func Visualize(output Output, path string) Options {
 	return func(endure *Endure) {
 		endure.output = output
@@ -239,6 +246,7 @@ func Visualize(output Output, path string) Options {
 	}
 }
 
+// SetStopTimeOut sets the timeout to kill the vertices is one or more of them are frozen
 func SetStopTimeOut(to time.Duration) Options {
 	return func(endure *Endure) {
 		endure.stopTimeout = to
@@ -283,6 +291,7 @@ func (e *Endure) Register(vertex interface{}) error {
 	return nil
 }
 
+// RegisterAll is the helper for the register to register more than one structure in the endure
 func (e *Endure) RegisterAll(plugins ...interface{}) error {
 	const op = errors.Op("register all")
 	for _, plugin := range plugins {

@@ -115,9 +115,8 @@ func (e *Endure) walk(params []reflect.Type, v *Vertex) bool {
 				continue
 			}
 			return false
-		} else {
-			continue
 		}
+		continue
 	}
 
 	if onlyStructs {
