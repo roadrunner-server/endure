@@ -70,7 +70,7 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
 
 			e.logger.Error("error calling internal_init", zap.String("vertex id", vertex.ID), zap.Error(err))
 			return errors.E(op, errors.FunctionCall, err)
-		} 
+		}
 		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 	}
 

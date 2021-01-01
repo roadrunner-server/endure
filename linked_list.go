@@ -69,7 +69,7 @@ func (dll *DoublyLinkedList) SetTail(node *DllNode) {
 
 // InsertBefore inserts node before the provided node
 func (dll *DoublyLinkedList) InsertBefore(node, nodeToInsert *DllNode) {
-	if nodeToInsert == dll.Head && nodeToInsert == dll.Tail {
+	if nodeToInsert == dll.Head && nodeToInsert == dll.Tail { //nolint:gocritic
 		return
 	}
 
@@ -86,7 +86,7 @@ func (dll *DoublyLinkedList) InsertBefore(node, nodeToInsert *DllNode) {
 
 // InsertAfter inserts node after the provided node
 func (dll *DoublyLinkedList) InsertAfter(node, nodeToInsert *DllNode) {
-	if nodeToInsert == dll.Head && nodeToInsert == dll.Tail {
+	if nodeToInsert == dll.Head && nodeToInsert == dll.Tail { //nolint:gocritic
 		return
 	}
 

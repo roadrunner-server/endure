@@ -1,6 +1,7 @@
 package endure
 
 import (
+	"fmt"
 	"reflect"
 	"sync/atomic"
 
@@ -472,6 +473,12 @@ func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {
 		verticesCopy = verticesCopy[:len(verticesCopy)-1]
 		containsCycle := dfs(vertex, &ord)
 		if containsCycle {
+			// If we found a cycle, print involved vertices
+			for i := 0; i < len(vertices); i++ {
+				if vertices[i].visited == false {
+					fmt.Println(vertices[i].ID)
+				}
+			}
 			return nil, errors.E(op, errors.Errorf("cycle detected, please, check vertex: %s", vertex.ID))
 		}
 	}
@@ -480,8 +487,10 @@ func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {
 }
 
 func dfs(vertex *Vertex, ordered *Vertices) bool {
+	// if vertex already visited, we reach the end, return
 	if vertex.visited {
 		return false
+		// if vertex is visiting, than we have cyclic dep, because we reach the same vertex from two different dependencies
 	} else if vertex.visiting {
 		return true
 	}

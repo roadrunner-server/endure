@@ -6,6 +6,7 @@ import (
 
 	"github.com/spiral/endure"
 	"github.com/spiral/endure/tests/stress/CollectorFuncReturn"
+	"github.com/spiral/endure/tests/stress/CyclicDeps"
 	"github.com/spiral/endure/tests/stress/InitErr"
 	"github.com/spiral/endure/tests/stress/ServeErr"
 	"github.com/spiral/endure/tests/stress/ServeRetryErr"
@@ -242,4 +243,17 @@ func TestEndure_ForceExit(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Error(t, c.Stop()) // shutdown: timeout exceed, some vertices are not stopped and can cause memory leak
+}
+
+func TestEndure_CyclicDeps(t *testing.T) {
+	c, err := endure.NewContainer(nil, endure.RetryOnFail(false))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.RegisterAll(
+		&CyclicDeps.Plugin1{},
+		&CyclicDeps.Plugin2{},
+		&CyclicDeps.Plugin3{},
+	))
+
+	assert.Error(t, c.Init())
 }
