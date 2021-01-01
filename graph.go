@@ -116,17 +116,18 @@ type Vertex struct {
 	// Set of entries which can vertex provide (for example, foo4 vertex can provide DB instance and logger)
 	Provides map[string]ProvidedEntry
 
-	// current state
-	state uint32
-
 	// If vertex disabled it removed from the processing (Init, Serve, Stop), but present in the graph
 	IsDisabled bool
 	// for the topological sort, private
 	numOfDeps int
 	visited   bool
 	visiting  bool
+
+	// current state
+	state uint32
 }
 
+// ProvidedEntry is proviers helper entity
 type ProvidedEntry struct {
 	Str string
 	// we need to distinguish false (default bool value) and nil --> we don't know information about reference
@@ -135,6 +136,7 @@ type ProvidedEntry struct {
 	Kind        reflect.Kind
 }
 
+// AddProvider adds an provider for a dep (vertex->vertex)
 func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, kind reflect.Kind) {
 	if v.Provides == nil {
 		v.Provides = make(map[string]ProvidedEntry)
@@ -148,10 +150,12 @@ func (v *Vertex) AddProvider(valueKey string, value reflect.Value, isRef bool, k
 	}
 }
 
+// RemoveProvider removes provider from the map
 func (v *Vertex) RemoveProvider(valueKey string) {
 	delete(v.Provides, valueKey)
 }
 
+// SetState sets the state for the vertex
 func (v *Vertex) SetState(st State) {
 	atomic.StoreUint32(&v.state, uint32(st))
 }

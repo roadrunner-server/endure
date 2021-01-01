@@ -37,13 +37,13 @@ type (
 		Stop() error
 	}
 
-	// Name of the service
+	// Named -> Name of the service
 	Named interface {
 		// Name return user friendly name of the plugin
 		Name() string
 	}
 
-	// internal container interface
+	// Container - Internal container interface
 	Container interface {
 		// Serve used to Start the plugin in topological order
 		Serve() (<-chan *Result, error)
