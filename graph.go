@@ -484,7 +484,7 @@ func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {
 					buf.WriteString(fmt.Sprintf("vertex: %s -> ", vertices[i].ID))
 				}
 			}
-			return nil, errors.E(op, errors.Errorf("cycle detected, please, check the path: %s", strings.TrimRight(buf.String(), " -> ")))
+			return nil, errors.E(op, errors.Errorf("cycle detected, please, check the path: %s", strings.TrimRight(buf.String(), "-> ")))
 		}
 	}
 
