@@ -63,7 +63,7 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
 				// disable current vertex
 				vertex.IsDisabled = true
 				// disable all vertices in the vertex which depends on current
-				e.graph.DisableById(vertex.ID)
+				e.graph.DisableByID(vertex.ID)
 				// Disabled is actually to an error, just notification to the graph, that it has some vertices which are disabled
 				return nil
 			} else {
