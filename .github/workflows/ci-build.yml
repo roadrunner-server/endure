@@ -1,6 +1,14 @@
 name: CI
 
-on: [ push, pull_request ]
+on:
+  push:
+  pull_request:
+    branches:
+      # Branches from forks have the form 'user:branch-name' so we only run
+      # this job on pull_request events for branches that look like fork
+      # branches. Without this we would end up running this job twice for non
+      # forked PRs, once for the push and then once for opening the PR.
+      - '**:**'
 
 jobs:
   build:
@@ -10,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         go: [ 1.14, 1.15 ]
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-20.04, macos-latest, windows-latest ]
     env:
       GO111MODULE: on
     steps:
@@ -30,32 +38,44 @@ jobs:
       - name: Install Go dependencies
         run: go mod download
 
-      - name: Run golang tests
+      - name: Run golang tests on Windows (w/o codecov)
+        if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          go test ./tests/backoff -race -v -coverprofile=backoff.txt -covermode=atomic
-          go test ./tests/happy_scenarios -race -v -coverprofile=happy_scenarios.txt -covermode=atomic
-          go test ./tests/interfaces -race -v -coverprofile=interfaces.txt -covermode=atomic
-          go test ./tests/issues -race -v -coverprofile=issues.txt -covermode=atomic
-          go test ./tests/stress -race -v -coverprofile=stress.txt -covermode=atomic
-          go test ./tests/disabled_vertices -race -v -coverprofile=disabled_vertices.txt -covermode=atomic
+          go test -v -race -tags=debug ./tests/backoff
+          go test -v -race -tags=debug ./tests/happy_scenarios
+          go test -v -race -tags=debug ./tests/interfaces
+          go test -v -race -tags=debug ./tests/issues
+          go test -v -race -tags=debug ./tests/stress
+          go test -v -race -tags=debug ./tests/disabled_vertices
 
-      - name: Run code coverage
-        uses: codecov/codecov-action@v1
+      - name: Run golang tests
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          mkdir ./coverage-ci
+          go test -v -race -cover -tags=debug -coverprofile=./coverage-ci/backoff.txt -covermode=atomic ./tests/backoff
+          go test -v -race -cover -tags=debug -coverprofile=./coverage-ci/happy_scenarios.txt -covermode=atomic ./tests/happy_scenarios 
+          go test -v -race -cover -tags=debug -coverprofile=./coverage-ci/interfaces.txt -covermode=atomic ./tests/interfaces 
+          go test -v -race -cover -tags=debug -coverprofile=./coverage-ci/issues.txt -covermode=atomic ./tests/issues 
+          go test -v -race -cover -tags=debug -coverprofile=./coverage-ci/stress.txt -covermode=atomic ./tests/stress
+          go test -v -race -cover -tags=debug -coverprofile=./coverage-ci/disabled_vertices.txt -covermode=atomic ./tests/disabled_vertices 
+          cat ./coverage-ci/*.txt > ./coverage-ci/summary.txt
+
+      - uses: codecov/codecov-action@v1 # Docs: <https://github.com/codecov/codecov-action>
+        if: ${{ matrix.os == 'ubuntu-20.04' || matrix.os == 'macos-latest' }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: backoff.txt, happy_scenarios.txt, interfaces.txt, issues.txt, stress.txt, disabled_vertices.txt
-          flags: unittests
-          name: codecov-umbrella
+          file: ./coverage-ci/summary.txt
           fail_ci_if_error: false
-          verbose: true
 
-  golangci-check:
-    name: runner / golangci-lint
-    runs-on: ubuntu-latest
+  golangci-lint:
+    name: Golang-CI (lint)
+    runs-on: ubuntu-20.04
     steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v1
-      - name: golangci-lint
-        uses: reviewdog/action-golangci-lint@v1
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v2 # Action page: <https://github.com/golangci/golangci-lint-action>
         with:
-          github_token: ${{ secrets.github_token }}
+          version: v1.34 # without patch version
+          only-new-issues: false # show only new issues if it's a pull request
