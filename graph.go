@@ -160,11 +160,13 @@ func (v *Vertex) SetState(st State) {
 	atomic.StoreUint32(&v.state, uint32(st))
 }
 
+// GetState gets the vertex state
 func (v *Vertex) GetState() State {
 	return State(atomic.LoadUint32(&v.state))
 }
 
-func (g *Graph) DisableById(vid string) {
+// DisableByID used to disable vertex by it's ID
+func (g *Graph) DisableByID(vid string) {
 	v := g.VerticesMap[vid]
 	for i := 0; i < len(g.Vertices); i++ {
 		g.disablerHelper(g.Vertices[i], v)
@@ -196,6 +198,7 @@ func NewGraph() *Graph {
 	}
 }
 
+// AddGlobalProvider adds provider to the global map in the Graph structure
 func (g *Graph) AddGlobalProvider(providedId string, val reflect.Value) {
 	g.providers[providedId] = val
 }
