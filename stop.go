@@ -112,7 +112,7 @@ func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 		// get notification about stopped vertex
 		case vid := <-c:
 			e.logger.Info("vertex stopped", zap.String("vertex id", vid))
-			stopped += 1
+			stopped++
 			if stopped == numOfVertices {
 				return nil
 			}
@@ -141,16 +141,15 @@ func calculateDepth(n *DllNode, traverse bool) int {
 	if traverse {
 		tmp := n
 		for tmp != nil {
-			num += 1
+			num++
 			tmp = tmp.Next
 		}
 		return num
-	} else {
-		tmp := n
-		for tmp != nil {
-			num += 1
-			tmp = tmp.Prev
-		}
-		return num
 	}
+	tmp := n
+	for tmp != nil {
+		num++
+		tmp = tmp.Prev
+	}
+	return num
 }
