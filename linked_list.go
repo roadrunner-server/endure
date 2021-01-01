@@ -1,6 +1,6 @@
 package endure
 
-// Vertex of the DoublyLL
+// DllNode consists of the curr Vertex, Prev and Next DllNodes
 type DllNode struct {
 	Vertex     *Vertex
 	Prev, Next *DllNode
@@ -11,11 +11,12 @@ type DoublyLinkedList struct {
 	Head, Tail *DllNode
 }
 
+// NewDoublyLinkedList returns DLL implementation
 func NewDoublyLinkedList() *DoublyLinkedList {
 	return &DoublyLinkedList{}
 }
 
-// O(1) time + space
+// SetHead O(1) time + space
 func (dll *DoublyLinkedList) SetHead(node *DllNode) {
 	if dll.Head == nil {
 		dll.Head = node
@@ -25,6 +26,7 @@ func (dll *DoublyLinkedList) SetHead(node *DllNode) {
 	dll.InsertBefore(dll.Head, node)
 }
 
+// Push used to push vertex to the head
 func (dll *DoublyLinkedList) Push(vertex *Vertex) {
 	node := &DllNode{
 		Vertex: vertex,
@@ -44,6 +46,7 @@ func (dll *DoublyLinkedList) Push(vertex *Vertex) {
 	dll.Head = node
 }
 
+// PushTail used to push vertex to the tail
 func (dll *DoublyLinkedList) PushTail(vertex *Vertex) {
 	node := &DllNode{
 		Vertex: vertex,
@@ -56,7 +59,7 @@ func (dll *DoublyLinkedList) PushTail(vertex *Vertex) {
 	dll.Tail = node
 }
 
-// constant O(1) time and space
+// SetTail sets the tail, constant O(1) time and space
 func (dll *DoublyLinkedList) SetTail(node *DllNode) {
 	if dll.Tail == nil {
 		dll.SetHead(node)
@@ -64,6 +67,7 @@ func (dll *DoublyLinkedList) SetTail(node *DllNode) {
 	dll.InsertAfter(dll.Tail, node)
 }
 
+// InsertBefore inserts node before the provided node
 func (dll *DoublyLinkedList) InsertBefore(node, nodeToInsert *DllNode) {
 	if nodeToInsert == dll.Head && nodeToInsert == dll.Tail {
 		return
@@ -80,6 +84,7 @@ func (dll *DoublyLinkedList) InsertBefore(node, nodeToInsert *DllNode) {
 	node.Prev = nodeToInsert
 }
 
+// InsertAfter inserts node after the provided node
 func (dll *DoublyLinkedList) InsertAfter(node, nodeToInsert *DllNode) {
 	if nodeToInsert == dll.Head && nodeToInsert == dll.Tail {
 		return
@@ -96,6 +101,7 @@ func (dll *DoublyLinkedList) InsertAfter(node, nodeToInsert *DllNode) {
 	node.Next = nodeToInsert
 }
 
+// Remove removes the node
 func (dll *DoublyLinkedList) Remove(node *DllNode) {
 	if node == dll.Head {
 		dll.Head = dll.Head.Next
@@ -106,6 +112,7 @@ func (dll *DoublyLinkedList) Remove(node *DllNode) {
 	dll.removeNode(node)
 }
 
+// Reset resets the whole DLL
 func (dll *DoublyLinkedList) Reset() {
 	cNode := dll.Head
 	for cNode != nil {

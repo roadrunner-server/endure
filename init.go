@@ -66,13 +66,12 @@ func (e *Endure) callInitFn(init reflect.Method, vertex *Vertex) error {
 				e.graph.DisableByID(vertex.ID)
 				// Disabled is actually to an error, just notification to the graph, that it has some vertices which are disabled
 				return nil
-			} else {
-				e.logger.Error("error calling internal_init", zap.String("vertex id", vertex.ID), zap.Error(err))
-				return errors.E(op, errors.FunctionCall, err)
 			}
-		} else {
-			return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
-		}
+
+			e.logger.Error("error calling internal_init", zap.String("vertex id", vertex.ID), zap.Error(err))
+			return errors.E(op, errors.FunctionCall, err)
+		} 
+		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 	}
 
 	// just to be safe here
@@ -129,8 +128,8 @@ func (e *Endure) findInitParameters(vertex *Vertex) ([]reflect.Value, error) {
 	if len(vertex.Meta.InitDepsToInvoke) > 0 {
 		for depID := range vertex.Meta.InitDepsToInvoke {
 			fnReceiver := e.graph.VerticesMap[depID]
-			calleeVertexId := vertex.ID
-			err := e.traverseProviders(fnReceiver, calleeVertexId)
+			calleeVertexID := vertex.ID
+			err := e.traverseProviders(fnReceiver, calleeVertexID)
 			if err != nil {
 				return nil, errors.E(op, errors.Traverse, err)
 			}
