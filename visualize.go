@@ -10,12 +10,16 @@ import (
 	"github.com/spiral/errors"
 )
 
+// Output represents possible output variants for the visualizer
 type Output string
 
 const (
-	File   Output = "file"
+	// File output type
+	File Output = "file"
+	// StdOut output type
 	StdOut Output = "stdout"
-	Empty  Output = "empty"
+	// Empty is placeholder
+	Empty Output = "empty"
 )
 
 var _graphTmpl = template.Must(
@@ -33,6 +37,7 @@ var _graphTmpl = template.Must(
 	{{end}}
 }`))
 
+// Visualize visualizes the graph based on provided output value
 func (e *Endure) Visualize(vertices []*Vertex) error {
 	const op = errors.Op("print_graph")
 	f := new(bytes.Buffer)

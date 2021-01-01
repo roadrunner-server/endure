@@ -9,9 +9,9 @@ import (
 	"go.uber.org/zap"
 )
 
-func (e *Endure) traverseProviders(fnReceiver *Vertex, calleeVertexId string) error {
+func (e *Endure) traverseProviders(fnReceiver *Vertex, calleeVertexID string) error {
 	const op = errors.Op("internal_traverse_providers")
-	err := e.traverseCallProvider(fnReceiver, []reflect.Value{reflect.ValueOf(fnReceiver.Iface)}, calleeVertexId)
+	err := e.traverseCallProvider(fnReceiver, []reflect.Value{reflect.ValueOf(fnReceiver.Iface)}, calleeVertexID)
 	if err != nil {
 		return errors.E(op, errors.Traverse, err)
 	}
@@ -44,9 +44,13 @@ func (e *Endure) appendProviderFuncArgs(depsEntry Entry, providedEntry ProvidedE
 	return in
 }
 
+// Providers is vertex provides type alias
 type Providers []Provide
 
-//
+// Provide struct represents a single Provide value, which consists of:
+// 1. m -> method reflected value
+// 2. In -> In types (fn foo(a int, b int))
+// 3. Out -> returning types (fn boo() a int, b int)
 type Provide struct {
 	m   reflect.Method
 	In  []reflect.Type
@@ -164,7 +168,7 @@ func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, ca
 	return nil
 }
 
-func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *Vertex, callerId string) error {
+func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *Vertex, callerID string) error {
 	const op = errors.Op("provider fn call")
 	ret := f.Func.Call(in)
 	for i := 0; i < len(ret); i++ {
@@ -185,7 +189,7 @@ func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *V
 		}
 
 		// add the value to the Providers
-		e.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("caller id", callerId), zap.String("parameter", ret[i].Type().String()))
+		e.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("caller id", callerID), zap.String("parameter", ret[i].Type().String()))
 		e.graph.AddGlobalProvider(removePointerAsterisk(ret[i].Type().String()), ret[i])
 		vertex.AddProvider(removePointerAsterisk(ret[i].Type().String()), ret[i], isReference(ret[i].Type()), ret[i].Kind())
 	}
