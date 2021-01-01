@@ -8,12 +8,17 @@ import (
 	"github.com/spiral/errors"
 )
 
+// FSM represents endure finite state machine
 type FSM interface {
+	// CurrentState returns the current state of the FSM
 	CurrentState() State
+	// InitialState sets the initial FSM state
 	InitialState(st State)
+	// Transition used to move from one state to another
 	Transition(event Event, args ...interface{}) (interface{}, error)
 }
 
+// NewFSM returns new FSM implementation based on initial state and callbacks to move from one state to another
 func NewFSM(initialState State, callbacks map[Event]reflect.Method) FSM {
 	st := uint32(initialState)
 	return &FSMImpl{
@@ -22,12 +27,14 @@ func NewFSM(initialState State, callbacks map[Event]reflect.Method) FSM {
 	}
 }
 
+// FSMImpl is endure FSM interface implementation
 type FSMImpl struct {
 	mutex        sync.Mutex
 	currentState *uint32
 	callbacks    map[Event]reflect.Method
 }
 
+// Event represents FSM event
 type Event uint32
 
 func (ev Event) String() string {
@@ -44,11 +51,15 @@ func (ev Event) String() string {
 }
 
 const (
+	// Initialize func
 	Initialize Event = iota // Init func
-	Start                   // Serve func
-	Stop                    // Stop func
+	// Start func
+	Start // Serve func
+	// Stop func
+	Stop // Stop func
 )
 
+// State is the FSM current state
 type State uint32
 
 func (st State) String() string {
@@ -75,14 +86,22 @@ func (st State) String() string {
 }
 
 const (
+	// Uninitialized state
 	Uninitialized State = iota
+	// Initializing state
 	Initializing
+	// Initialized state
 	Initialized
+	// Starting state
 	Starting
+	// Started state
 	Started
+	// Stopping state
 	Stopping
+	// Stopped state
 	Stopped
-	Error // ??
+	// Error state
+	Error
 )
 
 // Acceptors (also called detectors or recognizers) produce binary output,
@@ -120,15 +139,18 @@ func (f *FSMImpl) current() State {
 	return State(atomic.LoadUint32(f.currentState))
 }
 
+// InitialState (see interface)
 func (f *FSMImpl) InitialState(st State) {
 	f.set(st)
 }
 
+// CurrentState (see interface)
 func (f *FSMImpl) CurrentState() State {
 	return f.current()
 }
 
 /*
+Transition moves endure from one state to another
 Rules:
 Transition table:
 Event -> Init. Error on other events (Start, Stop)
