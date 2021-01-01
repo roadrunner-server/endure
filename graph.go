@@ -1,7 +1,6 @@
 package endure
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 	"strings"
@@ -475,15 +474,18 @@ func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {
 		verticesCopy = verticesCopy[:len(verticesCopy)-1]
 		containsCycle := dfs(vertex, &ord)
 		if containsCycle {
-			buf := new(bytes.Buffer)
-			defer buf.Truncate(0)
+			// allocate a buffer for the resulting message
+			buf := new(strings.Builder)
+			// defer buffer reset
+			defer buf.Reset()
 			buf.WriteString("The following vertices involved:\n")
-			// If we found a cycle, print involved vertices
+			// If we found a cycle, print involved vertices in reverse order
 			for i := (len(vertices) - 1); i > 0; i-- {
 				if vertices[i].visited == false {
 					buf.WriteString(fmt.Sprintf("vertex: %s -> ", vertices[i].ID))
 				}
 			}
+			// trim the last arrow and return error message
 			return nil, errors.E(op, errors.Errorf("cycle detected, please, check the path: %s", strings.TrimRight(buf.String(), "-> ")))
 		}
 	}
