@@ -54,9 +54,16 @@ if err != nil {
 }
 ```
 The order of plugins in the `RegisterAll` plugin does no matter.  
-Next we need to start serving all the parts:
+Next we need to initialize and run our container:
 ```go
+err = container.Init()
+if err != nil {
+    panic(err)
+}
 errCh, err := container.Serve()
+if err != nil {
+    panic(err)
+}
 ```
 `errCh` is the channel with errors from the all `Vertices`. You can identify vertex by `vertexID` which is presented in `errCh` struct.
 Then just process the events from the `errCh`:
