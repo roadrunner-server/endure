@@ -35,10 +35,42 @@ In this particular case, we can't start HTTP before we start all other parts. Al
   <img src="https://github.com/spiral/endure/blob/master/images/graph.png" width="300" height="250" />
 </p>
 
-Next we need to start serving all the parts:
+=======
+To do that:
 
 ```go
+container, err := endure.NewContainer(nil, endure.SetLogLevel(endure.ErrorLevel), endure.Visualize(endure.StdOut, ""))
+```
+
+Let's take a look at the `endure.NewContainer()`:
+
+1. First arg here is the external logger. If you want to use your own logger, you can pass it as the first argument.
+2. Next arguments are optional and can be set using `Options`. For example `endure.Visualize(endure.StdOut, "")` will show you dot-compatible graph in the console. TODO: all options section.  
+   Then we need to pass our structures as references to the `RegisterAll` or `Register` function.
+
+```go
+err = container.RegisterAll(
+		&httpPlugin{},
+		&DBPlugin{},
+		&LoggerPlugin{},
+	)
+if err != nil {
+    panic(err)
+}
+```
+
+The order of plugins in the `RegisterAll` plugin does no matter.  
+Next we need to initialize and run our container:
+
+```go
+err = container.Init()
+if err != nil {
+    panic(err)
+}
 errCh, err := container.Serve()
+if err != nil {
+    panic(err)
+}
 ```
 
 `errCh` is the channel with errors from the all `Vertices`. You can identify vertex by `vertexID` which is presented in `errCh` struct.
