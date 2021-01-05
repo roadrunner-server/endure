@@ -1,1 +1,0 @@
-Tests with broken plugins which produces errors. 

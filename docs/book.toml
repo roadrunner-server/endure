@@ -1,0 +1,6 @@
+[book]
+authors = ["Valery Piashchynski"]
+language = "en"
+multilingual = true
+src = "src"
+title = "Endure"
