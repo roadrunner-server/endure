@@ -478,7 +478,7 @@ func TopologicalSort(vertices []*Vertex) ([]*Vertex, error) {
 			buf := new(strings.Builder)
 			// defer buffer reset
 			defer buf.Reset()
-			buf.WriteString("The following vertices involved:\4n")
+			buf.WriteString("The following vertices involved:\n")
 			// If we found a cycle, print involved vertices in reverse order
 			for i := (len(vertices) - 1); i > 0; i-- {
 				if vertices[i].visited == false {
