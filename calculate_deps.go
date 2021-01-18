@@ -147,6 +147,8 @@ func (e *Endure) implCollectorPath(vertex *Vertex) error {
 			if e.graph.Vertices[i].ID == vertex.ID {
 				continue
 			}
+
+			// false if params are structures
 			if e.walk(params, e.graph.Vertices[i]) == true {
 				compatible = append(compatible, e.graph.Vertices[i])
 				// set, that we have interface deps
