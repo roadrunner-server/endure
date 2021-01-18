@@ -108,10 +108,10 @@ func (e *Endure) addCollectorsDeps(vertex *Vertex) error {
 
 func (e *Endure) walk(params []reflect.Type, v *Vertex) bool {
 	onlyStructs := true
-	for _, param := range params {
-		if param.Kind() == reflect.Interface {
+	for i := range params {
+		if params[i].Kind() == reflect.Interface {
 			onlyStructs = false
-			if reflect.TypeOf(v.Iface).Implements(param) {
+			if reflect.TypeOf(v.Iface).Implements(params[i]) {
 				continue
 			}
 			return false
@@ -133,14 +133,14 @@ func (e *Endure) implCollectorPath(vertex *Vertex) error {
 	for _, fn := range collector.Collects() {
 		haveInterfaceDeps := false
 		// what type it might depend on?
-		params, err := paramsList(fn)
+		In, err := fnIn(fn)
 		if err != nil {
 			return errors.E(op, err)
 		}
 
-		compatible := make(Vertices, 0, len(params))
+		compatible := make(Vertices, 0, len(In))
 
-		// check if we have Interface deps in the params
+		// check if we have Interface deps in the In
 		// filter out interfaces, leave only structs
 		for i := 0; i < len(e.graph.Vertices); i++ {
 			// skip self
@@ -148,8 +148,8 @@ func (e *Endure) implCollectorPath(vertex *Vertex) error {
 				continue
 			}
 
-			// false if params are structures
-			if e.walk(params, e.graph.Vertices[i]) == true {
+			// false if In are structures
+			if e.walk(In, e.graph.Vertices[i]) == true {
 				compatible = append(compatible, e.graph.Vertices[i])
 				// set, that we have interface deps
 				haveInterfaceDeps = true
@@ -165,44 +165,44 @@ func (e *Endure) implCollectorPath(vertex *Vertex) error {
 		}
 		// process mixed deps (interfaces + structs)
 		if haveInterfaceDeps {
-			return e.processInterfaceDeps(compatible, fn, vertex, params)
+			return e.processInterfaceDeps(compatible, getFunctionName(fn), vertex, In)
 		}
 		// process only struct deps if not interfaces were found
-		return e.processStructDeps(fn, vertex, params)
+		return e.processStructDeps(getFunctionName(fn), vertex, In)
 	}
 	return nil
 }
 
-func (e *Endure) processInterfaceDeps(compatible Vertices, fn interface{}, vertex *Vertex, params []reflect.Type) error {
+func (e *Endure) processInterfaceDeps(compatible Vertices, fnName string, vertex *Vertex, params []reflect.Type) error {
 	const op = errors.Op("process interface deps")
-	for _, compat := range compatible {
+	for i := 0; i < len(compatible); i++ {
 		// add vertex itself
 		cp := CollectorEntry{
 			in: make([]In, 0, 0),
-			fn: getFunctionName(fn),
+			fn: fnName,
 		}
 		cp.in = append(cp.in, In{
 			in:  reflect.ValueOf(vertex.Iface),
 			dep: vertex.ID,
 		})
 
-		for _, param := range params {
+		for i := range params {
 			// check if type is primitive type
-			if isPrimitive(param.String()) {
-				e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertex.ID), zap.String("type", param.String()))
+			if isPrimitive(params[i].String()) {
+				e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertex.ID), zap.String("type", params[i].String()))
 			}
 
-			paramStr := param.String()
+			paramStr := params[i].String()
 			if vertex.ID == paramStr {
 				continue
 			}
 
-			switch param.Kind() {
+			switch params[i].Kind() {
 			case reflect.Ptr:
-				if param.Elem().Kind() == reflect.Struct {
-					dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
+				if params[i].Elem().Kind() == reflect.Struct {
+					dep := e.graph.VerticesMap[(removePointerAsterisk(params[i].String()))]
 					if dep == nil {
-						return errors.E(op, errors.Errorf("can't find provider for the struct parameter: %s", removePointerAsterisk(param.String())))
+						return errors.E(op, errors.Errorf("can't find provider for the struct parameter: %s", removePointerAsterisk(params[i].String())))
 					}
 
 					cp.in = append(cp.in, In{
@@ -210,26 +210,26 @@ func (e *Endure) processInterfaceDeps(compatible Vertices, fn interface{}, verte
 						dep: dep.ID,
 					})
 
-					err := e.graph.AddDep(vertex, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
+					err := e.graph.AddDep(vertex, removePointerAsterisk(dep.ID), Collects, isReference(params[i]), params[i].Kind())
 					if err != nil {
 						return errors.E(op, err)
 					}
 				}
 			case reflect.Interface:
 				cp.in = append(cp.in, In{
-					in:  reflect.ValueOf(compat.Iface),
-					dep: compat.ID,
+					in:  reflect.ValueOf(compatible[i].Iface),
+					dep: compatible[i].ID,
 				})
 
-				err := e.graph.AddDep(vertex, removePointerAsterisk(compat.ID), Collects, isReference(param), param.Kind())
+				err := e.graph.AddDep(vertex, removePointerAsterisk(compatible[i].ID), Collects, isReference(params[i]), params[i].Kind())
 				if err != nil {
 					return errors.E(op, err)
 				}
 
 			case reflect.Struct:
-				dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
+				dep := e.graph.VerticesMap[(removePointerAsterisk(params[i].String()))]
 				if dep == nil {
-					return errors.E(op, errors.Errorf("can't find provider for the struct parameter: %s", removePointerAsterisk(param.String())))
+					return errors.E(op, errors.Errorf("can't find provider for the struct parameter: %s", removePointerAsterisk(params[i].String())))
 				}
 
 				cp.in = append(cp.in, In{
@@ -237,7 +237,7 @@ func (e *Endure) processInterfaceDeps(compatible Vertices, fn interface{}, verte
 					dep: dep.ID,
 				})
 
-				err := e.graph.AddDep(vertex, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
+				err := e.graph.AddDep(vertex, removePointerAsterisk(dep.ID), Collects, isReference(params[i]), params[i].Kind())
 				if err != nil {
 					return errors.E(op, err)
 				}
@@ -249,12 +249,12 @@ func (e *Endure) processInterfaceDeps(compatible Vertices, fn interface{}, verte
 	return nil
 }
 
-func (e *Endure) processStructDeps(fn interface{}, vertex *Vertex, params []reflect.Type) error {
+func (e *Endure) processStructDeps(fnName string, vertex *Vertex, params []reflect.Type) error {
 	const op = errors.Op("process struct deps")
 	// process only struct deps
 	cp := CollectorEntry{
 		in: make([]In, 0, 0),
-		fn: getFunctionName(fn),
+		fn: fnName,
 	}
 	cp.in = append(cp.in, In{
 		in:  reflect.ValueOf(vertex.Iface),
