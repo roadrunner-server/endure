@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spiral/endure/pkg/container"
+	endure "github.com/spiral/endure/pkg/container"
 	"github.com/spiral/endure/tests/disabled_vertices/plugin3"
 	"github.com/spiral/endure/tests/disabled_vertices/plugin4"
 	"github.com/spiral/endure/tests/disabled_vertices/plugin5"

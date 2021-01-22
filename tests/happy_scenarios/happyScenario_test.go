@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spiral/endure/pkg/container"
+	endure "github.com/spiral/endure/pkg/container"
 	"github.com/spiral/endure/tests/happy_scenarios/plugin1"
 	"github.com/spiral/endure/tests/happy_scenarios/plugin2"
 	"github.com/spiral/endure/tests/happy_scenarios/plugin3"

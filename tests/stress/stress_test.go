@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/spiral/endure/pkg/container"
+	endure "github.com/spiral/endure/pkg/container"
 	"github.com/spiral/endure/tests/stress/CollectorFuncReturn"
 	"github.com/spiral/endure/tests/stress/CyclicDeps"
 	"github.com/spiral/endure/tests/stress/InitErr"
