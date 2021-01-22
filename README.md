@@ -35,8 +35,8 @@ In this particular case, we can't start HTTP before we start all other parts. Al
   <img src="https://github.com/spiral/endure/blob/master/images/graph.png" width="300" height="250" />
 </p>
 
-=======
-To do that:
+=======  
+First step is to initialize the `endure` container:
 
 ```go
 container, err := endure.NewContainer(nil, endure.SetLogLevel(endure.ErrorLevel), endure.Visualize(endure.StdOut, ""))
