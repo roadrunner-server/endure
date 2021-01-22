@@ -9,7 +9,7 @@ import (
 )
 
 func (e *Endure) fnCallCollectors(vrtx *vertex.Vertex, in []reflect.Value, methodName string) error {
-	const op = errors.Op("internal_call_collector_functions")
+	const op = errors.Op("endure_fn_call_collectors")
 	// type implements Collector interface
 	if reflect.TypeOf(vrtx.Iface).Implements(reflect.TypeOf((*Collector)(nil)).Elem()) {
 		// if type implements Collector() it should has FnsProviderToInvoke
@@ -28,7 +28,7 @@ func (e *Endure) fnCallCollectors(vrtx *vertex.Vertex, in []reflect.Value, metho
 			}
 			if rErr, ok := r.(error); ok {
 				if rErr != nil {
-					if err, ok := rErr.(error); ok && e != nil {
+					if err, ok := rErr.(error); ok && err != nil {
 						e.logger.Error("error calling CollectorFns", zap.String("vertex id", vrtx.ID), zap.Error(err))
 						return errors.E(op, errors.FunctionCall, err)
 					}

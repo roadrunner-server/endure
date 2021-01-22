@@ -21,7 +21,7 @@ func (e *Endure) sendResultToUser(res *result) {
 
 // traverseBackStop used to visit every Prev node and internalStop vertices
 func (e *Endure) traverseBackStop(n *linked_list.DllNode) {
-	const op = errors.Op("traverse_back_stop")
+	const op = errors.Op("endure_traverse_back_stop")
 	e.logger.Debug("stopping vertex in the first Serve call", zap.String("vertex id", n.Vertex.ID))
 	nCopy := n
 	err := e.shutdown(nCopy, false)
@@ -33,7 +33,7 @@ func (e *Endure) traverseBackStop(n *linked_list.DllNode) {
 }
 
 func (e *Endure) retryHandler(res *result) {
-	const op = errors.Op("internal_retry_handler")
+	const op = errors.Op("endure_retry_handler")
 	// get vertex from the graph
 	vrtx := e.graph.GetVertex(res.vertexID)
 	if vrtx == nil {
@@ -116,7 +116,7 @@ func (e *Endure) retryHandler(res *result) {
 
 func (e *Endure) backoffInit(v *vertex.Vertex) func() error {
 	return func() error {
-		const op = errors.Op("internal_backoff_init")
+		const op = errors.Op("endure_backoff_init")
 		// we already checked the Interface satisfaction
 		// at this step absence of Init() is impossible
 		init, _ := reflect.TypeOf(v.Iface).MethodByName(InitMethodName)

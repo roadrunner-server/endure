@@ -108,7 +108,7 @@ Input parameters: logLevel
    see the endure.Level
 */
 func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
-	const op = errors.Op("NewContainer")
+	const op = errors.Op("new_container")
 	c := &Endure{
 		mutex:           &sync.RWMutex{},
 		initialInterval: time.Second * 1,
@@ -163,7 +163,7 @@ func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 }
 
 func (e *Endure) internalLogger() (*zap.Logger, error) {
-	const op = errors.Op("internal_logger")
+	const op = errors.Op("endure_internal_logger")
 	var lvl zap.AtomicLevel
 	switch e.loglevel {
 	case DebugLevel:
@@ -258,7 +258,7 @@ func SetStopTimeOut(to time.Duration) Options {
 
 // Register registers the dependencies in the Endure graph without invoking any methods
 func (e *Endure) Register(vertex interface{}) error {
-	const op = errors.Op("Register")
+	const op = errors.Op("endure_register")
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
 
@@ -296,7 +296,7 @@ func (e *Endure) Register(vertex interface{}) error {
 
 // RegisterAll is the helper for the register to register more than one structure in the endure
 func (e *Endure) RegisterAll(plugins ...interface{}) error {
-	const op = errors.Op("register all")
+	const op = errors.Op("endure_register_all")
 	for _, plugin := range plugins {
 		err := e.Register(plugin)
 		if err != nil {
@@ -339,7 +339,7 @@ func (e *Endure) Stop() error {
 // Initialize used to add edges between vertices, sort graph topologically
 // Do not change this method fn, sync with constants in the beginning of this file
 func (e *Endure) Initialize() error {
-	const op = errors.Op("Init")
+	const op = errors.Op("endure_initialize")
 	// traverse the graph
 	err := e.addEdges()
 	if err != nil {
@@ -395,7 +395,7 @@ func (e *Endure) Start() (<-chan *Result, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	const op = errors.Op("Serve")
+	const op = errors.Op("endure_start")
 	e.startMainThread()
 
 	// simple check that we have at least one vertex in the graph to Serve

@@ -40,7 +40,7 @@ var _graphTmpl = template.Must(
 
 // Visualize visualizes the graph based on provided output value
 func (e *Endure) Visualize(vertices []*vertex.Vertex) error {
-	const op = errors.Op("print_graph")
+	const op = errors.Op("endure_visualize")
 	f := new(bytes.Buffer)
 	err := _graphTmpl.Execute(f, vertices)
 	if err != nil {

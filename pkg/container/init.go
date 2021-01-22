@@ -14,7 +14,7 @@ import (
 
 */
 func (e *Endure) internalInit(vrtx *vertex.Vertex) error {
-	const op = errors.Op("internal_init")
+	const op = errors.Op("endure_internal_init")
 	if vrtx.IsDisabled {
 		e.logger.Warn("vertex is disabled due to error.Disabled in the Init func or due to Endure decision (Disabled dependency)", zap.String("vertex id", vrtx.ID))
 		return nil
@@ -37,7 +37,7 @@ Here we also track the Disabled vertices. If the vertex is disabled we should re
 
 */
 func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
-	const op = errors.Op("call init and collects")
+	const op = errors.Op("endure_call_init_fn")
 	if vrtx.GetState() != fsm.Initializing {
 		return errors.E("vertex should be in Initializing state")
 	}
@@ -50,7 +50,7 @@ func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
 	ret := init.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		if err, ok := rErr.(error); ok && e != nil {
+		if err, ok := rErr.(error); ok && err != nil {
 			/*
 				If vertex is disabled we skip all processing for it:
 				1. We don't add Init function args as dependencies
@@ -121,7 +121,7 @@ func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
 }
 
 func (e *Endure) findInitParameters(vrtx *vertex.Vertex) ([]reflect.Value, error) {
-	const op = errors.Op("internal_find_init_parameters")
+	const op = errors.Op("endure_find_init_parameters")
 	in := make([]reflect.Value, 0, 2)
 
 	// add service itself

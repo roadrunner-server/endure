@@ -11,7 +11,7 @@ import (
 )
 
 func (e *Endure) traverseProviders(fnReceiver *vertex.Vertex, calleeVertexID string) error {
-	const op = errors.Op("internal_traverse_providers")
+	const op = errors.Op("endure_traverse_providers")
 	err := e.traverseCallProvider(fnReceiver, []reflect.Value{reflect.ValueOf(fnReceiver.Iface)}, calleeVertexID)
 	if err != nil {
 		return errors.E(op, errors.Traverse, err)
@@ -73,7 +73,7 @@ func (p Providers) Swap(i, j int) {
 }
 
 func (e *Endure) traverseCallProvider(fnReceiver *vertex.Vertex, in []reflect.Value, callerID string) error {
-	const op = errors.Op("internal_traverse_call_provider")
+	const op = errors.Op("endure_traverse_call_provider")
 	callerV := e.graph.GetVertex(callerID)
 	if callerV == nil {
 		return errors.E(op, errors.Traverse, errors.Str("caller fnReceiver is nil"))
@@ -170,7 +170,7 @@ func (e *Endure) traverseCallProvider(fnReceiver *vertex.Vertex, in []reflect.Va
 }
 
 func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *vertex.Vertex, callerID string) error {
-	const op = errors.Op("provider fn call")
+	const op = errors.Op("endure_fn_providers_call")
 	ret := f.Func.Call(in)
 	for i := 0; i < len(ret); i++ {
 		// try to find possible errors
@@ -180,7 +180,7 @@ func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *v
 		}
 		if rErr, ok := r.(error); ok {
 			if rErr != nil {
-				if err, ok := rErr.(error); ok && e != nil {
+				if err, ok := rErr.(error); ok && err != nil {
 					e.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
 					return errors.E(op, errors.FunctionCall, err)
 				}

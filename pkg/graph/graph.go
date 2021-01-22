@@ -99,7 +99,7 @@ func (g *Graph) AddDep(vertex *vertex.Vertex, depID string, method Kind, isRef b
 }
 
 func (g *Graph) addInterfaceDep(vertex *vertex.Vertex, depID string, method Kind, isRef bool) error {
-	const op = errors.Op("add interface dep")
+	const op = errors.Op("endure_add_interface_dep")
 	// here can be a lot of deps
 	depVertex := g.FindProviders(depID)
 	if depVertex == nil {
@@ -179,7 +179,7 @@ func addInit(vrtx *vertex.Vertex, refID string, depID string, isRef bool, kind r
 }
 
 func (g *Graph) addStructDep(vertex *vertex.Vertex, depID string, method Kind, isRef bool) error {
-	const op = errors.Op("add structure dep")
+	const op = errors.Op("endure_add_structure_dep")
 	// vertex should always present
 
 	// but depVertex can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
@@ -283,7 +283,7 @@ func (g *Graph) FindProviders(depID string) *vertex.Vertex {
 
 // TopologicalSort topologically sort the graph and return slice of the sorted vertices
 func TopologicalSort(vertices []*vertex.Vertex) ([]*vertex.Vertex, error) {
-	const op = errors.Op("topological sort")
+	const op = errors.Op("graph_topological_sort")
 	var ord []*vertex.Vertex
 	verticesCopy := vertices
 

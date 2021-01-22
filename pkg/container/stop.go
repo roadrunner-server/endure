@@ -12,16 +12,16 @@ import (
 )
 
 func (e *Endure) internalStop(vID string) error {
-	const op = errors.Op("internal_stop")
-	vertex := e.graph.GetVertex(vID)
-	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
+	const op = errors.Op("endure_internal_stop")
+	vrtx := e.graph.GetVertex(vID)
+	if reflect.TypeOf(vrtx.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
 		in := make([]reflect.Value, 0, 1)
 		// add service itself
-		in = append(in, reflect.ValueOf(vertex.Iface))
+		in = append(in, reflect.ValueOf(vrtx.Iface))
 
-		err := e.callStopFn(vertex, in)
+		err := e.callStopFn(vrtx, in)
 		if err != nil {
-			e.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vertex.ID))
+			e.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vrtx.ID))
 			return errors.E(op, errors.FunctionCall, err)
 		}
 	}
@@ -29,14 +29,14 @@ func (e *Endure) internalStop(vID string) error {
 }
 
 func (e *Endure) callStopFn(vrtx *vertex.Vertex, in []reflect.Value) error {
-	const op = errors.Op("internal_call_stop_function")
+	const op = errors.Op("endure_call_stop_fn")
 	// Call Stop() method, which returns only error (or nil)
 	e.logger.Debug("calling internal_stop function on the vrtx", zap.String("vrtx id", vrtx.ID))
 	m, _ := reflect.TypeOf(vrtx.Iface).MethodByName(StopMethodName)
 	ret := m.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		if e, ok := rErr.(error); ok && e != nil {
+		if err, ok := rErr.(error); ok && err != nil {
 			return errors.E(op, errors.FunctionCall, e)
 		}
 		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
@@ -47,7 +47,7 @@ func (e *Endure) callStopFn(vrtx *vertex.Vertex, in []reflect.Value) error {
 // true -> next
 // false -> prev
 func (e *Endure) shutdown(n *linked_list.DllNode, traverseNext bool) error {
-	const op = errors.Op("shutdown")
+	const op = errors.Op("endure_shutdown")
 	numOfVertices := calculateDepth(n, traverseNext)
 	if numOfVertices == 0 {
 		return nil

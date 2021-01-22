@@ -28,7 +28,7 @@ func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 
 // vertex implements provider
 func (e *Endure) implProvidesPath(vertexID string, vrtx interface{}) error {
-	const op = errors.Op("add_providers")
+	const op = errors.Op("endure_add_providers")
 	provider := vrtx.(Provider)
 	for _, fn := range provider.Provides() {
 		v := e.graph.GetVertex(vertexID)
@@ -133,7 +133,7 @@ If we found such vertex we can go by the following paths:
 */
 func (e *Endure) implCollectorPath(vrtx *vertex.Vertex) error {
 	// vertexID string, vertex interface{} same vertex
-	const op = errors.Op("add_collectors_deps")
+	const op = errors.Op("endure_impl_collector_path")
 	collector := vrtx.Iface.(Collector)
 	// range Collectors functions
 	for _, fn := range collector.Collects() {
@@ -180,7 +180,7 @@ func (e *Endure) implCollectorPath(vrtx *vertex.Vertex) error {
 }
 
 func (e *Endure) processInterfaceDeps(compatible []*vertex.Vertex, fnName string, vrtx *vertex.Vertex, params []reflect.Type) error {
-	const op = errors.Op("process interface deps")
+	const op = errors.Op("endure_process_interface_deps")
 	for i := 0; i < len(compatible); i++ {
 		// add vertex itself
 		cp := vertex.CollectorEntry{
@@ -256,7 +256,7 @@ func (e *Endure) processInterfaceDeps(compatible []*vertex.Vertex, fnName string
 }
 
 func (e *Endure) processStructDeps(fnName string, vrtx *vertex.Vertex, params []reflect.Type) error {
-	const op = errors.Op("process struct deps")
+	const op = errors.Op("endure_process_struct_deps")
 	// process only struct deps
 	cp := vertex.CollectorEntry{
 		In: make([]vertex.In, 0, 0),
@@ -321,7 +321,7 @@ func (e *Endure) processStructDeps(fnName string, vrtx *vertex.Vertex, params []
 
 // addEdges calculates simple graph for the dependencies
 func (e *Endure) addEdges() error {
-	const Op = errors.Op("add_edges")
+	const Op = errors.Op("endure_add_edges")
 	// vertexID for example S2
 	for vertexID, vrtx := range e.graph.VerticesMap {
 		// we already checked the interface satisfaction
@@ -363,7 +363,7 @@ func (e *Endure) addEdges() error {
 }
 
 func (e *Endure) addInitDeps(vrtx *vertex.Vertex, initMethod reflect.Method) error {
-	const Op = errors.Op("add_init_deps")
+	const Op = errors.Op("endure_add_init_deps")
 	// Init function in arguments
 	initArgs := functionParameters(initMethod)
 

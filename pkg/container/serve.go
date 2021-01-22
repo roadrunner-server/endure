@@ -10,7 +10,7 @@ import (
 )
 
 func (e *Endure) callServeFn(vrtx *vertex.Vertex, in []reflect.Value) (*result, error) {
-	const op = errors.Op("call_serve_fn")
+	const op = errors.Op("endure_call_serve_fn")
 	e.logger.Debug("preparing to calling Serve on the Vertex", zap.String("vrtx id", vrtx.ID))
 	// find Serve method
 	m, _ := reflect.TypeOf(vrtx.Iface).MethodByName(ServeMethodName)
@@ -19,15 +19,15 @@ func (e *Endure) callServeFn(vrtx *vertex.Vertex, in []reflect.Value) (*result, 
 	res := ret[0].Interface()
 	e.logger.Debug("called Serve on the vrtx", zap.String("vrtx id", vrtx.ID))
 	if res != nil {
-		if e, ok := res.(chan error); ok && e != nil {
+		if err, ok := res.(chan error); ok && err != nil {
 			// error come right after we start serving the vrtx
-			if len(e) > 0 {
+			if len(err) > 0 {
 				// read the error
-				err := <-e
+				err := <-err
 				return nil, errors.E(op, errors.FunctionCall, errors.Errorf("got initial serve error from the Vertex %s, stopping execution, error: %v", vrtx.ID, err))
 			}
 			return &result{
-				errCh:    e,
+				errCh:    err,
 				signal:   make(chan notify),
 				vertexID: vrtx.ID,
 			}, nil
@@ -40,7 +40,7 @@ func (e *Endure) callServeFn(vrtx *vertex.Vertex, in []reflect.Value) (*result, 
 
 // serveInternal run calls callServeFn for each node and put the results in the map
 func (e *Endure) serveInternal(n *linked_list.DllNode) error {
-	const op = errors.Op("internal_serve")
+	const op = errors.Op("endure_serve_internal")
 	// check if type implements serveInternal, if implements, call serveInternal
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
 		in := make([]reflect.Value, 0, 1)
