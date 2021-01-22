@@ -3,7 +3,7 @@ package logger
 import (
 	"fmt"
 
-	"github.com/spiral/endure"
+	"github.com/spiral/endure/pkg/container"
 )
 
 type Logger struct {

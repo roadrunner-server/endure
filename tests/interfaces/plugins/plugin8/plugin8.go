@@ -3,7 +3,7 @@ package plugin8
 import (
 	"fmt"
 
-	"github.com/spiral/endure"
+	"github.com/spiral/endure/pkg/container"
 	"github.com/spiral/endure/tests/interfaces/plugins/plugin10"
 )
 

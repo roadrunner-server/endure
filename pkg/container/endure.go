@@ -10,6 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spiral/endure/pkg/fsm"
+	"github.com/spiral/endure/pkg/graph"
+	"github.com/spiral/endure/pkg/linked_list"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -53,9 +56,9 @@ const (
 // Endure struct represent main endure repr
 type Endure struct {
 	// Dependency graph
-	graph *Graph
+	graph *graph.Graph
 	// DLL used as run list to run in order
-	runList *DoublyLinkedList
+	runList *linked_list.DoublyLinkedList
 	// logger
 	logger *zap.Logger
 	// OPTIONS
@@ -75,7 +78,7 @@ type Endure struct {
 	loglevel Level
 
 	// Endure state machine
-	FSM
+	fsm.FSM
 
 	mutex *sync.RWMutex
 
@@ -119,23 +122,23 @@ func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 	}
 
 	// Transition map
-	transitionMap := make(map[Event]reflect.Method)
+	transitionMap := make(map[fsm.Event]reflect.Method)
 	init, _ := reflect.TypeOf(c).MethodByName(InitializeMethodName)
 	// event -> Initialize
-	transitionMap[Initialize] = init
+	transitionMap[fsm.Initialize] = init
 
 	serve, _ := reflect.TypeOf(c).MethodByName(StartMethodName)
 	// event -> Start
-	transitionMap[Start] = serve
+	transitionMap[fsm.Start] = serve
 
 	shutdown, _ := reflect.TypeOf(c).MethodByName(ShutdownMethodName)
 	// event -> Stop
-	transitionMap[Stop] = shutdown
+	transitionMap[fsm.Stop] = shutdown
 
-	c.FSM = NewFSM(Uninitialized, transitionMap)
+	c.FSM = fsm.NewFSM(fsm.Uninitialized, transitionMap)
 
-	c.graph = NewGraph()
-	c.runList = NewDoublyLinkedList()
+	c.graph = graph.NewGraph()
+	c.runList = linked_list.NewDoublyLinkedList()
 
 	// Main thread channels
 	c.handleErrorCh = make(chan *result)
@@ -306,7 +309,7 @@ func (e *Endure) RegisterAll(plugins ...interface{}) error {
 
 // Init container and all service edges.
 func (e *Endure) Init() error {
-	_, err := e.Transition(Initialize, e)
+	_, err := e.Transition(fsm.Initialize, e)
 	if err != nil {
 		return err
 	}
@@ -316,7 +319,7 @@ func (e *Endure) Init() error {
 // Serve starts serving the graph
 // This is the initial serveInternal, if error produced immediately in the initial serveInternal, endure will traverse deps back, call internal_stop and exit
 func (e *Endure) Serve() (<-chan *Result, error) {
-	data, err := e.Transition(Start, e)
+	data, err := e.Transition(fsm.Start, e)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +329,7 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 
 // Stop stops the execution and call Stop on every vertex
 func (e *Endure) Stop() error {
-	_, err := e.Transition(Stop, e)
+	_, err := e.Transition(fsm.Stop, e)
 	if err != nil {
 		return err
 	}
@@ -353,7 +356,7 @@ func (e *Endure) Initialize() error {
 	}
 
 	// we should build internal_init list in the reverse order
-	sorted, err := TopologicalSort(e.graph.Vertices)
+	sorted, err := graph.TopologicalSort(e.graph.Vertices)
 	if err != nil {
 		e.logger.Error("error sorting the graph", zap.Error(err))
 		return errors.E(op, errors.Init, err)
@@ -364,7 +367,7 @@ func (e *Endure) Initialize() error {
 		return errors.E(op, errors.Init, errors.Errorf("graph should contain at least 1 vertex, possibly you forget to invoke registers"))
 	}
 
-	e.runList = NewDoublyLinkedList()
+	e.runList = linked_list.NewDoublyLinkedList()
 	for i := len(sorted) - 1; i >= 0; i-- {
 		e.runList.Push(sorted[i])
 	}
@@ -372,14 +375,14 @@ func (e *Endure) Initialize() error {
 	head := e.runList.Head
 	headCopy := head
 	for headCopy != nil {
-		headCopy.Vertex.SetState(Initializing)
+		headCopy.Vertex.SetState(fsm.Initializing)
 		err = e.internalInit(headCopy.Vertex)
 		if err != nil {
-			headCopy.Vertex.SetState(Error)
+			headCopy.Vertex.SetState(fsm.Error)
 			e.logger.Error("error during the internal_init", zap.Error(err))
 			return errors.E(op, errors.Init, err)
 		}
-		headCopy.Vertex.SetState(Initialized)
+		headCopy.Vertex.SetState(fsm.Initialized)
 		headCopy = headCopy.Next
 	}
 
@@ -405,14 +408,14 @@ func (e *Endure) Start() (<-chan *Result, error) {
 			continue
 		}
 		atLeastOne = true
-		nCopy.Vertex.SetState(Starting)
+		nCopy.Vertex.SetState(fsm.Starting)
 		err := e.serveInternal(nCopy)
 		if err != nil {
-			nCopy.Vertex.SetState(Error)
+			nCopy.Vertex.SetState(fsm.Error)
 			e.traverseBackStop(nCopy)
 			return nil, errors.E(op, errors.Serve, err)
 		}
-		nCopy.Vertex.SetState(Started)
+		nCopy.Vertex.SetState(fsm.Started)
 		nCopy = nCopy.Next
 	}
 	// all vertices disabled

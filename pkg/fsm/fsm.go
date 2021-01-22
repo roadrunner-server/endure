@@ -1,4 +1,4 @@
-package endure
+package fsm
 
 import (
 	"reflect"

@@ -3,41 +3,43 @@ package endure
 import (
 	"reflect"
 
+	"github.com/spiral/endure/pkg/linked_list"
+	"github.com/spiral/endure/pkg/vertex"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
 
-func (e *Endure) callServeFn(vertex *Vertex, in []reflect.Value) (*result, error) {
+func (e *Endure) callServeFn(vrtx *vertex.Vertex, in []reflect.Value) (*result, error) {
 	const op = errors.Op("call_serve_fn")
-	e.logger.Debug("preparing to calling Serve on the Vertex", zap.String("vertex id", vertex.ID))
+	e.logger.Debug("preparing to calling Serve on the Vertex", zap.String("vrtx id", vrtx.ID))
 	// find Serve method
-	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(ServeMethodName)
+	m, _ := reflect.TypeOf(vrtx.Iface).MethodByName(ServeMethodName)
 	// call with needed number of `in` parameters
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
-	e.logger.Debug("called Serve on the vertex", zap.String("vertex id", vertex.ID))
+	e.logger.Debug("called Serve on the vrtx", zap.String("vrtx id", vrtx.ID))
 	if res != nil {
 		if e, ok := res.(chan error); ok && e != nil {
-			// error come right after we start serving the vertex
+			// error come right after we start serving the vrtx
 			if len(e) > 0 {
 				// read the error
 				err := <-e
-				return nil, errors.E(op, errors.FunctionCall, errors.Errorf("got initial serve error from the Vertex %s, stopping execution, error: %v", vertex.ID, err))
+				return nil, errors.E(op, errors.FunctionCall, errors.Errorf("got initial serve error from the Vertex %s, stopping execution, error: %v", vrtx.ID, err))
 			}
 			return &result{
 				errCh:    e,
 				signal:   make(chan notify),
-				vertexID: vertex.ID,
+				vertexID: vrtx.ID,
 			}, nil
 		}
 	}
 	// error, result should not be nil
-	// the only one reason to be nil is to vertex return parameter (channel) is not initialized
+	// the only one reason to be nil is to vrtx return parameter (channel) is not initialized
 	return nil, nil
 }
 
 // serveInternal run calls callServeFn for each node and put the results in the map
-func (e *Endure) serveInternal(n *DllNode) error {
+func (e *Endure) serveInternal(n *linked_list.DllNode) error {
 	const op = errors.Op("internal_serve")
 	// check if type implements serveInternal, if implements, call serveInternal
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
