@@ -4,36 +4,39 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/spiral/endure/pkg/fsm"
+	"github.com/spiral/endure/pkg/linked_list"
+	"github.com/spiral/endure/pkg/vertex"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
 
 func (e *Endure) internalStop(vID string) error {
-	const op = errors.Op("internal_stop")
-	vertex := e.graph.GetVertex(vID)
-	if reflect.TypeOf(vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
+	const op = errors.Op("endure_internal_stop")
+	vrtx := e.graph.GetVertex(vID)
+	if reflect.TypeOf(vrtx.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
 		in := make([]reflect.Value, 0, 1)
 		// add service itself
-		in = append(in, reflect.ValueOf(vertex.Iface))
+		in = append(in, reflect.ValueOf(vrtx.Iface))
 
-		err := e.callStopFn(vertex, in)
+		err := e.callStopFn(vrtx, in)
 		if err != nil {
-			e.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vertex.ID))
+			e.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vrtx.ID))
 			return errors.E(op, errors.FunctionCall, err)
 		}
 	}
 	return nil
 }
 
-func (e *Endure) callStopFn(vertex *Vertex, in []reflect.Value) error {
-	const op = errors.Op("internal_call_stop_function")
+func (e *Endure) callStopFn(vrtx *vertex.Vertex, in []reflect.Value) error {
+	const op = errors.Op("endure_call_stop_fn")
 	// Call Stop() method, which returns only error (or nil)
-	e.logger.Debug("calling internal_stop function on the vertex", zap.String("vertex id", vertex.ID))
-	m, _ := reflect.TypeOf(vertex.Iface).MethodByName(StopMethodName)
+	e.logger.Debug("calling internal_stop function on the vrtx", zap.String("vrtx id", vrtx.ID))
+	m, _ := reflect.TypeOf(vrtx.Iface).MethodByName(StopMethodName)
 	ret := m.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		if e, ok := rErr.(error); ok && e != nil {
+		if err, ok := rErr.(error); ok && err != nil {
 			return errors.E(op, errors.FunctionCall, e)
 		}
 		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
@@ -43,8 +46,8 @@ func (e *Endure) callStopFn(vertex *Vertex, in []reflect.Value) error {
 
 // true -> next
 // false -> prev
-func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
-	const op = errors.Op("shutdown")
+func (e *Endure) shutdown(n *linked_list.DllNode, traverseNext bool) error {
+	const op = errors.Op("endure_shutdown")
 	numOfVertices := calculateDepth(n, traverseNext)
 	if numOfVertices == 0 {
 		return nil
@@ -62,7 +65,7 @@ func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 		// process all nodes one by one
 		nCopy := n
 		for nCopy != nil {
-			go func(v *Vertex) {
+			go func(v *vertex.Vertex) {
 				// if vertex is disabled, just skip it, but send to the channel ID
 				if v.IsDisabled == true {
 					c <- v.ID
@@ -71,12 +74,12 @@ func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 
 				// if vertex is Uninitialized or already stopped
 				// Skip vertices which are not Started
-				if v.GetState() != Started {
+				if v.GetState() != fsm.Started {
 					c <- v.ID
 					return
 				}
 
-				v.SetState(Stopping)
+				v.SetState(fsm.Stopping)
 
 				// if we have a running poller, exit from it
 				tmp, ok := e.results.Load(v.ID)
@@ -91,12 +94,12 @@ func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 				// call Stop on the Vertex
 				err := e.internalStop(v.ID)
 				if err != nil {
-					v.SetState(Error)
+					v.SetState(fsm.Error)
 					c <- v.ID
 					e.logger.Error("error stopping vertex", zap.String("vertex id", v.ID), zap.Error(err))
 					return
 				}
-				v.SetState(Stopped)
+				v.SetState(fsm.Stopped)
 				c <- v.ID
 			}(nCopy.Vertex)
 			if traverseNext {
@@ -122,7 +125,7 @@ func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 			VIDs := make([]string, 0, 1)
 			for i := 0; i < len(e.graph.Vertices); i++ {
 				state := e.graph.Vertices[i].GetState()
-				if state == Started || state == Stopping {
+				if state == fsm.Started || state == fsm.Stopping {
 					VIDs = append(VIDs, e.graph.Vertices[i].ID)
 				}
 			}
@@ -136,7 +139,7 @@ func (e *Endure) shutdown(n *DllNode, traverseNext bool) error {
 }
 
 // Using to calculate number of Vertices in DLL
-func calculateDepth(n *DllNode, traverse bool) int {
+func calculateDepth(n *linked_list.DllNode, traverse bool) int {
 	num := 0
 	if traverse {
 		tmp := n

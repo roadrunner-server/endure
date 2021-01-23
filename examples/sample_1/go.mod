@@ -7,6 +7,7 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/rs/cors v1.7.0
 	github.com/spiral/endure v1.0.0-beta17
-	github.com/spiral/errors v1.0.2
 	go.etcd.io/bbolt v1.3.5
 )
+
+replace github.com/spiral/endure => ../../

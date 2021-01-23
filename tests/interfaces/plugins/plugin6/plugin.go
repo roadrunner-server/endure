@@ -1,6 +1,6 @@
 package plugin6
 
-import "github.com/spiral/endure"
+import endure "github.com/spiral/endure/pkg/container"
 
 type SuperInterface interface {
 	Yo() string

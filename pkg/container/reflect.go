@@ -10,7 +10,7 @@ import (
 )
 
 func providersReturnType(m interface{}) ([]reflect.Type, error) {
-	const op = errors.Op("providers_return_type")
+	const op = errors.Op("endure_providers_return_type")
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
 		return nil, errors.E(op, errors.ArgType, errors.Errorf("unable to reflect `%s`, expected func. tip: provide function, not structre. for example v.Logger", r.String()))
@@ -29,8 +29,8 @@ func providersReturnType(m interface{}) ([]reflect.Type, error) {
 	return ret, nil
 }
 
-func paramsList(m interface{}) ([]reflect.Type, error) {
-	const op = errors.Op("parameters list get")
+func fnIn(m interface{}) ([]reflect.Type, error) {
+	const op = errors.Op("fn_in")
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
 		return nil, errors.E(op, errors.ArgType, errors.Errorf("unable to reflect `%s`, expected func", r.String()))

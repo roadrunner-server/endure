@@ -9,7 +9,7 @@ const ServeMethodName = "Serve"
 // StopMethodName is the function fn for the reflection to Stop the service
 const StopMethodName = "Stop"
 
-// Result is the information which endure send to the user
+// Result is the information which endure sends to the user
 type Result struct {
 	Error    error
 	VertexID string

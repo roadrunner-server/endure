@@ -3,6 +3,8 @@ package endure
 import (
 	"reflect"
 
+	"github.com/spiral/endure/pkg/graph"
+	"github.com/spiral/endure/pkg/vertex"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
@@ -25,23 +27,15 @@ func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 }
 
 // vertex implements provider
-func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
-	const op = errors.Op("add_providers")
-	provider := vertex.(Provider)
+func (e *Endure) implProvidesPath(vertexID string, vrtx interface{}) error {
+	const op = errors.Op("endure_add_providers")
+	provider := vrtx.(Provider)
 	for _, fn := range provider.Provides() {
 		v := e.graph.GetVertex(vertexID)
-		if v.Provides == nil {
-			v.Provides = make(map[string]ProvidedEntry)
-		}
-
-		// Make a slice
-		if v.Meta.FnsProviderToInvoke == nil {
-			v.Meta.FnsProviderToInvoke = make([]ProviderEntry, 0, 1)
-		}
 
 		// TODO merge function calls into one. Plugin1 -> fn's to invoke ProvideDB, ProvideDB2
 		// Append functions which we will invoke when we start calling the structure functions after Init stage
-		pe := ProviderEntry{
+		pe := vertex.ProviderEntry{
 			/*
 				For example:
 				we need to invoke function ProvideDB - that will be FunctionName
@@ -76,9 +70,9 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 					2. Write record, that this particular type also provides Interface dep
 			*/
 			if ret[i].Kind() == reflect.Interface {
-				tmpValue := reflect.ValueOf(vertex)
+				tmpValue := reflect.ValueOf(vrtx)
 				tmpIsRef := isReference(ret[i])
-				v.Provides[typeStr] = ProvidedEntry{
+				v.Provides[typeStr] = vertex.ProvidedEntry{
 					IsReference: &tmpIsRef,
 					Value:       tmpValue,
 				}
@@ -86,7 +80,7 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 			}
 
 			// just init map value
-			v.Provides[typeStr] = ProvidedEntry{
+			v.Provides[typeStr] = vertex.ProvidedEntry{
 				IsReference: nil,
 			}
 		}
@@ -96,22 +90,22 @@ func (e *Endure) implProvidesPath(vertexID string, vertex interface{}) error {
 	return nil
 }
 
-func (e *Endure) addCollectorsDeps(vertex *Vertex) error {
+func (e *Endure) addCollectorsDeps(vrtx *vertex.Vertex) error {
 	// hot path
-	if _, ok := vertex.Iface.(Collector); !ok {
+	if _, ok := vrtx.Iface.(Collector); !ok {
 		return nil
 	}
 
 	// vertex implements Collector interface
-	return e.implCollectorPath(vertex)
+	return e.implCollectorPath(vrtx)
 }
 
-func (e *Endure) walk(params []reflect.Type, v *Vertex) bool {
+func (e *Endure) walk(params []reflect.Type, v *vertex.Vertex) bool {
 	onlyStructs := true
-	for _, param := range params {
-		if param.Kind() == reflect.Interface {
+	for i := range params {
+		if params[i].Kind() == reflect.Interface {
 			onlyStructs = false
-			if reflect.TypeOf(v.Iface).Implements(param) {
+			if reflect.TypeOf(v.Iface).Implements(params[i]) {
 				continue
 			}
 			return false
@@ -125,149 +119,163 @@ func (e *Endure) walk(params []reflect.Type, v *Vertex) bool {
 	return true
 }
 
-func (e *Endure) implCollectorPath(vertex *Vertex) error {
+/*
+The logic here is the following:
+As the first step, we add collector dependencies if a vertex implements Collector interface.
+For every function in the Collector return args we check every vertex in the graph for satisfying to all interfaces (or
+structs) in the function parameters list.
+
+If we found such vertex we can go by the following paths:
+1. Function parameters list contain interfaces
+2. Function parameters list contain only structures (easy case)
+
+
+*/
+func (e *Endure) implCollectorPath(vrtx *vertex.Vertex) error {
 	// vertexID string, vertex interface{} same vertex
-	const op = errors.Op("add_collectors_deps")
-	collector := vertex.Iface.(Collector)
+	const op = errors.Op("endure_impl_collector_path")
+	collector := vrtx.Iface.(Collector)
 	// range Collectors functions
 	for _, fn := range collector.Collects() {
 		haveInterfaceDeps := false
 		// what type it might depend on?
-		params, err := paramsList(fn)
+		params, err := fnIn(fn)
 		if err != nil {
 			return errors.E(op, err)
 		}
 
-		compatible := make(Vertices, 0, len(params))
+		compatible := make([]*vertex.Vertex, 0, len(params))
 
 		// check if we have Interface deps in the params
 		// filter out interfaces, leave only structs
 		for i := 0; i < len(e.graph.Vertices); i++ {
 			// skip self
-			if e.graph.Vertices[i].ID == vertex.ID {
+			if e.graph.Vertices[i].ID == vrtx.ID {
 				continue
 			}
+
+			// false if params are structures
 			if e.walk(params, e.graph.Vertices[i]) == true {
 				compatible = append(compatible, e.graph.Vertices[i])
 				// set, that we have interface deps
 				haveInterfaceDeps = true
-				e.logger.Info("vertex is compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vertex.ID))
+				e.logger.Info("vertex is compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vrtx.ID))
 				continue
 			}
-			e.logger.Info("vertex is not compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vertex.ID))
+			e.logger.Info("vertex is not compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vrtx.ID))
 		}
 
 		if len(compatible) == 0 && haveInterfaceDeps {
-			e.logger.Info("no compatible vertices found", zap.String("collects from vertex", vertex.ID))
+			e.logger.Info("no compatible vertices found", zap.String("collects from vertex", vrtx.ID))
 			return nil
 		}
 		// process mixed deps (interfaces + structs)
 		if haveInterfaceDeps {
-			return e.processInterfaceDeps(compatible, fn, vertex, params)
+			return e.processInterfaceDeps(compatible, getFunctionName(fn), vrtx, params)
 		}
 		// process only struct deps if not interfaces were found
-		return e.processStructDeps(fn, vertex, params)
+		return e.processStructDeps(getFunctionName(fn), vrtx, params)
 	}
 	return nil
 }
 
-func (e *Endure) processInterfaceDeps(compatible Vertices, fn interface{}, vertex *Vertex, params []reflect.Type) error {
-	const op = errors.Op("process interface deps")
-	for _, compat := range compatible {
+func (e *Endure) processInterfaceDeps(compatible []*vertex.Vertex, fnName string, vrtx *vertex.Vertex, params []reflect.Type) error {
+	const op = errors.Op("endure_process_interface_deps")
+	for i := 0; i < len(compatible); i++ {
 		// add vertex itself
-		cp := CollectorEntry{
-			in: make([]In, 0, 0),
-			fn: getFunctionName(fn),
+		cp := vertex.CollectorEntry{
+			In: make([]vertex.In, 0, 0),
+			Fn: fnName,
 		}
-		cp.in = append(cp.in, In{
-			in:  reflect.ValueOf(vertex.Iface),
-			dep: vertex.ID,
+		cp.In = append(cp.In, vertex.In{
+			In:  reflect.ValueOf(vrtx.Iface),
+			Dep: vrtx.ID,
 		})
 
-		for _, param := range params {
+		for j := 0; j < len(params); j++ {
 			// check if type is primitive type
-			if isPrimitive(param.String()) {
-				e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertex.ID), zap.String("type", param.String()))
+			if isPrimitive(params[j].String()) {
+				e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vrtx.ID), zap.String("type", params[j].String()))
 			}
 
-			paramStr := param.String()
-			if vertex.ID == paramStr {
+			paramStr := params[j].String()
+			if vrtx.ID == paramStr {
 				continue
 			}
 
-			switch param.Kind() {
+			switch params[j].Kind() {
 			case reflect.Ptr:
-				if param.Elem().Kind() == reflect.Struct {
-					dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
+				if params[j].Elem().Kind() == reflect.Struct {
+					dep := e.graph.VerticesMap[(removePointerAsterisk(params[j].String()))]
 					if dep == nil {
-						return errors.E(op, errors.Errorf("can't find provider for the struct parameter: %s", removePointerAsterisk(param.String())))
+						return errors.E(op, errors.Errorf("can't find provider for the struct parameter: %s", removePointerAsterisk(params[j].String())))
 					}
 
-					cp.in = append(cp.in, In{
-						in:  reflect.ValueOf(dep.Iface),
-						dep: dep.ID,
+					cp.In = append(cp.In, vertex.In{
+						In:  reflect.ValueOf(dep.Iface),
+						Dep: dep.ID,
 					})
 
-					err := e.graph.AddDep(vertex, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
+					err := e.graph.AddStructureDep(vrtx, removePointerAsterisk(dep.ID), graph.Collects, isReference(params[j]))
 					if err != nil {
 						return errors.E(op, err)
 					}
 				}
 			case reflect.Interface:
-				cp.in = append(cp.in, In{
-					in:  reflect.ValueOf(compat.Iface),
-					dep: compat.ID,
+				cp.In = append(cp.In, vertex.In{
+					In:  reflect.ValueOf(compatible[i].Iface),
+					Dep: compatible[i].ID,
 				})
 
-				err := e.graph.AddDep(vertex, removePointerAsterisk(compat.ID), Collects, isReference(param), param.Kind())
+				err := e.graph.AddInterfaceDep(vrtx, removePointerAsterisk(compatible[i].ID), graph.Collects, isReference(params[j]))
 				if err != nil {
 					return errors.E(op, err)
 				}
 
 			case reflect.Struct:
-				dep := e.graph.VerticesMap[(removePointerAsterisk(param.String()))]
+				dep := e.graph.VerticesMap[(removePointerAsterisk(params[j].String()))]
 				if dep == nil {
-					return errors.E(op, errors.Errorf("can't find provider for the struct parameter: %s", removePointerAsterisk(param.String())))
+					return errors.E(op, errors.Errorf("can't find provider for the struct parameter: %s", removePointerAsterisk(params[j].String())))
 				}
 
-				cp.in = append(cp.in, In{
-					in:  reflect.ValueOf(dep.Iface),
-					dep: dep.ID,
+				cp.In = append(cp.In, vertex.In{
+					In:  reflect.ValueOf(dep.Iface),
+					Dep: dep.ID,
 				})
 
-				err := e.graph.AddDep(vertex, removePointerAsterisk(dep.ID), Collects, isReference(param), param.Kind())
+				err := e.graph.AddStructureDep(vrtx, removePointerAsterisk(dep.ID), graph.Collects, isReference(params[j]))
 				if err != nil {
 					return errors.E(op, err)
 				}
 			}
 		}
-		vertex.Meta.CollectorEntries = append(vertex.Meta.CollectorEntries, cp)
+		vrtx.Meta.CollectorEntries = append(vrtx.Meta.CollectorEntries, cp)
 	}
 
 	return nil
 }
 
-func (e *Endure) processStructDeps(fn interface{}, vertex *Vertex, params []reflect.Type) error {
-	const op = errors.Op("process struct deps")
+func (e *Endure) processStructDeps(fnName string, vrtx *vertex.Vertex, params []reflect.Type) error {
+	const op = errors.Op("endure_process_struct_deps")
 	// process only struct deps
-	cp := CollectorEntry{
-		in: make([]In, 0, 0),
-		fn: getFunctionName(fn),
+	cp := vertex.CollectorEntry{
+		In: make([]vertex.In, 0, 0),
+		Fn: fnName,
 	}
-	cp.in = append(cp.in, In{
-		in:  reflect.ValueOf(vertex.Iface),
-		dep: vertex.ID,
+	cp.In = append(cp.In, vertex.In{
+		In:  reflect.ValueOf(vrtx.Iface),
+		Dep: vrtx.ID,
 	})
 
 	for _, param := range params {
 		// check if type is primitive type
 		if isPrimitive(param.String()) {
-			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertex.ID), zap.String("type", param.String()))
+			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vrtx.ID), zap.String("type", param.String()))
 		}
 
 		// skip self
 		paramStr := param.String()
-		if vertex.ID == paramStr {
+		if vrtx.ID == paramStr {
 			continue
 		}
 
@@ -275,22 +283,22 @@ func (e *Endure) processStructDeps(fn interface{}, vertex *Vertex, params []refl
 		if dep == nil {
 			depVertex := e.graph.FindProviders(removePointerAsterisk(paramStr))
 			if depVertex == nil {
-				e.logger.Warn("can't find any provider for the dependency, collector function on the vertex will not be invoked", zap.String("dep id", removePointerAsterisk(param.String())), zap.String("vertex id", vertex.ID))
+				e.logger.Warn("can't find any provider for the dependency, collector function on the vertex will not be invoked", zap.String("dep id", removePointerAsterisk(param.String())), zap.String("vertex id", vrtx.ID))
 				return nil
 			}
 			dep = depVertex
 			for k, v := range dep.Provides {
 				if k == removePointerAsterisk(paramStr) {
-					cp.in = append(cp.in, In{
-						in:  reflect.Zero(reflect.TypeOf(v)),
-						dep: k,
+					cp.In = append(cp.In, vertex.In{
+						In:  reflect.Zero(reflect.TypeOf(v)),
+						Dep: k,
 					})
 				}
 			}
 		} else {
-			cp.in = append(cp.in, In{
-				in:  reflect.ValueOf(dep.Iface),
-				dep: dep.ID,
+			cp.In = append(cp.In, vertex.In{
+				In:  reflect.ValueOf(dep.Iface),
+				Dep: dep.ID,
 			})
 		}
 
@@ -299,21 +307,21 @@ func (e *Endure) processStructDeps(fn interface{}, vertex *Vertex, params []refl
 		e.graph.AddGlobalProvider(removePointerAsterisk(paramStr), tmpValue)
 		e.graph.VerticesMap[dep.ID].AddProvider(removePointerAsterisk(paramStr), tmpValue, tmpIsRef, param.Kind())
 
-		err := e.graph.AddDep(vertex, removePointerAsterisk(paramStr), Collects, isReference(param), param.Kind())
+		err := e.graph.AddStructureDep(vrtx, removePointerAsterisk(paramStr), graph.Collects, isReference(param))
 		if err != nil {
 			return errors.E(op, err)
 		}
 
-		e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vertex.ID), zap.String("depends", paramStr))
+		e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vrtx.ID), zap.String("depends", paramStr))
 	}
 
-	vertex.Meta.CollectorEntries = append(vertex.Meta.CollectorEntries, cp)
+	vrtx.Meta.CollectorEntries = append(vrtx.Meta.CollectorEntries, cp)
 	return nil
 }
 
 // addEdges calculates simple graph for the dependencies
 func (e *Endure) addEdges() error {
-	const Op = errors.Op("add_edges")
+	const Op = errors.Op("endure_add_edges")
 	// vertexID for example S2
 	for vertexID, vrtx := range e.graph.VerticesMap {
 		// we already checked the interface satisfaction
@@ -354,19 +362,19 @@ func (e *Endure) addEdges() error {
 	return nil
 }
 
-func (e *Endure) addInitDeps(vertex *Vertex, initMethod reflect.Method) error {
-	const Op = errors.Op("add_init_deps")
+func (e *Endure) addInitDeps(vrtx *vertex.Vertex, initMethod reflect.Method) error {
+	const Op = errors.Op("endure_add_init_deps")
 	// Init function in arguments
 	initArgs := functionParameters(initMethod)
 
 	// iterate over all function parameters
 	for _, initArg := range initArgs {
 		if isPrimitive(initArg.String()) {
-			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vertex.ID), zap.String("type", initArg.String()))
+			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vrtx.ID), zap.String("type", initArg.String()))
 			continue
 		}
 		// receiver
-		if vertex.ID == removePointerAsterisk(initArg.String()) {
+		if vrtx.ID == removePointerAsterisk(initArg.String()) {
 			continue
 		}
 		if initArg.Kind() == reflect.Interface {
@@ -383,13 +391,20 @@ func (e *Endure) addInitDeps(vertex *Vertex, initMethod reflect.Method) error {
 					e.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
 				}
 			}
+
+			err := e.graph.AddInterfaceDep(vrtx, removePointerAsterisk(initArg.String()), graph.Init, isReference(initArg))
+			if err != nil {
+				return errors.E(Op, err)
+			}
+			e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vrtx.ID), zap.String("depends on", initArg.String()))
+			continue
 		}
 
-		err := e.graph.AddDep(vertex, removePointerAsterisk(initArg.String()), Init, isReference(initArg), initArg.Kind())
+		err := e.graph.AddStructureDep(vrtx, removePointerAsterisk(initArg.String()), graph.Init, isReference(initArg))
 		if err != nil {
 			return errors.E(Op, err)
 		}
-		e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vertex.ID), zap.String("depends on", initArg.String()))
+		e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vrtx.ID), zap.String("depends on", initArg.String()))
 	}
 	return nil
 }

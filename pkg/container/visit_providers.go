@@ -5,12 +5,13 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/spiral/endure/pkg/vertex"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )
 
-func (e *Endure) traverseProviders(fnReceiver *Vertex, calleeVertexID string) error {
-	const op = errors.Op("internal_traverse_providers")
+func (e *Endure) traverseProviders(fnReceiver *vertex.Vertex, calleeVertexID string) error {
+	const op = errors.Op("endure_traverse_providers")
 	err := e.traverseCallProvider(fnReceiver, []reflect.Value{reflect.ValueOf(fnReceiver.Iface)}, calleeVertexID)
 	if err != nil {
 		return errors.E(op, errors.Traverse, err)
@@ -19,7 +20,7 @@ func (e *Endure) traverseProviders(fnReceiver *Vertex, calleeVertexID string) er
 	return nil
 }
 
-func (e *Endure) appendProviderFuncArgs(depsEntry Entry, providedEntry ProvidedEntry, in []reflect.Value) []reflect.Value {
+func (e *Endure) appendProviderFuncArgs(depsEntry vertex.Entry, providedEntry vertex.ProvidedEntry, in []reflect.Value) []reflect.Value {
 	switch {
 	case *providedEntry.IsReference == *depsEntry.IsReference:
 		in = append(in, providedEntry.Value)
@@ -71,8 +72,8 @@ func (p Providers) Swap(i, j int) {
 	p[i].m, p[j].m = p[j].m, p[i].m
 }
 
-func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, callerID string) error {
-	const op = errors.Op("internal_traverse_call_provider")
+func (e *Endure) traverseCallProvider(fnReceiver *vertex.Vertex, in []reflect.Value, callerID string) error {
+	const op = errors.Op("endure_traverse_call_provider")
 	callerV := e.graph.GetVertex(callerID)
 	if callerV == nil {
 		return errors.E(op, errors.Traverse, errors.Str("caller fnReceiver is nil"))
@@ -147,10 +148,10 @@ func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, ca
 					for l := 1; l < len(pr.In); l++ {
 						switch pr.In[l].Kind() {
 						case reflect.Struct: // just structure
-							inCopy = append(inCopy, e.graph.providers[pr.In[l].String()])
+							inCopy = append(inCopy, e.graph.Providers[pr.In[l].String()])
 						case reflect.Ptr: // Ptr to the structure
 							val := pr.In[l].Elem() // get real value
-							inCopy = append(inCopy, e.graph.providers[val.String()])
+							inCopy = append(inCopy, e.graph.Providers[val.String()])
 						case reflect.Interface: // we know here, that caller implement all needed to call interfaces
 							inCopy = append(inCopy, reflect.ValueOf(e.graph.VerticesMap[callerID].Iface))
 						}
@@ -168,8 +169,8 @@ func (e *Endure) traverseCallProvider(fnReceiver *Vertex, in []reflect.Value, ca
 	return nil
 }
 
-func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *Vertex, callerID string) error {
-	const op = errors.Op("provider fn call")
+func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *vertex.Vertex, callerID string) error {
+	const op = errors.Op("endure_fn_providers_call")
 	ret := f.Func.Call(in)
 	for i := 0; i < len(ret); i++ {
 		// try to find possible errors
@@ -179,7 +180,7 @@ func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *V
 		}
 		if rErr, ok := r.(error); ok {
 			if rErr != nil {
-				if err, ok := rErr.(error); ok && e != nil {
+				if err, ok := rErr.(error); ok && err != nil {
 					e.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
 					return errors.E(op, errors.FunctionCall, err)
 				}

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spiral/endure"
+	endure "github.com/spiral/endure/pkg/container"
 	"github.com/spiral/endure/tests/interfaces/named/randominterface"
 	"github.com/spiral/endure/tests/interfaces/named/registers"
 	"github.com/spiral/endure/tests/interfaces/named/registersfail"

@@ -1,8 +1,10 @@
-package endure
+package linked_list
+
+import "github.com/spiral/endure/pkg/vertex"
 
 // DllNode consists of the curr Vertex, Prev and Next DllNodes
 type DllNode struct {
-	Vertex     *Vertex
+	Vertex     *vertex.Vertex
 	Prev, Next *DllNode
 }
 
@@ -27,7 +29,7 @@ func (dll *DoublyLinkedList) SetHead(node *DllNode) {
 }
 
 // Push used to push vertex to the head
-func (dll *DoublyLinkedList) Push(vertex *Vertex) {
+func (dll *DoublyLinkedList) Push(vertex *vertex.Vertex) {
 	node := &DllNode{
 		Vertex: vertex,
 	}
@@ -47,7 +49,7 @@ func (dll *DoublyLinkedList) Push(vertex *Vertex) {
 }
 
 // PushTail used to push vertex to the tail
-func (dll *DoublyLinkedList) PushTail(vertex *Vertex) {
+func (dll *DoublyLinkedList) PushTail(vertex *vertex.Vertex) {
 	node := &DllNode{
 		Vertex: vertex,
 	}
@@ -116,9 +118,9 @@ func (dll *DoublyLinkedList) Remove(node *DllNode) {
 func (dll *DoublyLinkedList) Reset() {
 	cNode := dll.Head
 	for cNode != nil {
-		cNode.Vertex.numOfDeps = len(cNode.Vertex.Dependencies)
-		cNode.Vertex.visiting = false
-		cNode.Vertex.visited = false
+		cNode.Vertex.NumOfDeps = len(cNode.Vertex.Dependencies)
+		cNode.Vertex.Visiting = false
+		cNode.Vertex.Visited = false
 		cNode = cNode.Next
 	}
 }

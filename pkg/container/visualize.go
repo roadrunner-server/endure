@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/spiral/endure/pkg/vertex"
 	"github.com/spiral/errors"
 )
 
@@ -38,8 +39,8 @@ var _graphTmpl = template.Must(
 }`))
 
 // Visualize visualizes the graph based on provided output value
-func (e *Endure) Visualize(vertices []*Vertex) error {
-	const op = errors.Op("print_graph")
+func (e *Endure) Visualize(vertices []*vertex.Vertex) error {
+	const op = errors.Op("endure_visualize")
 	f := new(bytes.Buffer)
 	err := _graphTmpl.Execute(f, vertices)
 	if err != nil {

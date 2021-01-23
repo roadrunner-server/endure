@@ -1,4 +1,4 @@
-package endure
+package fsm
 
 import (
 	"reflect"
@@ -108,7 +108,7 @@ const (
 // indicating whether or not the received input is accepted.
 // Each event of an acceptor is either accepting or non accepting.
 func (f *FSMImpl) recognizer(event Event) error {
-	const op = errors.Op("recognizer")
+	const op = errors.Op("fsm_recognizer")
 	switch event {
 	case Initialize:
 		if f.current() == Uninitialized || f.current() == Error {
