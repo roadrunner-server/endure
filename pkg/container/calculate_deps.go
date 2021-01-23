@@ -216,7 +216,7 @@ func (e *Endure) processInterfaceDeps(compatible []*vertex.Vertex, fnName string
 						Dep: dep.ID,
 					})
 
-					err := e.graph.AddDep(vrtx, removePointerAsterisk(dep.ID), graph.Collects, isReference(params[j]), params[j].Kind())
+					err := e.graph.AddStructureDep(vrtx, removePointerAsterisk(dep.ID), graph.Collects, isReference(params[j]))
 					if err != nil {
 						return errors.E(op, err)
 					}
@@ -227,7 +227,7 @@ func (e *Endure) processInterfaceDeps(compatible []*vertex.Vertex, fnName string
 					Dep: compatible[i].ID,
 				})
 
-				err := e.graph.AddDep(vrtx, removePointerAsterisk(compatible[i].ID), graph.Collects, isReference(params[j]), params[j].Kind())
+				err := e.graph.AddInterfaceDep(vrtx, removePointerAsterisk(compatible[i].ID), graph.Collects, isReference(params[j]))
 				if err != nil {
 					return errors.E(op, err)
 				}
@@ -243,7 +243,7 @@ func (e *Endure) processInterfaceDeps(compatible []*vertex.Vertex, fnName string
 					Dep: dep.ID,
 				})
 
-				err := e.graph.AddDep(vrtx, removePointerAsterisk(dep.ID), graph.Collects, isReference(params[j]), params[j].Kind())
+				err := e.graph.AddStructureDep(vrtx, removePointerAsterisk(dep.ID), graph.Collects, isReference(params[j]))
 				if err != nil {
 					return errors.E(op, err)
 				}
@@ -307,7 +307,7 @@ func (e *Endure) processStructDeps(fnName string, vrtx *vertex.Vertex, params []
 		e.graph.AddGlobalProvider(removePointerAsterisk(paramStr), tmpValue)
 		e.graph.VerticesMap[dep.ID].AddProvider(removePointerAsterisk(paramStr), tmpValue, tmpIsRef, param.Kind())
 
-		err := e.graph.AddDep(vrtx, removePointerAsterisk(paramStr), graph.Collects, isReference(param), param.Kind())
+		err := e.graph.AddStructureDep(vrtx, removePointerAsterisk(paramStr), graph.Collects, isReference(param))
 		if err != nil {
 			return errors.E(op, err)
 		}
@@ -391,9 +391,16 @@ func (e *Endure) addInitDeps(vrtx *vertex.Vertex, initMethod reflect.Method) err
 					e.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
 				}
 			}
+
+			err := e.graph.AddInterfaceDep(vrtx, removePointerAsterisk(initArg.String()), graph.Init, isReference(initArg))
+			if err != nil {
+				return errors.E(Op, err)
+			}
+			e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vrtx.ID), zap.String("depends on", initArg.String()))
+			continue
 		}
 
-		err := e.graph.AddDep(vrtx, removePointerAsterisk(initArg.String()), graph.Init, isReference(initArg), initArg.Kind())
+		err := e.graph.AddStructureDep(vrtx, removePointerAsterisk(initArg.String()), graph.Init, isReference(initArg))
 		if err != nil {
 			return errors.E(Op, err)
 		}

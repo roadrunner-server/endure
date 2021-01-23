@@ -31,28 +31,6 @@ type Graph struct {
 	Providers map[string]reflect.Value
 }
 
-// DisableByID used to disable vertex by it's ID
-func (g *Graph) DisableByID(vid string) {
-	v := g.VerticesMap[vid]
-	for i := 0; i < len(g.Vertices); i++ {
-		g.disablerHelper(g.Vertices[i], v)
-	}
-}
-
-func (g *Graph) disablerHelper(vertex *vertex.Vertex, disabled *vertex.Vertex) bool {
-	if vertex.ID == disabled.ID {
-		return true
-	}
-	for i := 0; i < len(vertex.Dependencies); i++ {
-		contains := g.disablerHelper(vertex.Dependencies[i], disabled)
-		if contains {
-			vertex.IsDisabled = true
-			return true
-		}
-	}
-	return false
-}
-
 // NewGraph initializes endure Graph
 // According to the topological sorting, graph should be
 // 1. DIRECTED
@@ -81,24 +59,7 @@ AddDep doing the following:
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find vertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
 */
-func (g *Graph) AddDep(vertex *vertex.Vertex, depID string, method Kind, isRef bool, typeKind reflect.Kind) error {
-	switch typeKind {
-	case reflect.Interface:
-		err := g.addInterfaceDep(vertex, depID, method, isRef)
-		if err != nil {
-			return err
-		}
-	default:
-		err := g.addStructDep(vertex, depID, method, isRef)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (g *Graph) addInterfaceDep(vertex *vertex.Vertex, depID string, method Kind, isRef bool) error {
+func (g *Graph) AddInterfaceDep(vertex *vertex.Vertex, depID string, method Kind, isRef bool) error {
 	const op = errors.Op("endure_add_interface_dep")
 	// here can be a lot of deps
 	depVertex := g.FindProviders(depID)
@@ -122,6 +83,40 @@ func (g *Graph) addInterfaceDep(vertex *vertex.Vertex, depID string, method Kind
 
 	for j := 0; j < len(depVertex.Dependencies); j++ {
 		tmpID := depVertex.Dependencies[j].ID
+		if tmpID == vertex.ID {
+			return nil
+		}
+	}
+
+	vertex.NumOfDeps++
+	vertex.Dependencies = append(vertex.Dependencies, depVertex)
+	return nil
+}
+
+func (g *Graph) AddStructureDep(vertex *vertex.Vertex, depID string, method Kind, isRef bool) error {
+	const op = errors.Op("endure_add_structure_dep")
+	// vertex should always present
+
+	// but depVertex can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
+	depVertex := g.GetVertex(depID)
+	if depVertex == nil {
+		tmp := g.FindProviders(depID)
+		if tmp == nil {
+			return errors.E(op, errors.Errorf("can't find dep: %s for the vertex: %s", depID, vertex.ID))
+		}
+		depVertex = tmp
+	}
+
+	// add Dependency into the List
+	// to call later
+	// because we should know Init method parameters for every Vertex
+	if !g.addToList(method, vertex, depID, isRef, depVertex.ID, reflect.Struct) {
+		return nil
+	}
+
+	// append depID vertex
+	for i := 0; i < len(depVertex.Dependencies); i++ {
+		tmpID := depVertex.Dependencies[i].ID
 		if tmpID == vertex.ID {
 			return nil
 		}
@@ -176,40 +171,6 @@ func addInit(vrtx *vertex.Vertex, refID string, depID string, isRef bool, kind r
 	if !contains {
 		vrtx.Meta.InitDepsOrd = append(vrtx.Meta.InitDepsOrd, refID)
 	}
-}
-
-func (g *Graph) addStructDep(vertex *vertex.Vertex, depID string, method Kind, isRef bool) error {
-	const op = errors.Op("endure_add_structure_dep")
-	// vertex should always present
-
-	// but depVertex can be represented like foo2.S2 (vertexID) or like foo2.DB (vertex foo2.S2, dependency foo2.DB)
-	depVertex := g.GetVertex(depID)
-	if depVertex == nil {
-		tmp := g.FindProviders(depID)
-		if tmp == nil {
-			return errors.E(op, errors.Errorf("can't find dep: %s for the vertex: %s", depID, vertex.ID))
-		}
-		depVertex = tmp
-	}
-
-	// add Dependency into the List
-	// to call later
-	// because we should know Init method parameters for every Vertex
-	if !g.addToList(method, vertex, depID, isRef, depVertex.ID, reflect.Struct) {
-		return nil
-	}
-
-	// append depID vertex
-	for i := 0; i < len(depVertex.Dependencies); i++ {
-		tmpID := depVertex.Dependencies[i].ID
-		if tmpID == vertex.ID {
-			return nil
-		}
-	}
-
-	vertex.NumOfDeps++
-	vertex.Dependencies = append(vertex.Dependencies, depVertex)
-	return nil
 }
 
 // Reset resets vertices to initial state
