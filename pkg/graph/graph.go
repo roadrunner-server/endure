@@ -29,6 +29,9 @@ type Graph struct {
 	Vertices []*vertex.Vertex
 
 	Providers map[string]reflect.Value
+
+	// internal type
+	InitialProviders map[string]reflect.Value
 }
 
 // NewGraph initializes endure Graph
@@ -51,6 +54,14 @@ func (g *Graph) AddGlobalProvider(providedID string, val reflect.Value) {
 func (g *Graph) HasVertex(name string) bool {
 	_, ok := g.VerticesMap[name]
 	return ok
+}
+
+// Replace providers with initial
+func (g *Graph) ClearState() {
+	g.Providers = make(map[string]reflect.Value)
+	g.VerticesMap = make(map[string]*vertex.Vertex)
+	// delete from Vertices
+	g.Vertices = make([]*vertex.Vertex, 0)
 }
 
 /*

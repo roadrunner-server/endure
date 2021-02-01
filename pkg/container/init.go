@@ -25,6 +25,9 @@ func (e *Endure) internalInit(vrtx *vertex.Vertex) error {
 
 	err := e.callInitFn(initMethod, vrtx)
 	if err != nil {
+		if errors.Is(errors.Disabled, err) {
+			return err
+		}
 		e.logger.Error("error occurred during the call INIT function", zap.String("vertex id", vrtx.ID), zap.Error(err))
 		return errors.E(op, errors.FunctionCall, err)
 	}
@@ -64,11 +67,8 @@ func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
 				e.logger.Warn("vertex disabled", zap.String("vertex id", vrtx.ID), zap.Error(err))
 				// disable current vertex
 				vrtx.IsDisabled = true
-				// disable all vertices in the vertex which depends on current
-				// TODO better solution (remove vertex)
-				// e.graph.DisableByID(vertex.ID)
 				// Disabled is actually to an error, just notification to the graph, that it has some vertices which are disabled
-				return nil
+				return errors.E(op, errors.Disabled)
 			}
 
 			e.logger.Error("error calling internal_init", zap.String("vertex id", vrtx.ID), zap.Error(err))
