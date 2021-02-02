@@ -67,6 +67,8 @@ type Endure struct {
 	maxInterval     time.Duration
 	initialInterval time.Duration
 	stopTimeout     time.Duration
+	deps            map[string]interface{}
+	disabled        map[string]bool
 
 	// Graph visualizer
 	// option to out to os.stdout or write data to file
@@ -118,7 +120,9 @@ func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 		loglevel:        DebugLevel,
 		path:            "",
 		// default empty -> no output
-		output: Empty,
+		output:   Empty,
+		disabled: make(map[string]bool),
+		deps:     make(map[string]interface{}),
 	}
 
 	// Transition map
@@ -217,50 +221,16 @@ func pprof() {
 	}()
 }
 
-// SetLogLevel option sets the log level in the Endure
-func SetLogLevel(lvl Level) Options {
-	return func(endure *Endure) {
-		endure.loglevel = lvl
-	}
-}
-
-// RetryOnFail if set to true, endure will try to stop and restart graph if one or more vertices are failed
-func RetryOnFail(retry bool) Options {
-	return func(endure *Endure) {
-		endure.retry = retry
-	}
-}
-
-// SetBackoffTimes sets initial and maximum backoff interval for retry
-func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) Options {
-	return func(endure *Endure) {
-		endure.maxInterval = maxInterval
-		endure.initialInterval = initialInterval
-	}
-}
-
-// Visualize visualize current graph. Output: can be file or stdout
-func Visualize(output Output, path string) Options {
-	return func(endure *Endure) {
-		endure.output = output
-		if path != "" {
-			endure.path = path
-		}
-	}
-}
-
-// SetStopTimeOut sets the timeout to kill the vertices is one or more of them are frozen
-func SetStopTimeOut(to time.Duration) Options {
-	return func(endure *Endure) {
-		endure.stopTimeout = to
-	}
-}
-
 // Register registers the dependencies in the Endure graph without invoking any methods
 func (e *Endure) Register(vertex interface{}) error {
 	const op = errors.Op("endure_register")
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
+
+	// if vertex disabled - skip
+	if _, ok := e.disabled[vertexID]; ok {
+		return nil
+	}
 
 	if t.Kind() != reflect.Ptr {
 		return errors.E(op, errors.Register, errors.Errorf("you should pass pointer to the structure instead of value"))
@@ -290,6 +260,14 @@ func (e *Endure) Register(vertex interface{}) error {
 		return errors.E(op, errors.Providers, err)
 	}
 	e.logger.Debug("registering type", zap.String("type", t.String()))
+
+	// if deps present in the map - skip
+	if _, ok := e.deps[vertexID]; ok {
+		return nil
+	}
+
+	// save all vertices on the initial stage
+	e.deps[vertexID] = vertex
 
 	return nil
 }
@@ -340,6 +318,9 @@ func (e *Endure) Stop() error {
 // Do not change this method fn, sync with constants in the beginning of this file
 func (e *Endure) Initialize() error {
 	const op = errors.Op("endure_initialize")
+	// START used to restart Initialize when disabled vertex found
+	// TODO temporary solution
+START:
 	// traverse the graph
 	err := e.addEdges()
 	if err != nil {
@@ -378,6 +359,27 @@ func (e *Endure) Initialize() error {
 		headCopy.Vertex.SetState(fsm.Initializing)
 		err = e.internalInit(headCopy.Vertex)
 		if err != nil {
+			// remove head
+			if errors.Is(errors.Disabled, err) {
+				e.logger.Debug("found disabled vertex", zap.String("vertex id", headCopy.Vertex.ID))
+				// add vertex to the map with disabled vertices
+				e.disabled[headCopy.Vertex.ID] = true
+				// reset run list
+				e.runList.Reset()
+				// reset graph
+				e.graph.ClearState()
+				// re-register endure
+				for _, dep := range e.deps {
+					err = e.Register(dep)
+					if err != nil {
+						return errors.E(op, err)
+					}
+				}
+
+				// start from the clear state excluding the disabled vertex
+				goto START
+			}
+
 			headCopy.Vertex.SetState(fsm.Error)
 			e.logger.Error("error during the internal_init", zap.Error(err))
 			return errors.E(op, errors.Init, err)
