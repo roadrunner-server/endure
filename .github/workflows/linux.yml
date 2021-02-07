@@ -1,0 +1,58 @@
+name: Linux
+
+on:
+  push:
+  pull_request:
+    branches:
+      # Branches from forks have the form 'user:branch-name' so we only run
+      # this job on pull_request events for branches that look like fork
+      # branches. Without this we would end up running this job twice for non
+      # forked PRs, once for the push and then once for opening the PR.
+      - '**:**'
+
+jobs:
+  build:
+    name: Tests (Go ${{ matrix.go }}, OS ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        go: [ 1.14, 1.15 ]
+        os: [ ubuntu-20.04 ]
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Show versions
+        run: go version
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Run golang tests on ${{ matrix.os }}
+        run: |
+          mkdir ./coverage-ci
+          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/backoff.txt -covermode=atomic ./tests/backoff
+          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/happy_scenarios.txt -covermode=atomic ./tests/happy_scenarios
+          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/interfaces.txt -covermode=atomic ./tests/interfaces
+          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/issues.txt -covermode=atomic ./tests/issues
+          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/stress.txt -covermode=atomic ./tests/stress
+          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/disabled_vertices.txt -covermode=atomic ./tests/disabled_vertices
+          cat ./coverage-ci/*.txt > ./coverage-ci/summary.txt
+
+      - uses: codecov/codecov-action@v1 # Docs: <https://github.com/codecov/codecov-action>
+        if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest' }}
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage-ci/summary.txt
+          fail_ci_if_error: false
+
