@@ -18,6 +18,22 @@ import (
 	issue54_p1 "github.com/spiral/endure/tests/issues/issue54/plugin1"
 	issue54_p2 "github.com/spiral/endure/tests/issues/issue54/plugin2"
 	issue54_p3 "github.com/spiral/endure/tests/issues/issue54/plugin3"
+
+	issue84_struct_p1 "github.com/spiral/endure/tests/issues/issue84/structs/plugin1"
+	issue84_struct_p2 "github.com/spiral/endure/tests/issues/issue84/structs/plugin2"
+	issue84_struct_p3 "github.com/spiral/endure/tests/issues/issue84/structs/plugin3"
+
+	issue84_interface_p1 "github.com/spiral/endure/tests/issues/issue84/interfaces/plugin1"
+	issue84_interface_p2 "github.com/spiral/endure/tests/issues/issue84/interfaces/plugin2"
+	issue84_interface_p3 "github.com/spiral/endure/tests/issues/issue84/interfaces/plugin3"
+
+	issue84_interfaces_structs_p1 "github.com/spiral/endure/tests/issues/issue84/interfaces_structs/plugin1"
+	issue84_interfaces_structs_p2 "github.com/spiral/endure/tests/issues/issue84/interfaces_structs/plugin2"
+	issue84_interfaces_structs_p3 "github.com/spiral/endure/tests/issues/issue84/interfaces_structs/plugin3"
+
+	issue84_one_alive_p1 "github.com/spiral/endure/tests/issues/issue84/one_alive/plugin1"
+	issue84_one_alive_p2 "github.com/spiral/endure/tests/issues/issue84/one_alive/plugin2"
+	issue84_one_alive_p3 "github.com/spiral/endure/tests/issues/issue84/one_alive/plugin3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -138,4 +154,50 @@ func TestIssue66(t *testing.T) {
 
 	assert.NoError(t, c.Stop())
 	time.Sleep(time.Second * 1)
+}
+
+func TestIssue84_structs_all_disabled(t *testing.T) {
+	c, err := endure.NewContainer(nil)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&issue84_struct_p1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue84_struct_p2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue84_struct_p3.Plugin3{}))
+
+	err = c.Init()
+	assert.Error(t, err)
+}
+
+func TestIssue84_interfaces_all_disabled(t *testing.T) {
+	c, err := endure.NewContainer(nil)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&issue84_interface_p2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue84_interface_p1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue84_interface_p3.Plugin3{}))
+
+	err = c.Init()
+	assert.Error(t, err)
+}
+
+func TestIssue84_structs_interface_all_disabled_interface(t *testing.T) {
+	c, err := endure.NewContainer(nil)
+	assert.NoError(t, err)
+	assert.NoError(t, c.Register(&issue84_interfaces_structs_p2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue84_interfaces_structs_p1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue84_interfaces_structs_p3.Plugin3{}))
+
+	err = c.Init()
+	assert.Error(t, err)
+}
+
+func TestIssue84_one_alive(t *testing.T) {
+	c, err := endure.NewContainer(nil)
+	assert.NoError(t, err)
+	assert.NoError(t, c.Register(&issue84_one_alive_p1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue84_one_alive_p2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue84_one_alive_p3.Plugin3{}))
+
+	err = c.Init()
+	assert.NoError(t, err)
 }

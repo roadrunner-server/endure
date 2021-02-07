@@ -67,8 +67,10 @@ type Endure struct {
 	maxInterval     time.Duration
 	initialInterval time.Duration
 	stopTimeout     time.Duration
-	deps            map[string]interface{}
-	disabled        map[string]bool
+
+	depsOrder []string
+	deps      map[string]interface{}
+	disabled  map[string]bool
 
 	// Graph visualizer
 	// option to out to os.stdout or write data to file
@@ -120,9 +122,10 @@ func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 		loglevel:        DebugLevel,
 		path:            "",
 		// default empty -> no output
-		output:   Empty,
-		disabled: make(map[string]bool),
-		deps:     make(map[string]interface{}),
+		output:    Empty,
+		disabled:  make(map[string]bool),
+		deps:      make(map[string]interface{}),
+		depsOrder: make([]string, 0, 2),
 	}
 
 	// Transition map
@@ -268,6 +271,7 @@ func (e *Endure) Register(vertex interface{}) error {
 
 	// save all vertices on the initial stage
 	e.deps[vertexID] = vertex
+	e.depsOrder = append(e.depsOrder, vertexID)
 
 	return nil
 }
@@ -343,7 +347,13 @@ START:
 		return errors.E(op, errors.Init, err)
 	}
 
-	if len(sorted) == 0 {
+	// >= because disabled also contains vertex provided values
+	if len(e.disabled) >= len(e.deps) {
+		e.logger.Error("all vertices are disabled: graph should contain at least 1 active vertex, possibly all vertices was disabled because of ROOT vertex failure", zap.Any("disabled", e.disabled))
+		return errors.E(op, errors.Init, errors.Errorf("graph should contain at least 1 active vertex, possibly all vertices was disabled because of ROOT vertex failure"))
+	}
+
+	if len(sorted) == 0 && len(e.disabled) != 0 {
 		e.logger.Error("initial graph should contain at least 1 vertex, possibly you forget to invoke Registers?")
 		return errors.E(op, errors.Init, errors.Errorf("graph should contain at least 1 vertex, possibly you forget to invoke registers"))
 	}
@@ -356,24 +366,23 @@ START:
 	head := e.runList.Head
 	headCopy := head
 	for headCopy != nil {
+		// check for disabled, because that can be interface
+		if _, ok := e.disabled[headCopy.Vertex.ID]; ok {
+			err := e.remove_vertex(headCopy)
+			if err != nil {
+				return errors.E(op, err)
+			}
+			// start from the clear state excluding the disabled vertex
+			goto START
+		}
 		headCopy.Vertex.SetState(fsm.Initializing)
 		err = e.internalInit(headCopy.Vertex)
 		if err != nil {
 			// remove head
 			if errors.Is(errors.Disabled, err) {
-				e.logger.Debug("found disabled vertex", zap.String("vertex id", headCopy.Vertex.ID))
-				// add vertex to the map with disabled vertices
-				e.disabled[headCopy.Vertex.ID] = true
-				// reset run list
-				e.runList.Reset()
-				// reset graph
-				e.graph.ClearState()
-				// re-register endure
-				for _, dep := range e.deps {
-					err = e.Register(dep)
-					if err != nil {
-						return errors.E(op, err)
-					}
+				err := e.remove_vertex(headCopy)
+				if err != nil {
+					return errors.E(op, err)
 				}
 
 				// start from the clear state excluding the disabled vertex
@@ -433,4 +442,28 @@ func (e *Endure) Shutdown() error {
 	e.logger.Info("exiting from the Endure")
 	n := e.runList.Head
 	return e.shutdown(n, true)
+}
+
+func (e *Endure) remove_vertex(head *linked_list.DllNode) error {
+	const op = errors.Op("endure_disable")
+	e.logger.Debug("found disabled vertex", zap.String("vertex id", head.Vertex.ID))
+	// add vertex to the map with disabled vertices
+	for providesID := range head.Vertex.Provides {
+		e.disabled[providesID] = true
+	}
+	e.disabled[head.Vertex.ID] = true
+	// reset run list
+	e.runList.Reset()
+	// reset graph
+	e.graph.ClearState()
+
+	// re-register all deps, excluding disabled preserving initial order
+	for i := 0; i < len(e.depsOrder); i++ {
+		err := e.Register(e.deps[e.depsOrder[i]])
+		if err != nil {
+			return errors.E(op, err)
+		}
+	}
+
+	return nil
 }

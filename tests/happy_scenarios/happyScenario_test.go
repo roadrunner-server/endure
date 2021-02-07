@@ -237,7 +237,7 @@ func TestEndure_VisualizeFile(t *testing.T) {
 }
 `
 	filename := "graph.txt"
-	c, err := endure.NewContainer(nil, endure.Visualize(endure.File, filename), endure.SetLogLevel(endure.DebugLevel))
+	c, err := endure.NewContainer(nil, endure.Visualize(endure.File, filename), endure.SetLogLevel(endure.ErrorLevel))
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&plugin4.S4{}))

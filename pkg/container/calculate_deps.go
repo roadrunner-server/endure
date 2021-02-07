@@ -373,34 +373,42 @@ func (e *Endure) addInitDeps(vrtx *vertex.Vertex, initMethod reflect.Method) err
 			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vrtx.ID), zap.String("type", initArg.String()))
 			continue
 		}
+		initArgStr := removePointerAsterisk(initArg.String())
 		// receiver
-		if vrtx.ID == removePointerAsterisk(initArg.String()) {
+		if vrtx.ID == initArgStr {
 			continue
 		}
+
+		// if init arg disabled, remove_vertex the whole vertex
+		if _, ok := e.disabled[initArgStr]; ok {
+			e.logger.Info("vertex receives disabled init vertex", zap.String("vertex id", vrtx.ID), zap.String("disabled init arg", initArgStr))
+			e.disabled[vrtx.ID] = true
+			continue
+		}
+
 		if initArg.Kind() == reflect.Interface {
 			for i := 0; i < len(e.graph.Vertices); i++ {
 				// if type implements interface we should add this struct as provider of the interface
 				if reflect.TypeOf(e.graph.Vertices[i].Iface).Implements(initArg) {
 					// skip double add
-					if _, ok := e.graph.Vertices[i].Provides[removePointerAsterisk(initArg.String())]; ok {
+					if _, ok := e.graph.Vertices[i].Provides[initArgStr]; ok {
 						continue
 					}
 					tmpIsRef := isReference(initArg)
 					tmpValue := reflect.ValueOf(e.graph.Vertices[i].Iface)
-					e.graph.AddGlobalProvider(removePointerAsterisk(initArg.String()), tmpValue)
-					e.graph.Vertices[i].AddProvider(removePointerAsterisk(initArg.String()), tmpValue, tmpIsRef, initArg.Kind())
+					e.graph.AddGlobalProvider(initArgStr, tmpValue)
+					e.graph.Vertices[i].AddProvider(initArgStr, tmpValue, tmpIsRef, initArg.Kind())
 				}
 			}
 
-			err := e.graph.AddInterfaceDep(vrtx, removePointerAsterisk(initArg.String()), graph.Init, isReference(initArg))
+			err := e.graph.AddInterfaceDep(vrtx, initArgStr, graph.Init, isReference(initArg))
 			if err != nil {
 				return errors.E(Op, err)
 			}
 			e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vrtx.ID), zap.String("depends on", initArg.String()))
 			continue
 		}
-
-		err := e.graph.AddStructureDep(vrtx, removePointerAsterisk(initArg.String()), graph.Init, isReference(initArg))
+		err := e.graph.AddStructureDep(vrtx, initArgStr, graph.Init, isReference(initArg))
 		if err != nil {
 			return errors.E(Op, err)
 		}
