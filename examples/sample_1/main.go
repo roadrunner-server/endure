@@ -15,12 +15,12 @@ import (
 
 func main() {
 	// no external logger
-	container, err := endure.NewContainer(nil, endure.RetryOnFail(true), endure.Visualize(endure.StdOut, ""), endure.SetLogLevel(endure.ErrorLevel))
+	container, err := endure.NewContainer(nil, endure.RetryOnFail(true), endure.Visualize(endure.StdOut, ""), endure.SetLogLevel(endure.DebugLevel))
 	if err != nil {
 		panic(err)
 	}
 
-	err = InitApp(
+	err = container.RegisterAll(
 		container,
 		&http.Http{},
 		&db.DB{},
@@ -28,6 +28,15 @@ func main() {
 		&gzip.Gzip{},
 		&headers.Headers{},
 	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = container.Init()
+	if err != nil {
+		panic(err)
+	}
 
 	errCh, err := container.Serve()
 	if err != nil {
@@ -55,21 +64,4 @@ func main() {
 			return
 		}
 	}
-}
-
-// InitApp with a list of provided services.
-func InitApp(container endure.Container, service ...interface{}) error {
-	for _, svc := range service {
-		err := container.Register(svc)
-		if err != nil {
-			return err
-		}
-	}
-
-	err := container.Init()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
