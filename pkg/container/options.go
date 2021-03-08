@@ -16,8 +16,8 @@ func RetryOnFail(retry bool) Options {
 	}
 }
 
-// SetBackoffTimes sets initial and maximum backoff interval for retry
-func SetBackoffTimes(initialInterval time.Duration, maxInterval time.Duration) Options {
+// SetBackoff sets initial and maximum backoff interval for retry
+func SetBackoff(initialInterval time.Duration, maxInterval time.Duration) Options {
 	return func(endure *Endure) {
 		endure.maxInterval = maxInterval
 		endure.initialInterval = initialInterval
@@ -34,8 +34,8 @@ func Visualize(output Output, path string) Options {
 	}
 }
 
-// SetStopTimeOut sets the timeout to kill the vertices is one or more of them are frozen
-func SetStopTimeOut(to time.Duration) Options {
+// GracefulShutdownTimeout sets the timeout to kill the vertices is one or more of them are frozen
+func GracefulShutdownTimeout(to time.Duration) Options {
 	return func(endure *Endure) {
 		endure.stopTimeout = to
 	}

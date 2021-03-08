@@ -2,7 +2,6 @@ package endure
 
 import (
 	"net/http"
-
 	// pprof will be enabled in debug mode
 	_ "net/http/pprof"
 
