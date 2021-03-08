@@ -371,7 +371,6 @@ func (e *Endure) addInitDeps(vrtx *vertex.Vertex, initMethod reflect.Method) err
 	for _, initArg := range initArgs {
 		if isPrimitive(initArg.String()) {
 			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vrtx.ID), zap.String("type", initArg.String()))
-			continue
 		}
 		initArgStr := removePointerAsterisk(initArg.String())
 		// receiver
