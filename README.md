@@ -1,4 +1,4 @@
-# Endure [currently in beta]
+# Endure
 
 <p align="center">
  <a href="https://pkg.go.dev/github.com/spiral/Endure?tab=doc"><img src="https://godoc.org/github.com/spiral/Endure?status.svg"></a>
@@ -57,12 +57,11 @@ Let's take a look at the `endure.NewContainer()`:
 
 ```go
 err = container.RegisterAll(
-		&httpPlugin{},
-		&DBPlugin{},
-		&LoggerPlugin{},
-	)
-if err != nil {
-    panic(err)
+    &httpPlugin{},
+    &DBPlugin{},
+    &LoggerPlugin{})
+    if err != nil {
+        panic(err)
 }
 ```
 
@@ -70,13 +69,13 @@ The order of plugins in the `RegisterAll` plugin does no matter.
 Next we need to initialize and run our container:
 
 ```go
-err = container.Init()
-if err != nil {
-    panic(err)
+err := container.Init()
+    if err != nil {
+        panic(err)
 }
 errCh, err := container.Serve()
-if err != nil {
-    panic(err)
+    if err != nil {
+    	panic(err)
 }
 ```
 
@@ -85,15 +84,15 @@ in `errCh` struct. Then just process the events from the `errCh`:
 
 ```go
 for {
-	select {
-	case e := <-errCh:
-		println(e.Error.Err.Error()) // just print the error, but actually error processing could be there
-		er := container.Stop()
-		if er != nil {
-		    panic(er)
-		}
-		return
-	}
+    select {
+        case e := <-errCh:
+            println(e.Error.Err.Error()) // just print the error, but actually error processing could be there
+            er := container.Stop()
+            if er != nil {
+                panic(er)
+            }
+        return
+    }
 }
 ```
 
@@ -142,13 +141,21 @@ func (p *Plugin) Init( /* deps here */) error {
 
 Order is the following:
 
-1. `Init() error` - is mandatory to implement. In your structure (which you pass to Endure), you should have this method
-   as a receiver. It can accept as parameter any passed to the `Endure` structure (see samples) or interface (with
+1. `Init() error` - is mandatory to implement. For your structure (which you pass to `Endure`), you should have this method as the method of the struct(```go func (p *Plugin) Init() error {}```). It can accept as a parameter any passed to the `Endure` structure (see samples) or interface (with
    limitations).
-2. `Service` - is optional to implement. It has 2 main methods - `Serve` which should run the plugin and return
-   initialized golang channel with errors, and `Stop` to shut down the plugin.
-3. `Provider` - is optional to implement. It is used to provide some dependency if you need to extend your struct.
+2. `Service` - is optional to implement. It has 2 methods - `Serve` which should run the plugin and return
+   initialized golang channel with errors, and `Stop` to shut down the plugin. The `Stop` and `Serve` should not block the execution.
+3. `Provider` - is optional to implement. It is used to provide some dependency if you need to extend your struct without deep modification.
 4. `Collector` - is optional to implement. It is used to mark a structure (vertex) as some struct dependency. It can
-   accept interfaces which implement the caller.
+   accept interfaces which implement a caller.
 5. `Named` - is optional to implement. This is a special kind of interface which provides the name of the struct (
    plugin, vertex) to the caller. Is useful in logger (for example) to know user-friendly plugin name.
+
+Available options:
+1. `SetLogLevel` - used to set internal log level. Available options: `endure.DebugLevel`, `endure.InfoLevel`,`endure.WarnLevel`,`endure.ErrorLevel`,`endure.DPanicLevel`,`endure.PanicLevel`,`endure.FatalLevel` ordered from the most to the least verbosity level.  
+2. `RetryOnFail`: bool, used to reinitialize graph w/o stopping application when error received from the `Serve`.
+3. `SetBackoff`: initialInterval, maxInterval, `time.Duration`. When `RetryOnFail` is set, backoff configures how much time spend to reinitialize vertex.
+4. `Visualize`: Output (`endure.StdOut`, `endure.File`), path. Graph visualization option via the graphviz. The Graphviz diagram can be shown via stdout or file (path should not be empty).
+5. `GracefulShutdownTimeout`: time.Duration. How long to wait for a vertex (plugin) to stop.  
+
+The fully operational example located in the `examples` folder.
