@@ -17,7 +17,6 @@ linters:
     - nakedret
     - nolintlint
     - rowserrcheck
-    - scopelint
     - staticcheck
     - structcheck
     - typecheck

@@ -1,10 +1,9 @@
 package plugin8
 
 import (
-	"fmt"
-
 	endure "github.com/spiral/endure/pkg/container"
 	"github.com/spiral/endure/tests/interfaces/plugins/plugin10"
+	"github.com/spiral/errors"
 )
 
 type SomeInterface interface {
@@ -12,15 +11,26 @@ type SomeInterface interface {
 }
 
 type Plugin8 struct {
+	collectedDeps []interface{}
 }
 
 // No deps
 func (s *Plugin8) Init() error {
+	s.collectedDeps = make([]interface{}, 0, 6)
 	return nil
 }
 
 func (s *Plugin8) Serve() chan error {
 	errCh := make(chan error, 1)
+	// plugin7
+	// plugin9
+	// named + plugin10 (plugin7)
+	// named + plugin10 (plugin9)
+	// plugin7 + plugin10
+	// plugin9 + plugin10
+	if len(s.collectedDeps) != 6 {
+		errCh <- errors.E("not enough deps collected")
+	}
 	return errCh
 }
 
@@ -37,18 +47,22 @@ func (s *Plugin8) Collects() []interface{} {
 }
 
 func (s *Plugin8) SomeCollects(named endure.Named, b SomeInterface, p10 *plugin10.Plugin10) error {
-	fmt.Println(named.Name())
+	s.collectedDeps = append(s.collectedDeps, b)
 	b.Boom()
 	return nil
 }
 
 func (s *Plugin8) SomeCollects2(named endure.Named, p10 *plugin10.Plugin10) error {
-	fmt.Println(named.Name())
+	s.collectedDeps = append(s.collectedDeps, p10)
+	println(named.Name())
+	p10.Boo()
 	return nil
 }
 
 func (s *Plugin8) SomeCollects3(named endure.Named, p10 *plugin10.Plugin10, named2 endure.Named, p *plugin10.Plugin10) error {
-	fmt.Println(named.Name())
+	s.collectedDeps = append(s.collectedDeps, p)
+	println(named.Name())
+	println(named2.Name())
 	p10.Boo()
 	p.Boo()
 	return nil

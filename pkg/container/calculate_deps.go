@@ -159,22 +159,28 @@ func (e *Endure) implCollectorPath(vrtx *vertex.Vertex) error {
 				compatible = append(compatible, e.graph.Vertices[i])
 				// set, that we have interface deps
 				haveInterfaceDeps = true
-				e.logger.Info("vertex is compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vrtx.ID))
+				e.logger.Debug("vertex is compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vrtx.ID))
 				continue
 			}
-			e.logger.Info("vertex is not compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vrtx.ID))
+			e.logger.Debug("vertex is not compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vrtx.ID))
 		}
 
 		if len(compatible) == 0 && haveInterfaceDeps {
-			e.logger.Info("no compatible vertices found", zap.String("collects from vertex", vrtx.ID))
+			e.logger.Debug("no compatible vertices found", zap.String("collects from vertex", vrtx.ID))
 			return nil
 		}
 		// process mixed deps (interfaces + structs)
 		if haveInterfaceDeps {
-			return e.processInterfaceDeps(compatible, getFunctionName(fn), vrtx, params)
+			err = e.processInterfaceDeps(compatible, getFunctionName(fn), vrtx, params)
+			if err != nil {
+				return err
+			}
 		}
 		// process only struct deps if not interfaces were found
-		return e.processStructDeps(getFunctionName(fn), vrtx, params)
+		err = e.processStructDeps(getFunctionName(fn), vrtx, params)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
