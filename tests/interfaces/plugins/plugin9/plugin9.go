@@ -15,5 +15,5 @@ func (s *Plugin9) Name() string {
 }
 
 func (s *Plugin9) Boom() {
-	fmt.Println("Boom")
+	fmt.Println("Boom from plugin9")
 }

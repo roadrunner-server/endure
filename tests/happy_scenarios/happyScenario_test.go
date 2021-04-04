@@ -100,9 +100,9 @@ func TestEndure_DoubleInitDoubleServe_OK(t *testing.T) {
 	assert.NoError(t, c.Init())
 	assert.Error(t, c.Init())
 
-	res, err := c.Serve()
+	_, err = c.Serve()
 	assert.NoError(t, err)
-	res, err = c.Serve()
+	res, err := c.Serve()
 	assert.Error(t, err)
 	go func() {
 		for r := range res {

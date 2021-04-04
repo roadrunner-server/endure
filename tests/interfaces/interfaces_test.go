@@ -20,6 +20,8 @@ import (
 	"github.com/spiral/endure/tests/interfaces/plugins/plugin9"
 	notImplPlugin1 "github.com/spiral/endure/tests/interfaces/service/not_implemented_service/plugin1"
 	notImplPlugin2 "github.com/spiral/endure/tests/interfaces/service/not_implemented_service/plugin2"
+
+	collects_get_all_deps "github.com/spiral/endure/tests/interfaces/collects/collects_get_all_deps"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -171,6 +173,35 @@ func Test_MultiplyCollectsInterface(t *testing.T) {
 	assert.NoError(t, c.Register(&plugin8.Plugin8{}))
 	assert.NoError(t, c.Register(&plugin9.Plugin9{}))
 	assert.NoError(t, c.Register(&plugin10.Plugin10{}))
+	err = c.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := c.Serve()
+	assert.NoError(t, err)
+
+	go func() {
+		for r := range res {
+			if r.Error != nil {
+				assert.NoError(t, r.Error)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	assert.NoError(t, c.Stop())
+	time.Sleep(time.Second * 1)
+}
+
+func Test_MultiplyCollectsInterface2(t *testing.T) {
+	c, err := endure.NewContainer(nil)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.Register(&collects_get_all_deps.Plugin2{}))
+	assert.NoError(t, c.Register(&collects_get_all_deps.Plugin1{}))
 	err = c.Init()
 	if err != nil {
 		t.Fatal(err)

@@ -2,8 +2,7 @@ package plugin10
 
 import "fmt"
 
-type Plugin10 struct {
-}
+type Plugin10 struct{}
 
 // No deps
 func (s *Plugin10) Init() error {
@@ -20,5 +19,5 @@ func (s *Plugin10) Stop() error {
 }
 
 func (s *Plugin10) Boo() {
-	fmt.Println("Boo")
+	fmt.Println("Boo from plugin10")
 }
