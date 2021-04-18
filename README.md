@@ -148,7 +148,7 @@ Order is the following:
 3. `Provider` - is optional to implement. It is used to provide some dependency if you need to extend your struct without deep modification.
 4. `Collector` - is optional to implement. It is used to mark a structure (vertex) as some struct dependency. It can
    accept interfaces which implement a caller.
-5. `Named` - is optional to implement. This is a special kind of interface which provides the name of the struct (
+5. `Named` - is mandatory to implement. This is a special kind of interface which provides the name of the struct (
    plugin, vertex) to the caller. Is useful in logger (for example) to know user-friendly plugin name.
 
 Available options:
