@@ -161,5 +161,5 @@ Available options:
 The fully operational example located in the `examples` folder.
 
 ## Known issues:
-- [ ] Vertex can provide only 1 implementaion per interface. For example, at the moment, you can't provide two implementation of the `Logger` interface within the same vertex.
+- [ ] Vertex can provide only 1 implementaion per interface. For example, at the moment, you can't provide two implementations of the `Logger` interface within the same vertex.
 - [ ] No support for the type aliases.
