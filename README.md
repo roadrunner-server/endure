@@ -41,7 +41,7 @@ to the `Endure` and implement `Endure` interface. So, the dependency graph will 
   <img src="https://github.com/spiral/endure/blob/master/images/graph.png" width="300" height="250" />
 </p>
 
-=======  
+-------
 First step is to initialize the `endure` container:
 
 ```go
@@ -52,7 +52,7 @@ Let's take a look at the `endure.NewContainer()`:
 
 1. First arg here is the external logger. If you want to use your own logger, you can pass it as the first argument.
 2. Next arguments are optional and can be set using `Options`. For example `endure.Visualize(endure.StdOut, "")` will
-   show you dot-compatible graph in the console. TODO: all options section.  
+   show you dot-compatible graph in the console.
    Then we need to pass our structures as references to the `RegisterAll` or `Register` function.
 
 ```go
@@ -159,3 +159,7 @@ Available options:
 5. `GracefulShutdownTimeout`: time.Duration. How long to wait for a vertex (plugin) to stop.  
 
 The fully operational example located in the `examples` folder.
+
+## Known issues:
+- [ ] Vertex can provide only 1 implementaion per interface. For example, at the moment, you can't provide two implementation of the `Logger` interface within the same vertex.
+- [ ] No support for the type aliases.
