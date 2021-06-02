@@ -21,7 +21,6 @@ func main() {
 	}
 
 	err = container.RegisterAll(
-		container,
 		&http.Http{},
 		&db.DB{},
 		&logger.Logger{},
