@@ -53,7 +53,8 @@ func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
 	ret := init.Func.Call(in)
 	rErr := ret[0].Interface()
 	if rErr != nil {
-		if err, ok := rErr.(error); ok && err != nil {
+		var ok bool
+		if err, ok = rErr.(error); ok && err != nil {
 			/*
 				If vertex is disabled we skip all processing for it:
 				1. We don't add Init function args as dependencies

@@ -1,7 +1,6 @@
 package endure
 
 import (
-	"fmt"
 	"reflect"
 	"sort"
 
@@ -18,31 +17,6 @@ func (e *Endure) traverseProviders(fnReceiver *vertex.Vertex, calleeVertexID str
 	}
 
 	return nil
-}
-
-func (e *Endure) appendProviderFuncArgs(depsEntry vertex.Entry, providedEntry vertex.ProvidedEntry, in []reflect.Value) []reflect.Value {
-	switch {
-	case *providedEntry.IsReference == *depsEntry.IsReference:
-		in = append(in, providedEntry.Value)
-	case *providedEntry.IsReference:
-		// same type, but difference in the refs
-		// Init needs to be a value
-		// But Vertex provided reference
-		in = append(in, providedEntry.Value.Elem())
-	case !*providedEntry.IsReference:
-		// vice versa
-		// Vertex provided value
-		// but Init needs to be a reference
-		if providedEntry.Value.CanAddr() {
-			in = append(in, providedEntry.Value.Addr())
-		} else {
-			e.logger.Warn(fmt.Sprintf("value is not addressable. TIP: consider to return a pointer from %s", providedEntry.Value.Type()), zap.String("type", providedEntry.Value.Type().String()))
-			e.logger.Warn("making a fresh pointer")
-			nt := reflect.New(providedEntry.Value.Type())
-			in = append(in, nt)
-		}
-	}
-	return in
 }
 
 // Providers is vertex provides type alias
@@ -88,7 +62,7 @@ func (e *Endure) traverseCallProvider(fnReceiver *vertex.Vertex, in []reflect.Va
 			// and save its return values
 			fnsToCall := fnReceiver.Meta.FnsProviderToInvoke.Merge()
 			for i := 0; i < len(fnsToCall); i++ {
-				providers := make(Providers, 0, 0)
+				providers := make(Providers, 0)
 				for ii := 0; ii < len(fnsToCall[i]); ii++ {
 					p := Provide{}
 					m, ok := reflect.TypeOf(fnReceiver.Iface).MethodByName(fnsToCall[i][ii])
@@ -123,7 +97,7 @@ func (e *Endure) traverseCallProvider(fnReceiver *vertex.Vertex, in []reflect.Va
 				// we need to compare args
 				for k := 0; k < len(providers); k++ {
 					pr := providers[k]
-					inCopy := make([]reflect.Value, len(in), len(in))
+					inCopy := make([]reflect.Value, len(in))
 					copy(inCopy, in)
 
 					// fallback call provided, only 1 IN arg, function receiver
@@ -140,13 +114,13 @@ func (e *Endure) traverseCallProvider(fnReceiver *vertex.Vertex, in []reflect.Va
 					// if everything ok we just pass first args as the receiver and caller as all the rest args
 					// start from 1, 0-th index is function receiver
 					// check if caller implements all needed interfaces to call func
-					if e.walk(pr.In, callerV) == false {
+					if !e.walk(pr.In, callerV) {
 						// if not, check for other provider
 						continue
 					}
 
 					for l := 1; l < len(pr.In); l++ {
-						switch pr.In[l].Kind() {
+						switch pr.In[l].Kind() { //nolint:exhaustive
 						case reflect.Struct: // just structure
 							inCopy = append(inCopy, e.graph.Providers[pr.In[l].String()])
 						case reflect.Ptr: // Ptr to the structure
@@ -180,11 +154,8 @@ func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *v
 		}
 		if rErr, ok := r.(error); ok {
 			if rErr != nil {
-				if err, ok := rErr.(error); ok && err != nil {
-					e.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
-					return errors.E(op, errors.FunctionCall, err)
-				}
-				return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
+				e.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
+				return errors.E(op, errors.FunctionCall, rErr)
 			}
 			continue
 		}

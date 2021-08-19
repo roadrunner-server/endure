@@ -88,7 +88,7 @@ func (g *Graph) AddInterfaceDep(vertex *vertex.Vertex, depID string, method Kind
 	// because we should know Init method parameters for every Vertex
 	// for example, we should know http.Middleware dependency and later invoke all types which it implement
 	// OR know Collects methods to invoke
-	if g.addToList(method, vertex, depID, isRef, depVertex.ID, reflect.Interface) == false {
+	if !g.addToList(method, vertex, depID, isRef, depVertex.ID, reflect.Interface) {
 		return nil
 	}
 
@@ -259,22 +259,24 @@ func TopologicalSort(vertices []*vertex.Vertex) ([]*vertex.Vertex, error) {
 	var ord []*vertex.Vertex
 	verticesCopy := vertices
 
+	buf := new(strings.Builder)
+	defer buf.Reset()
+
 	for len(verticesCopy) != 0 {
 		vrtx := verticesCopy[len(verticesCopy)-1]
 		verticesCopy = verticesCopy[:len(verticesCopy)-1]
 		containsCycle := dfs(vrtx, &ord)
 		if containsCycle {
 			// allocate a buffer for the resulting message
-			buf := new(strings.Builder)
 			// defer buffer reset
-			defer buf.Reset()
 			buf.WriteString("The following vertices involved:\n")
 			// If we found a cycle, print involved vertices in reverse order
 			for i := len(vertices) - 1; i > 0; i-- {
-				if vertices[i].Visited == false {
+				if !vertices[i].Visited {
 					buf.WriteString(fmt.Sprintf("vertex: %s -> ", vertices[i].ID))
 				}
 			}
+
 			// trim the last arrow and return error message
 			return nil, errors.E(op, errors.Errorf("cycle detected, please, check the path: %s", strings.TrimRight(buf.String(), "-> ")))
 		}

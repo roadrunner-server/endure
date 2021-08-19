@@ -28,11 +28,8 @@ func (e *Endure) fnCallCollectors(vrtx *vertex.Vertex, in []reflect.Value, metho
 			}
 			if rErr, ok := r.(error); ok {
 				if rErr != nil {
-					if err, ok := rErr.(error); ok && err != nil {
-						e.logger.Error("error calling CollectorFns", zap.String("vertex id", vrtx.ID), zap.Error(err))
-						return errors.E(op, errors.FunctionCall, err)
-					}
-					return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
+					e.logger.Error("error calling CollectorFns", zap.String("vertex id", vrtx.ID), zap.Error(rErr))
+					return errors.E(op, errors.FunctionCall, rErr)
 				}
 			}
 		}

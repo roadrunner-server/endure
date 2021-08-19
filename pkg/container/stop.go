@@ -67,7 +67,7 @@ func (e *Endure) shutdown(n *linked_list.DllNode, traverseNext bool) error {
 		for nCopy != nil {
 			go func(v *vertex.Vertex) {
 				// if vertex is disabled, just skip it, but send to the channel ID
-				if v.IsDisabled == true {
+				if v.IsDisabled {
 					c <- v.ID
 					return
 				}
