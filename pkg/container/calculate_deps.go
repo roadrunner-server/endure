@@ -113,10 +113,7 @@ func (e *Endure) walk(params []reflect.Type, v *vertex.Vertex) bool {
 		continue
 	}
 
-	if onlyStructs {
-		return false
-	}
-	return true
+	return !onlyStructs
 }
 
 /*
@@ -155,7 +152,7 @@ func (e *Endure) implCollectorPath(vrtx *vertex.Vertex) error {
 			}
 
 			// false if params are structures
-			if e.walk(params, e.graph.Vertices[i]) == true {
+			if e.walk(params, e.graph.Vertices[i]) {
 				compatible = append(compatible, e.graph.Vertices[i])
 				// set, that we have interface deps
 				haveInterfaceDeps = true
@@ -190,7 +187,7 @@ func (e *Endure) processInterfaceDeps(compatible []*vertex.Vertex, fnName string
 	for i := 0; i < len(compatible); i++ {
 		// add vertex itself
 		cp := vertex.CollectorEntry{
-			In: make([]vertex.In, 0, 0),
+			In: make([]vertex.In, 0),
 			Fn: fnName,
 		}
 		cp.In = append(cp.In, vertex.In{
@@ -209,7 +206,7 @@ func (e *Endure) processInterfaceDeps(compatible []*vertex.Vertex, fnName string
 				continue
 			}
 
-			switch params[j].Kind() {
+			switch params[j].Kind() { //nolint:exhaustive
 			case reflect.Ptr:
 				if params[j].Elem().Kind() == reflect.Struct {
 					dep := e.graph.VerticesMap[(removePointerAsterisk(params[j].String()))]
@@ -255,6 +252,7 @@ func (e *Endure) processInterfaceDeps(compatible []*vertex.Vertex, fnName string
 				}
 			}
 		}
+
 		vrtx.Meta.CollectorEntries = append(vrtx.Meta.CollectorEntries, cp)
 	}
 
@@ -265,7 +263,7 @@ func (e *Endure) processStructDeps(fnName string, vrtx *vertex.Vertex, params []
 	const op = errors.Op("endure_process_struct_deps")
 	// process only struct deps
 	cp := vertex.CollectorEntry{
-		In: make([]vertex.In, 0, 0),
+		In: make([]vertex.In, 0),
 		Fn: fnName,
 	}
 	cp.In = append(cp.In, vertex.In{

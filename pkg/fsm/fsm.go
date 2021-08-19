@@ -19,7 +19,7 @@ type FSM interface {
 }
 
 // NewFSM returns new FSM implementation based on initial state and callbacks to move from one state to another
-func NewFSM(initialState State, callbacks map[Event]reflect.Method) FSM {
+func NewFSM(initialState State, callbacks map[Event]reflect.Method) *FSMImpl {
 	st := uint32(initialState)
 	return &FSMImpl{
 		callbacks:    callbacks,

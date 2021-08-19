@@ -74,7 +74,8 @@ func (e *Endure) Visualize(vertices []*vertex.Vertex) error {
 		if e.path == "" {
 			return errors.E(op, errors.Str("path not provided"))
 		}
-		file, err := os.OpenFile(e.path, os.O_RDWR|os.O_CREATE, 0755)
+		var file *os.File
+		file, err = os.OpenFile(e.path, os.O_RDWR|os.O_CREATE, 0755)
 		if err != nil {
 			return errors.E(op, err)
 		}
@@ -88,6 +89,8 @@ func (e *Endure) Visualize(vertices []*vertex.Vertex) error {
 		if err != nil {
 			return errors.E(op, err)
 		}
+		return nil
+	case Empty:
 		return nil
 	default:
 		return errors.E(op, errors.Str("unknown output"))

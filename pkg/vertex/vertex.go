@@ -56,7 +56,7 @@ type FnsToCall [][]string
 
 // Merge creates FnsToCall
 func (pe *ProviderEntries) Merge() FnsToCall {
-	res := make(FnsToCall, len(*pe), len(*pe))
+	res := make(FnsToCall, len(*pe))
 	hash := make(map[[10]string][]string)
 	for i := 0; i < len(*pe); i++ {
 		arr := [10]string{}
@@ -107,10 +107,10 @@ type Meta struct {
 func NewMeta() Meta {
 	meta := Meta{
 		Order:                0,
-		FnsProviderToInvoke:  make(ProviderEntries, 0, 0),
-		CollectorEntries:     make(CollectorEntries, 0, 0),
+		FnsProviderToInvoke:  make(ProviderEntries, 0),
+		CollectorEntries:     make(CollectorEntries, 0),
 		InitDepsToInvoke:     make(map[string][]Entry),
-		InitDepsOrd:          make([]string, 0, 0),
+		InitDepsOrd:          make([]string, 0),
 		CollectsDepsToInvoke: make(map[string][]Entry),
 	}
 	return meta
@@ -147,7 +147,7 @@ func NewVertex() *Vertex {
 		ID:           "",
 		Iface:        nil,
 		Meta:         NewMeta(),
-		Dependencies: make([]*Vertex, 0, 0),
+		Dependencies: make([]*Vertex, 0),
 		Provides:     make(map[string]ProvidedEntry),
 		IsDisabled:   false,
 		NumOfDeps:    0,

@@ -36,7 +36,7 @@ func (e *Endure) startMainThread() {
 		It used to handle errors from vertices, notify user about result, re-calculating graph according to failed vertices and sending internal_stop signals
 	*/
 	go func() {
-		for {
+		for { //nolint:gosimple
 			select {
 			// failed Vertex
 			case res, ok := <-e.handleErrorCh:

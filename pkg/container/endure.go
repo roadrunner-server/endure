@@ -3,7 +3,7 @@ package endure
 import (
 	"net/http"
 	// pprof will be enabled in debug mode
-	_ "net/http/pprof"
+	"net/http/pprof"
 
 	"reflect"
 	"sync"
@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var order int = 1
+var order = 1
 
 const (
 	// InitializeMethodName is the method fn to invoke in transition map
@@ -175,7 +175,7 @@ func (e *Endure) internalLogger() (*zap.Logger, error) {
 	case DebugLevel:
 		lvl = zap.NewAtomicLevelAt(zap.DebugLevel)
 		// start pprof
-		pprof()
+		profile()
 	case InfoLevel:
 		lvl = zap.NewAtomicLevelAt(zap.InfoLevel)
 	case WarnLevel:
@@ -217,9 +217,19 @@ func (e *Endure) internalLogger() (*zap.Logger, error) {
 	return logger, nil
 }
 
-func pprof() {
+func profile() {
 	go func() {
-		_ = http.ListenAndServe("0.0.0.0:6061", nil)
+		mux := http.NewServeMux()
+
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+		srv := &http.Server{Handler: mux, Addr: "0.0.0.0:6061"}
+
+		_ = srv.ListenAndServe()
 	}()
 }
 
@@ -367,7 +377,7 @@ START:
 	for headCopy != nil {
 		// check for disabled, because that can be interface
 		if _, ok := e.disabled[headCopy.Vertex.ID]; ok {
-			err := e.remove_vertex(headCopy)
+			err = e.removeVertex(headCopy)
 			if err != nil {
 				return errors.E(op, err)
 			}
@@ -379,7 +389,7 @@ START:
 		if err != nil {
 			// remove head
 			if errors.Is(errors.Disabled, err) {
-				err := e.remove_vertex(headCopy)
+				err = e.removeVertex(headCopy)
 				if err != nil {
 					return errors.E(op, err)
 				}
@@ -429,7 +439,7 @@ func (e *Endure) Start() (<-chan *Result, error) {
 		nCopy = nCopy.Next
 	}
 	// all vertices disabled
-	if atLeastOne == false {
+	if !atLeastOne {
 		return nil, errors.E(op, errors.Disabled, errors.Str("all vertices disabled, nothing to serveInternal"))
 	}
 	return e.userResultsCh, nil
@@ -443,7 +453,7 @@ func (e *Endure) Shutdown() error {
 	return e.shutdown(n, true)
 }
 
-func (e *Endure) remove_vertex(head *linked_list.DllNode) error {
+func (e *Endure) removeVertex(head *linked_list.DllNode) error {
 	const op = errors.Op("endure_disable")
 	e.logger.Debug("found disabled vertex", zap.String("vertex id", head.Vertex.ID))
 	// add vertex to the map with disabled vertices
