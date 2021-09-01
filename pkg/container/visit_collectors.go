@@ -15,7 +15,7 @@ func (e *Endure) fnCallCollectors(vrtx *vertex.Vertex, in []reflect.Value, metho
 		// if type implements Collector() it should has FnsProviderToInvoke
 		m, ok := reflect.TypeOf(vrtx.Iface).MethodByName(methodName)
 		if !ok {
-			e.logger.Error("type has missing method in CollectorEntries", zap.String("vertex id", vrtx.ID), zap.String("method", methodName))
+			e.logger.Error("type has missing method in CollectorEntries", zap.String("id", vrtx.ID), zap.String("method", methodName))
 			return errors.E(op, errors.FunctionCall, errors.Str("type has missing method in CollectorEntries"))
 		}
 
@@ -28,7 +28,7 @@ func (e *Endure) fnCallCollectors(vrtx *vertex.Vertex, in []reflect.Value, metho
 			}
 			if rErr, ok := r.(error); ok {
 				if rErr != nil {
-					e.logger.Error("error calling CollectorFns", zap.String("vertex id", vrtx.ID), zap.Error(rErr))
+					e.logger.Error("error calling CollectorFns", zap.String("id", vrtx.ID), zap.Error(rErr))
 					return errors.E(op, errors.FunctionCall, rErr)
 				}
 			}

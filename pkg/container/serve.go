@@ -11,13 +11,13 @@ import (
 
 func (e *Endure) callServeFn(vrtx *vertex.Vertex, in []reflect.Value) (*result, error) {
 	const op = errors.Op("endure_call_serve_fn")
-	e.logger.Debug("preparing to calling Serve on the Vertex", zap.String("vrtx id", vrtx.ID))
+	e.logger.Debug("preparing to call Serve on the Vertex", zap.String("id", vrtx.ID))
 	// find Serve method
 	m, _ := reflect.TypeOf(vrtx.Iface).MethodByName(ServeMethodName)
 	// call with needed number of `in` parameters
 	ret := m.Func.Call(in)
 	res := ret[0].Interface()
-	e.logger.Debug("called Serve on the vrtx", zap.String("vrtx id", vrtx.ID))
+	e.logger.Debug("called Serve on the vertex", zap.String("id", vrtx.ID))
 	if res != nil {
 		if err, ok := res.(chan error); ok && err != nil {
 			// error come right after we start serving the vrtx
@@ -54,8 +54,8 @@ func (e *Endure) serveInternal(n *linked_list.DllNode) error {
 		if res != nil {
 			e.results.Store(res.vertexID, res)
 		} else {
-			e.logger.Error("nil result returned from the vertex", zap.String("vertex id", n.Vertex.ID), zap.String("tip:", "serveInternal function should return initialized channel with errors"))
-			return errors.E(op, errors.FunctionCall, errors.Errorf("nil result returned from the vertex, vertex id: %s", n.Vertex.ID))
+			e.logger.Error("nil result returned from the vertex", zap.String("id", n.Vertex.ID), zap.String("tip:", "serveInternal function should return initialized channel with errors"))
+			return errors.E(op, errors.FunctionCall, errors.Errorf("nil result returned from the vertex, id: %s", n.Vertex.ID))
 		}
 
 		// start polling the vertex

@@ -21,7 +21,7 @@ func (e *Endure) internalStop(vID string) error {
 
 		err := e.callStopFn(vrtx, in)
 		if err != nil {
-			e.logger.Error("error occurred during the callStopFn", zap.String("vertex id", vrtx.ID))
+			e.logger.Error("error occurred during the callStopFn", zap.String("id", vrtx.ID))
 			return errors.E(op, errors.FunctionCall, err)
 		}
 	}
@@ -31,7 +31,7 @@ func (e *Endure) internalStop(vID string) error {
 func (e *Endure) callStopFn(vrtx *vertex.Vertex, in []reflect.Value) error {
 	const op = errors.Op("endure_call_stop_fn")
 	// Call Stop() method, which returns only error (or nil)
-	e.logger.Debug("calling internal_stop function on the vrtx", zap.String("vrtx id", vrtx.ID))
+	e.logger.Debug("calling internal_stop function on the vertex", zap.String("id", vrtx.ID))
 	m, _ := reflect.TypeOf(vrtx.Iface).MethodByName(StopMethodName)
 	ret := m.Func.Call(in)
 	rErr := ret[0].Interface()
@@ -55,7 +55,7 @@ func (e *Endure) shutdown(n *linked_list.DllNode, traverseNext bool) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.stopTimeout)
 	defer cancel()
-	c := make(chan string)
+	c := make(chan string, numOfVertices)
 
 	// used to properly exit
 	// if the total number of vertices equal to the stopped, it means, that we stopped all
@@ -65,43 +65,42 @@ func (e *Endure) shutdown(n *linked_list.DllNode, traverseNext bool) error {
 		// process all nodes one by one
 		nCopy := n
 		for nCopy != nil {
-			go func(v *vertex.Vertex) {
-				// if vertex is disabled, just skip it, but send to the channel ID
-				if v.IsDisabled {
-					c <- v.ID
-					return
-				}
+			// if vertex is disabled, just skip it, but send to the channel ID
+			if nCopy.Vertex.IsDisabled {
+				c <- nCopy.Vertex.ID
+				continue
+			}
 
-				// if vertex is Uninitialized or already stopped
-				// Skip vertices which are not Started
-				if v.GetState() != fsm.Started {
-					c <- v.ID
-					return
-				}
+			// if vertex is Uninitialized or already stopped
+			// Skip vertices which are not Started
+			if nCopy.Vertex.GetState() != fsm.Started {
+				c <- nCopy.Vertex.ID
+				continue
+			}
 
-				v.SetState(fsm.Stopping)
+			nCopy.Vertex.SetState(fsm.Stopping)
 
-				// if we have a running poller, exit from it
-				tmp, ok := e.results.Load(v.ID)
-				if ok {
-					channel := tmp.(*result)
+			// if we have a running poller, exit from it
+			tmp, ok := e.results.Load(nCopy.Vertex.ID)
+			if ok {
+				channel := tmp.(*result)
 
-					// exit from vertex poller
-					channel.signal <- notify{}
-					e.results.Delete(v.ID)
-				}
+				// exit from vertex poller
+				channel.signal <- notify{}
+				e.results.Delete(nCopy.Vertex.ID)
+			}
 
-				// call Stop on the Vertex
-				err := e.internalStop(v.ID)
-				if err != nil {
-					v.SetState(fsm.Error)
-					c <- v.ID
-					e.logger.Error("error stopping vertex", zap.String("vertex id", v.ID), zap.Error(err))
-					return
-				}
-				v.SetState(fsm.Stopped)
-				c <- v.ID
-			}(nCopy.Vertex)
+			// call Stop on the Vertex
+			err := e.internalStop(nCopy.Vertex.ID)
+			if err != nil {
+				nCopy.Vertex.SetState(fsm.Error)
+				c <- nCopy.Vertex.ID
+				e.logger.Error("error stopping vertex", zap.String("id", nCopy.Vertex.ID), zap.Error(err))
+				return
+			}
+			nCopy.Vertex.SetState(fsm.Stopped)
+			c <- nCopy.Vertex.ID
+
 			if traverseNext {
 				nCopy = nCopy.Next
 			} else {
@@ -114,7 +113,7 @@ func (e *Endure) shutdown(n *linked_list.DllNode, traverseNext bool) error {
 		select {
 		// get notification about stopped vertex
 		case vid := <-c:
-			e.logger.Info("vertex stopped", zap.String("vertex id", vid))
+			e.logger.Info("vertex stopped", zap.String("id", vid))
 			stopped++
 			if stopped == numOfVertices {
 				return nil
@@ -130,7 +129,7 @@ func (e *Endure) shutdown(n *linked_list.DllNode, traverseNext bool) error {
 				}
 			}
 			if len(VIDs) > 0 {
-				e.logger.Error("vertices which are not stopped", zap.Any("vertex id", VIDs))
+				e.logger.Error("vertices which are not stopped", zap.Any("id", VIDs))
 			}
 
 			return errors.E(op, errors.TimeOut, errors.Str("timeout exceed, some vertices may not be stopped and can cause memory leak"))

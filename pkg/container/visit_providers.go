@@ -154,14 +154,14 @@ func (e *Endure) fnProvidersCall(f reflect.Method, in []reflect.Value, vertex *v
 		}
 		if rErr, ok := r.(error); ok {
 			if rErr != nil {
-				e.logger.Error("error occurred in the traverseCallProvider", zap.String("vertex id", vertex.ID))
+				e.logger.Error("error occurred in the traverseCallProvider", zap.String("id", vertex.ID))
 				return errors.E(op, errors.FunctionCall, rErr)
 			}
 			continue
 		}
 
 		// add the value to the Providers
-		e.logger.Debug("value added successfully", zap.String("vertex id", vertex.ID), zap.String("caller id", callerID), zap.String("parameter", ret[i].Type().String()))
+		e.logger.Debug("value added successfully", zap.String("id", vertex.ID), zap.String("caller id", callerID), zap.String("parameter", ret[i].Type().String()))
 		e.graph.AddGlobalProvider(removePointerAsterisk(ret[i].Type().String()), ret[i])
 		vertex.AddProvider(removePointerAsterisk(ret[i].Type().String()), ret[i], isReference(ret[i].Type()), ret[i].Kind())
 	}
