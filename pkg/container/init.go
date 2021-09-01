@@ -16,7 +16,7 @@ import (
 func (e *Endure) internalInit(vrtx *vertex.Vertex) error {
 	const op = errors.Op("endure_internal_init")
 	if vrtx.IsDisabled {
-		e.logger.Warn("vertex is disabled due to error.Disabled in the Init func or due to Endure decision (Disabled dependency)", zap.String("vertex id", vrtx.ID))
+		e.logger.Warn("vertex is disabled due to error.Disabled in the Init func or due to Endure decision (Disabled dependency)", zap.String("id", vrtx.ID))
 		return nil
 	}
 	// we already checked the Interface satisfaction
@@ -28,7 +28,7 @@ func (e *Endure) internalInit(vrtx *vertex.Vertex) error {
 		if errors.Is(errors.Disabled, err) {
 			return err
 		}
-		e.logger.Error("error occurred during the call INIT function", zap.String("vertex id", vrtx.ID), zap.Error(err))
+		e.logger.Error("error occurred during the call INIT function", zap.String("id", vrtx.ID), zap.Error(err))
 		return errors.E(op, errors.FunctionCall, err)
 	}
 
@@ -65,14 +65,14 @@ func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
 					1. But if vertex is disabled it can't PROVIDE via v.Provided value of itself for other vertices
 					and we should recalculate whole three without this dep.
 				*/
-				e.logger.Warn("vertex disabled", zap.String("vertex id", vrtx.ID), zap.Error(err))
+				e.logger.Warn("vertex disabled", zap.String("id", vrtx.ID), zap.Error(err))
 				// disable current vertex
 				vrtx.IsDisabled = true
 				// Disabled is actually to an error, just notification to the graph, that it has some vertices which are disabled
 				return errors.E(op, errors.Disabled)
 			}
 
-			e.logger.Error("error calling internal_init", zap.String("vertex id", vrtx.ID), zap.Error(err))
+			e.logger.Error("error calling internal_init", zap.String("id", vrtx.ID), zap.Error(err))
 			return errors.E(op, errors.FunctionCall, err)
 		}
 		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
@@ -88,9 +88,9 @@ func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
 		*/
 		vrtx.AddProvider(removePointerAsterisk(in[0].Type().String()), in[0], isReference(in[0].Type()), in[0].Kind())
 		e.graph.AddGlobalProvider(removePointerAsterisk(in[0].Type().String()), in[0])
-		e.logger.Debug("value added successfully", zap.String("vertex id", vrtx.ID), zap.String("parameter", in[0].Type().String()))
+		e.logger.Debug("value added successfully", zap.String("id", vrtx.ID), zap.String("parameter", in[0].Type().String()))
 	} else {
-		e.logger.Error("0 or less parameters for Init", zap.String("vertex id", vrtx.ID))
+		e.logger.Error("0 or less parameters for Init", zap.String("id", vrtx.ID))
 		return errors.E(op, errors.ArgType, errors.Str("0 or less parameters for Init"))
 	}
 
@@ -101,8 +101,8 @@ func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
 				if vrtx.Meta.CollectorEntries[i].In[j].In.IsZero() {
 					global, ok := e.graph.Providers[vrtx.Meta.CollectorEntries[i].In[j].Dep]
 					if !ok {
-						e.logger.Error("can't find in arg to Call Collects on the vertex", zap.String("vertex id", vrtx.ID))
-						return errors.E(op, errors.Errorf("vertex id: %s", vrtx.ID))
+						e.logger.Error("can't find in arg to Call Collects on the vertex", zap.String("id", vrtx.ID))
+						return errors.E(op, errors.Errorf("id: %s", vrtx.ID))
 					}
 					vrtx.Meta.CollectorEntries[i].In[j].In = global
 				}

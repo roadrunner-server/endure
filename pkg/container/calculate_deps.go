@@ -156,10 +156,10 @@ func (e *Endure) implCollectorPath(vrtx *vertex.Vertex) error {
 				compatible = append(compatible, e.graph.Vertices[i])
 				// set, that we have interface deps
 				haveInterfaceDeps = true
-				e.logger.Debug("vertex is compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vrtx.ID))
+				e.logger.Debug("vertex is compatible with Collects", zap.String("id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vrtx.ID))
 				continue
 			}
-			e.logger.Debug("vertex is not compatible with Collects", zap.String("vertex id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vrtx.ID))
+			e.logger.Debug("vertex is not compatible with Collects", zap.String("id", e.graph.Vertices[i].ID), zap.String("collects from vertex", vrtx.ID))
 		}
 
 		if len(compatible) == 0 && haveInterfaceDeps {
@@ -198,7 +198,7 @@ func (e *Endure) processInterfaceDeps(compatible []*vertex.Vertex, fnName string
 		for j := 0; j < len(params); j++ {
 			// check if type is primitive type
 			if isPrimitive(params[j].String()) {
-				e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vrtx.ID), zap.String("type", params[j].String()))
+				e.logger.Panic("primitive type in the function parameters", zap.String("id", vrtx.ID), zap.String("type", params[j].String()))
 			}
 
 			paramStr := params[j].String()
@@ -274,7 +274,7 @@ func (e *Endure) processStructDeps(fnName string, vrtx *vertex.Vertex, params []
 	for _, param := range params {
 		// check if type is primitive type
 		if isPrimitive(param.String()) {
-			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vrtx.ID), zap.String("type", param.String()))
+			e.logger.Panic("primitive type in the function parameters", zap.String("id", vrtx.ID), zap.String("type", param.String()))
 		}
 
 		// skip self
@@ -287,7 +287,7 @@ func (e *Endure) processStructDeps(fnName string, vrtx *vertex.Vertex, params []
 		if dep == nil {
 			depVertex := e.graph.FindProviders(removePointerAsterisk(paramStr))
 			if depVertex == nil {
-				e.logger.Warn("can't find any provider for the dependency, collector function on the vertex will not be invoked", zap.String("dep id", removePointerAsterisk(param.String())), zap.String("vertex id", vrtx.ID))
+				e.logger.Warn("can't find any provider for the dependency, collector function on the vertex will not be invoked", zap.String("dep id", removePointerAsterisk(param.String())), zap.String("id", vrtx.ID))
 				return nil
 			}
 			dep = depVertex
@@ -316,7 +316,7 @@ func (e *Endure) processStructDeps(fnName string, vrtx *vertex.Vertex, params []
 			return errors.E(op, err)
 		}
 
-		e.logger.Debug("adding dependency via Collects()", zap.String("vertex id", vrtx.ID), zap.String("depends", paramStr))
+		e.logger.Debug("adding dependency via Collects()", zap.String("id", vrtx.ID), zap.String("depends", paramStr))
 	}
 
 	vrtx.Meta.CollectorEntries = append(vrtx.Meta.CollectorEntries, cp)
@@ -333,7 +333,7 @@ func (e *Endure) addEdges() error {
 		initMethod, _ := reflect.TypeOf(vrtx.Iface).MethodByName(InitMethodName)
 
 		if initMethod.Type == nil {
-			e.logger.Fatal("Init method is absent in struct", zap.String("vertex id", vertexID))
+			e.logger.Fatal("Init method is absent in struct", zap.String("id", vertexID))
 			return errors.E(Op, errors.Errorf("init method is absent in struct"))
 		}
 
@@ -374,7 +374,7 @@ func (e *Endure) addInitDeps(vrtx *vertex.Vertex, initMethod reflect.Method) err
 	// iterate over all function parameters
 	for _, initArg := range initArgs {
 		if isPrimitive(initArg.String()) {
-			e.logger.Panic("primitive type in the function parameters", zap.String("vertex id", vrtx.ID), zap.String("type", initArg.String()))
+			e.logger.Panic("primitive type in the function parameters", zap.String("id", vrtx.ID), zap.String("type", initArg.String()))
 		}
 		initArgStr := removePointerAsterisk(initArg.String())
 		// receiver
@@ -384,7 +384,7 @@ func (e *Endure) addInitDeps(vrtx *vertex.Vertex, initMethod reflect.Method) err
 
 		// if init arg disabled, remove_vertex the whole vertex
 		if _, ok := e.disabled[initArgStr]; ok {
-			e.logger.Info("vertex receives disabled init vertex", zap.String("vertex id", vrtx.ID), zap.String("disabled init arg", initArgStr))
+			e.logger.Info("vertex receives disabled init vertex", zap.String("id", vrtx.ID), zap.String("disabled init arg", initArgStr))
 			e.disabled[vrtx.ID] = true
 			continue
 		}
@@ -408,14 +408,14 @@ func (e *Endure) addInitDeps(vrtx *vertex.Vertex, initMethod reflect.Method) err
 			if err != nil {
 				return errors.E(Op, err)
 			}
-			e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vrtx.ID), zap.String("depends on", initArg.String()))
+			e.logger.Debug("adding dependency via Init()", zap.String("id", vrtx.ID), zap.String("depends on", initArg.String()))
 			continue
 		}
 		err := e.graph.AddStructureDep(vrtx, initArgStr, graph.Init, isReference(initArg))
 		if err != nil {
 			return errors.E(Op, err)
 		}
-		e.logger.Debug("adding dependency via Init()", zap.String("vertex id", vrtx.ID), zap.String("depends on", initArg.String()))
+		e.logger.Debug("adding dependency via Init()", zap.String("id", vrtx.ID), zap.String("depends on", initArg.String()))
 	}
 	return nil
 }

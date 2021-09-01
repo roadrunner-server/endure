@@ -455,7 +455,7 @@ func (e *Endure) Shutdown() error {
 
 func (e *Endure) removeVertex(head *linked_list.DllNode) error {
 	const op = errors.Op("endure_disable")
-	e.logger.Debug("found disabled vertex", zap.String("vertex id", head.Vertex.ID))
+	e.logger.Debug("found disabled vertex", zap.String("id", head.Vertex.ID))
 	// add vertex to the map with disabled vertices
 	for providesID := range head.Vertex.Provides {
 		e.disabled[providesID] = true

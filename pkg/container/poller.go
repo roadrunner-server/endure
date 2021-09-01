@@ -13,7 +13,7 @@ func (e *Endure) poll(r *result) {
 			case err := <-res.errCh:
 				if err != nil {
 					// log error message
-					e.logger.Error("vertex got an error", zap.String("vertex id", res.vertexID), zap.Error(err))
+					e.logger.Error("vertex got an error", zap.String("id", res.vertexID), zap.Error(err))
 
 					// set the error
 					res.err = err
@@ -23,7 +23,7 @@ func (e *Endure) poll(r *result) {
 				}
 			// exit from the goroutine
 			case <-res.signal:
-				e.logger.Info("vertex got exit signal, exiting from poller", zap.String("vertex id", res.vertexID))
+				e.logger.Info("vertex got exit signal, exiting from poller", zap.String("id", res.vertexID))
 				return
 			}
 		}
@@ -46,7 +46,7 @@ func (e *Endure) startMainThread() {
 					return
 				}
 
-				e.logger.Debug("processing error in the main thread", zap.String("vertex id", res.vertexID))
+				e.logger.Debug("processing error in the main thread", zap.String("id", res.vertexID))
 				if e.retry {
 					// TODO handle error from the retry handler
 					e.retryHandler(res)
@@ -55,7 +55,7 @@ func (e *Endure) startMainThread() {
 					// send exit signal to whole graph
 					err := e.Stop()
 					if err != nil {
-						e.logger.Error("error during stopping vertex", zap.String("vertex id", res.vertexID), zap.Error(err))
+						e.logger.Error("error during stopping vertex", zap.String("id", res.vertexID), zap.Error(err))
 					}
 					e.sendResultToUser(res)
 				}

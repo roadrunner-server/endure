@@ -22,13 +22,13 @@ func (e *Endure) sendResultToUser(res *result) {
 // traverseBackStop used to visit every Prev node and internalStop vertices
 func (e *Endure) traverseBackStop(n *linked_list.DllNode) {
 	const op = errors.Op("endure_traverse_back_stop")
-	e.logger.Debug("stopping vertex in the first Serve call", zap.String("vertex id", n.Vertex.ID))
+	e.logger.Debug("stopping vertex in the first Serve call", zap.String("id", n.Vertex.ID))
 	nCopy := n
 	err := e.shutdown(nCopy, false)
 	if err != nil {
 		nCopy.Vertex.SetState(fsm.Error)
 		// ignore errors from internal_stop
-		e.logger.Error("failed to traverse vertex back", zap.String("vertex id", nCopy.Vertex.ID), zap.Error(errors.E(op, err)))
+		e.logger.Error("failed to traverse vertex back", zap.String("id", nCopy.Vertex.ID), zap.Error(errors.E(op, err)))
 	}
 }
 
@@ -37,7 +37,7 @@ func (e *Endure) retryHandler(res *result) {
 	// get vertex from the graph
 	vrtx := e.graph.GetVertex(res.vertexID)
 	if vrtx == nil {
-		e.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
+		e.logger.Error("failed to get vertex from the graph, vertex is nil", zap.String("id from the handleErrorCh channel", res.vertexID))
 		e.userResultsCh <- &Result{
 			Error:    errors.E(op, errors.Traverse, errors.Str("failed to get vertex from the graph, vertex is nil")),
 			VertexID: res.vertexID,
@@ -63,7 +63,7 @@ func (e *Endure) retryHandler(res *result) {
 		return
 	}
 	if sorted == nil {
-		e.logger.Error("sorted list should not be nil", zap.String("vertex id from the handleErrorCh channel", res.vertexID))
+		e.logger.Error("sorted list should not be nil", zap.String("id from the handleErrorCh channel", res.vertexID))
 		e.userResultsCh <- &Result{
 			Error:    errors.E(op, errors.Traverse, errors.Str("failed to topologically sort the graph")),
 			VertexID: res.vertexID,
@@ -86,7 +86,7 @@ func (e *Endure) retryHandler(res *result) {
 	for headCopy != nil {
 		berr := backoff.Retry(e.backoffInit(headCopy.Vertex), b)
 		if berr != nil {
-			e.logger.Error("backoff failed", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(berr))
+			e.logger.Error("backoff failed", zap.String("id", headCopy.Vertex.ID), zap.Error(berr))
 			e.userResultsCh <- &Result{
 				Error:    errors.E(op, errors.FunctionCall, errors.Errorf("error during the Init function call")),
 				VertexID: headCopy.Vertex.ID,
@@ -105,7 +105,7 @@ func (e *Endure) retryHandler(res *result) {
 				Error:    errors.E(op, errors.FunctionCall, errors.Errorf("error during the Serve function call")),
 				VertexID: headCopy.Vertex.ID,
 			}
-			e.logger.Error("fatal error during the serveInternal in the main thread", zap.String("vertex id", headCopy.Vertex.ID), zap.Error(err))
+			e.logger.Error("fatal error during the serveInternal in the main thread", zap.String("id", headCopy.Vertex.ID), zap.Error(err))
 			return
 		}
 		headCopy = headCopy.Next
@@ -124,7 +124,7 @@ func (e *Endure) backoffInit(v *vertex.Vertex) func() error {
 		err := e.callInitFn(init, v)
 		if err != nil {
 			v.SetState(fsm.Error)
-			e.logger.Error("error occurred during the call INIT function", zap.String("vertex id", v.ID), zap.Error(err))
+			e.logger.Error("error occurred during the call INIT function", zap.String("id", v.ID), zap.Error(err))
 			return errors.E(op, errors.FunctionCall, err)
 		}
 
