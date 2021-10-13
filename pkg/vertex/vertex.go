@@ -87,8 +87,6 @@ type CollectorEntries []CollectorEntry
 // 1. Disabled info
 // 2. Relation status
 type Meta struct {
-	// Position in code while invoking Register
-	Order int
 	// FnsProviderToInvoke is the function names to invoke if type implements Provides() interface
 	FnsProviderToInvoke ProviderEntries
 	// CollectorEntries is the function names to invoke if type implements Collector() interface
@@ -106,7 +104,6 @@ type Meta struct {
 
 func NewMeta() Meta {
 	meta := Meta{
-		Order:                0,
 		FnsProviderToInvoke:  make(ProviderEntries, 0),
 		CollectorEntries:     make(CollectorEntries, 0),
 		InitDepsToInvoke:     make(map[string][]Entry),

@@ -382,7 +382,7 @@ func (e *Endure) addInitDeps(vrtx *vertex.Vertex, initMethod reflect.Method) err
 			continue
 		}
 
-		// if init arg disabled, remove_vertex the whole vertex
+		// if init arg disabled, remove the whole vertex
 		if _, ok := e.disabled[initArgStr]; ok {
 			e.logger.Info("vertex receives disabled init vertex", zap.String("id", vrtx.ID), zap.String("disabled init arg", initArgStr))
 			e.disabled[vrtx.ID] = true

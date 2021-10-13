@@ -63,48 +63,63 @@ func (e *Endure) shutdown(n *linked_list.DllNode, traverseNext bool) error {
 
 	go func() {
 		// process all nodes one by one
-		nCopy := n
-		for nCopy != nil {
+		for n != nil {
 			// if vertex is disabled, just skip it, but send to the channel ID
-			if nCopy.Vertex.IsDisabled {
-				c <- nCopy.Vertex.ID
+			if n.Vertex.IsDisabled {
+				c <- n.Vertex.ID
+				if traverseNext {
+					n = n.Next
+				} else {
+					n = n.Prev
+				}
 				continue
 			}
 
 			// if vertex is Uninitialized or already stopped
 			// Skip vertices which are not Started
-			if nCopy.Vertex.GetState() != fsm.Started {
-				c <- nCopy.Vertex.ID
+			if n.Vertex.GetState() != fsm.Started {
+				c <- n.Vertex.ID
+				if traverseNext {
+					n = n.Next
+				} else {
+					n = n.Prev
+				}
 				continue
 			}
 
-			nCopy.Vertex.SetState(fsm.Stopping)
+			n.Vertex.SetState(fsm.Stopping)
 
 			// if we have a running poller, exit from it
-			tmp, ok := e.results.Load(nCopy.Vertex.ID)
+			tmp, ok := e.results.Load(n.Vertex.ID)
 			if ok {
 				channel := tmp.(*result)
 
 				// exit from vertex poller
 				channel.signal <- notify{}
-				e.results.Delete(nCopy.Vertex.ID)
+				e.results.Delete(n.Vertex.ID)
 			}
 
 			// call Stop on the Vertex
-			err := e.internalStop(nCopy.Vertex.ID)
+			err := e.internalStop(n.Vertex.ID)
 			if err != nil {
-				nCopy.Vertex.SetState(fsm.Error)
-				c <- nCopy.Vertex.ID
-				e.logger.Error("error stopping vertex", zap.String("id", nCopy.Vertex.ID), zap.Error(err))
+				n.Vertex.SetState(fsm.Error)
+				c <- n.Vertex.ID
+				e.logger.Error("error stopping vertex", zap.String("id", n.Vertex.ID), zap.Error(err))
+
+				if traverseNext {
+					n = n.Next
+				} else {
+					n = n.Prev
+				}
 				return
 			}
-			nCopy.Vertex.SetState(fsm.Stopped)
-			c <- nCopy.Vertex.ID
+			n.Vertex.SetState(fsm.Stopped)
+			c <- n.Vertex.ID
 
 			if traverseNext {
-				nCopy = nCopy.Next
+				n = n.Next
 			} else {
-				nCopy = nCopy.Prev
+				n = n.Prev
 			}
 		}
 	}()

@@ -42,6 +42,7 @@ func NewGraph() *Graph {
 	return &Graph{
 		VerticesMap: make(map[string]*vertex.Vertex),
 		Providers:   make(map[string]reflect.Value),
+		Vertices:    make([]*vertex.Vertex, 0),
 	}
 }
 
@@ -56,7 +57,6 @@ func (g *Graph) HasVertex(name string) bool {
 	return ok
 }
 
-// Replace providers with initial
 func (g *Graph) ClearState() {
 	g.Providers = make(map[string]reflect.Value)
 	g.VerticesMap = make(map[string]*vertex.Vertex)
@@ -65,7 +65,7 @@ func (g *Graph) ClearState() {
 }
 
 /*
-AddDep doing the following:
+AddInterfaceDep doing the following:
 1. Get a vertexID (foo2.S2 for example)
 2. Get a depID --> could be vertexID of vertex dep ID like foo2.DB
 3. Need to find vertexID to provide dependency. Example foo2.DB is actually foo2.S2 vertex
@@ -216,14 +216,13 @@ func (g *Graph) depthFirstSearch(deps []*vertex.Vertex, tmp map[string]*vertex.V
 }
 
 // AddVertex adds an vertex to the graph with its ID, value and meta information
-func (g *Graph) AddVertex(vertexID string, vertexIface interface{}, meta vertex.Meta) {
+func (g *Graph) AddVertex(vertexID string, vertexIface interface{}) {
 	v := vertex.NewVertex()
 	v.ID = vertexID
 	v.Iface = vertexIface
 	v.SetState(fsm.Uninitialized)
 
 	m := vertex.NewMeta()
-	m.Order = meta.Order
 	v.Meta = m
 
 	g.VerticesMap[vertexID] = v
