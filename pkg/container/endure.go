@@ -4,7 +4,6 @@ import (
 	"net/http"
 	// pprof will be enabled in debug mode
 	"net/http/pprof"
-
 	"reflect"
 	"sync"
 	"time"
@@ -16,8 +15,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
-
-var order = 1
 
 const (
 	// InitializeMethodName is the method fn to invoke in transition map
@@ -54,6 +51,7 @@ const (
 
 // Endure struct represent main endure repr
 type Endure struct {
+	mutex *sync.RWMutex
 	// Dependency graph
 	graph *graph.Graph
 	// DLL used as run list to run in order
@@ -67,9 +65,9 @@ type Endure struct {
 	initialInterval time.Duration
 	stopTimeout     time.Duration
 
-	depsOrder []string
-	deps      map[string]interface{}
-	disabled  map[string]bool
+	deps        map[string]interface{}
+	disabled    map[string]bool
+	initialized map[string]bool
 
 	// Graph visualizer
 	// option to out to os.stdout or write data to file
@@ -79,12 +77,8 @@ type Endure struct {
 
 	// internal loglevel in case if used internal logger. default -> Debug
 	loglevel Level
-
 	// Endure state machine
 	fsm.FSM
-
-	mutex *sync.RWMutex
-
 	// result always points on healthy channel associated with vertex
 	// since Endure structure has ALL method with pointer receiver, we do not need additional pointer to the sync.Map
 	results sync.Map
@@ -121,10 +115,10 @@ func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 		loglevel:        DebugLevel,
 		path:            "",
 		// default empty -> no output
-		output:    Empty,
-		disabled:  make(map[string]bool),
-		deps:      make(map[string]interface{}),
-		depsOrder: make([]string, 0, 2),
+		output:      Empty,
+		disabled:    make(map[string]bool),
+		initialized: make(map[string]bool),
+		deps:        make(map[string]interface{}),
 	}
 
 	// Transition map
@@ -239,11 +233,6 @@ func (e *Endure) Register(vertex interface{}) error {
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
 
-	// if vertex disabled - skip
-	if _, ok := e.disabled[vertexID]; ok {
-		return nil
-	}
-
 	if t.Kind() != reflect.Ptr {
 		return errors.E(op, errors.Register, errors.Errorf("you should pass pointer to the structure instead of value"))
 	}
@@ -254,11 +243,10 @@ func (e *Endure) Register(vertex interface{}) error {
 	2. Vertex structure value (interface)
 	And we fill vertex with this information
 	*/
-	err := e.register(vertexID, vertex, order)
+	err := e.register(vertexID, vertex)
 	if err != nil {
 		return errors.E(op, errors.Register, err)
 	}
-	order++
 	/* Add the types, which (if) current vertex provides
 	Information we know at this step is:
 	1. vertexID
@@ -273,15 +261,30 @@ func (e *Endure) Register(vertex interface{}) error {
 	}
 	e.logger.Debug("registering type", zap.String("type", t.String()))
 
-	// if deps present in the map - skip
-	if _, ok := e.deps[vertexID]; ok {
-		return nil
-	}
-
 	// save all vertices on the initial stage
 	e.deps[vertexID] = vertex
-	e.depsOrder = append(e.depsOrder, vertexID)
 
+	return nil
+}
+
+func (e *Endure) reRegister(vertex interface{}) error {
+	const op = errors.Op("endure_register")
+	t := reflect.TypeOf(vertex)
+	vertexID := removePointerAsterisk(t.String())
+
+	if t.Kind() != reflect.Ptr {
+		return errors.E(op, errors.Register, errors.Errorf("you should pass pointer to the structure instead of value"))
+	}
+
+	err := e.register(vertexID, vertex)
+	if err != nil {
+		return errors.E(op, errors.Register, err)
+	}
+	err = e.addProviders(vertexID, vertex)
+	if err != nil {
+		return errors.E(op, errors.Providers, err)
+	}
+	e.logger.Debug("plugin registered", zap.String("type", t.String()))
 	return nil
 }
 
@@ -357,12 +360,12 @@ START:
 	}
 
 	// >= because disabled also contains vertex provided values
-	if len(e.disabled) >= len(e.deps) {
-		e.logger.Error("all vertices are disabled: graph should contain at least 1 active vertex, possibly all vertices was disabled because of ROOT vertex failure", zap.Any("disabled", e.disabled))
+	if len(e.deps) == 0 {
+		e.logger.Error("all vertices are disabled: graph should contain at least 1 active vertex, possibly all vertices was disabled because of ROOT vertex failure")
 		return errors.E(op, errors.Init, errors.Errorf("graph should contain at least 1 active vertex, possibly all vertices was disabled because of ROOT vertex failure"))
 	}
 
-	if len(sorted) == 0 && len(e.disabled) != 0 {
+	if len(sorted) == 0 {
 		e.logger.Error("initial graph should contain at least 1 vertex, possibly you forget to invoke Registers?")
 		return errors.E(op, errors.Init, errors.Errorf("graph should contain at least 1 vertex, possibly you forget to invoke registers"))
 	}
@@ -373,23 +376,27 @@ START:
 	}
 
 	head := e.runList.Head
-	headCopy := head
-	for headCopy != nil {
+	for head != nil {
+		// do not initialize twice
+		if ok := e.initialized[head.Vertex.ID]; ok {
+			head = head.Next
+			continue
+		}
 		// check for disabled, because that can be interface
-		if _, ok := e.disabled[headCopy.Vertex.ID]; ok {
-			err = e.removeVertex(headCopy)
+		if _, ok := e.disabled[head.Vertex.ID]; ok {
+			err = e.removeVertex(head)
 			if err != nil {
 				return errors.E(op, err)
 			}
 			// start from the clear state excluding the disabled vertex
 			goto START
 		}
-		headCopy.Vertex.SetState(fsm.Initializing)
-		err = e.internalInit(headCopy.Vertex)
+		head.Vertex.SetState(fsm.Initializing)
+		err = e.internalInit(head.Vertex)
 		if err != nil {
 			// remove head
 			if errors.Is(errors.Disabled, err) {
-				err = e.removeVertex(headCopy)
+				err = e.removeVertex(head)
 				if err != nil {
 					return errors.E(op, err)
 				}
@@ -398,12 +405,13 @@ START:
 				goto START
 			}
 
-			headCopy.Vertex.SetState(fsm.Error)
+			head.Vertex.SetState(fsm.Error)
 			e.logger.Error("error during the internal_init", zap.Error(err))
 			return errors.E(op, errors.Init, err)
 		}
-		headCopy.Vertex.SetState(fsm.Initialized)
-		headCopy = headCopy.Next
+		head.Vertex.SetState(fsm.Initialized)
+		e.initialized[head.Vertex.ID] = true
+		head = head.Next
 	}
 
 	return nil
@@ -449,8 +457,7 @@ func (e *Endure) Start() (<-chan *Result, error) {
 // Do not change this method fn, sync with constants in the beginning of this file
 func (e *Endure) Shutdown() error {
 	e.logger.Info("exiting from the Endure")
-	n := e.runList.Head
-	return e.shutdown(n, true)
+	return e.shutdown(e.runList.Head, true)
 }
 
 func (e *Endure) removeVertex(head *linked_list.DllNode) error {
@@ -459,20 +466,27 @@ func (e *Endure) removeVertex(head *linked_list.DllNode) error {
 	// add vertex to the map with disabled vertices
 	for providesID := range head.Vertex.Provides {
 		e.disabled[providesID] = true
+		delete(e.deps, providesID)
 	}
 	e.disabled[head.Vertex.ID] = true
 	// reset run list
 	e.runList.Reset()
 	// reset graph
-	e.graph.ClearState()
+	e.graph = nil
+	e.graph = graph.NewGraph()
 
-	// re-register all deps, excluding disabled preserving initial order
-	for i := 0; i < len(e.depsOrder); i++ {
-		err := e.Register(e.deps[e.depsOrder[i]])
+	delete(e.deps, head.Vertex.ID)
+
+	// re-register all deps, excluding disabled
+	for k := range e.deps {
+		err := e.reRegister(e.deps[k])
 		if err != nil {
 			return errors.E(op, err)
 		}
 	}
+
+	e.runList.Remove(head)
+	head.Vertex = nil
 
 	return nil
 }
