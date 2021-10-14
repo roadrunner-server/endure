@@ -3,7 +3,7 @@ package endure
 import (
 	"reflect"
 
-	"github.com/spiral/endure/pkg/linked_list"
+	ll "github.com/spiral/endure/pkg/linked_list"
 	"github.com/spiral/endure/pkg/vertex"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
@@ -39,7 +39,7 @@ func (e *Endure) callServeFn(vrtx *vertex.Vertex, in []reflect.Value) (*result, 
 }
 
 // serveInternal run calls callServeFn for each node and put the results in the map
-func (e *Endure) serveInternal(n *linked_list.DllNode) error {
+func (e *Endure) serveInternal(n *ll.DllNode) error {
 	const op = errors.Op("endure_serve_internal")
 	// check if type implements serveInternal, if implements, call serveInternal
 	if reflect.TypeOf(n.Vertex.Iface).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {

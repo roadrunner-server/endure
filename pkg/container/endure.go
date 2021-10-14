@@ -10,7 +10,7 @@ import (
 
 	"github.com/spiral/endure/pkg/fsm"
 	"github.com/spiral/endure/pkg/graph"
-	"github.com/spiral/endure/pkg/linked_list"
+	ll "github.com/spiral/endure/pkg/linked_list"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -55,7 +55,7 @@ type Endure struct {
 	// Dependency graph
 	graph *graph.Graph
 	// DLL used as run list to run in order
-	runList *linked_list.DoublyLinkedList
+	runList *ll.DoublyLinkedList
 	// logger
 	logger *zap.Logger
 	// OPTIONS
@@ -65,8 +65,11 @@ type Endure struct {
 	initialInterval time.Duration
 	stopTimeout     time.Duration
 
-	deps        map[string]interface{}
-	disabled    map[string]bool
+	// deps is a map with all saved deps
+	deps map[string]interface{}
+	// disabled is a map with disabled deps
+	disabled map[string]bool
+	// initialized vertices map
 	initialized map[string]bool
 
 	// Graph visualizer
@@ -138,7 +141,7 @@ func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 	c.FSM = fsm.NewFSM(fsm.Uninitialized, transitionMap)
 
 	c.graph = graph.NewGraph()
-	c.runList = linked_list.NewDoublyLinkedList()
+	c.runList = ll.NewDoublyLinkedList()
 
 	// Main thread channels
 	c.handleErrorCh = make(chan *result)
@@ -272,10 +275,6 @@ func (e *Endure) reRegister(vertex interface{}) error {
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
 
-	if t.Kind() != reflect.Ptr {
-		return errors.E(op, errors.Register, errors.Errorf("you should pass pointer to the structure instead of value"))
-	}
-
 	err := e.register(vertexID, vertex)
 	if err != nil {
 		return errors.E(op, errors.Register, err)
@@ -370,7 +369,7 @@ START:
 		return errors.E(op, errors.Init, errors.Errorf("graph should contain at least 1 vertex, possibly you forget to invoke registers"))
 	}
 
-	e.runList = linked_list.NewDoublyLinkedList()
+	e.runList = ll.NewDoublyLinkedList()
 	for i := len(sorted) - 1; i >= 0; i-- {
 		e.runList.Push(sorted[i])
 	}
@@ -382,6 +381,7 @@ START:
 			head = head.Next
 			continue
 		}
+
 		// check for disabled, because that can be interface
 		if _, ok := e.disabled[head.Vertex.ID]; ok {
 			err = e.removeVertex(head)
@@ -431,10 +431,6 @@ func (e *Endure) Start() (<-chan *Result, error) {
 
 	nCopy := e.runList.Head
 	for nCopy != nil {
-		if nCopy.Vertex.IsDisabled {
-			nCopy = nCopy.Next
-			continue
-		}
 		atLeastOne = true
 		nCopy.Vertex.SetState(fsm.Starting)
 		err := e.serveInternal(nCopy)
@@ -448,7 +444,7 @@ func (e *Endure) Start() (<-chan *Result, error) {
 	}
 	// all vertices disabled
 	if !atLeastOne {
-		return nil, errors.E(op, errors.Disabled, errors.Str("all vertices disabled, nothing to serveInternal"))
+		return nil, errors.E(op, errors.Disabled, errors.Str("all vertices disabled, nothing to run"))
 	}
 	return e.userResultsCh, nil
 }
@@ -457,20 +453,27 @@ func (e *Endure) Start() (<-chan *Result, error) {
 // Do not change this method fn, sync with constants in the beginning of this file
 func (e *Endure) Shutdown() error {
 	e.logger.Info("exiting from the Endure")
+	if e.runList == nil {
+		return nil
+	}
 	return e.shutdown(e.runList.Head, true)
 }
 
-func (e *Endure) removeVertex(head *linked_list.DllNode) error {
+func (e *Endure) removeVertex(head *ll.DllNode) error {
 	const op = errors.Op("endure_disable")
 	e.logger.Debug("found disabled vertex", zap.String("id", head.Vertex.ID))
 	// add vertex to the map with disabled vertices
 	for providesID := range head.Vertex.Provides {
+		// disable all types which vertex provides as a root
 		e.disabled[providesID] = true
 		delete(e.deps, providesID)
 	}
+
 	e.disabled[head.Vertex.ID] = true
+
 	// reset run list
-	e.runList.Reset()
+	e.runList = nil
+
 	// reset graph
 	e.graph = nil
 	e.graph = graph.NewGraph()
@@ -484,9 +487,6 @@ func (e *Endure) removeVertex(head *linked_list.DllNode) error {
 			return errors.E(op, err)
 		}
 	}
-
-	e.runList.Remove(head)
-	head.Vertex = nil
 
 	return nil
 }

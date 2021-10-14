@@ -6,7 +6,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/endure/pkg/fsm"
 	"github.com/spiral/endure/pkg/graph"
-	"github.com/spiral/endure/pkg/linked_list"
+	ll "github.com/spiral/endure/pkg/linked_list"
 	"github.com/spiral/endure/pkg/vertex"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
@@ -20,7 +20,7 @@ func (e *Endure) sendResultToUser(res *result) {
 }
 
 // traverseBackStop used to visit every Prev node and internalStop vertices
-func (e *Endure) traverseBackStop(n *linked_list.DllNode) {
+func (e *Endure) traverseBackStop(n *ll.DllNode) {
 	const op = errors.Op("endure_traverse_back_stop")
 	e.logger.Debug("stopping vertex in the first Serve call", zap.String("id", n.Vertex.ID))
 	nCopy := n
@@ -76,7 +76,7 @@ func (e *Endure) retryHandler(res *result) {
 	b.MaxElapsedTime = e.maxInterval
 	b.InitialInterval = e.initialInterval
 
-	affectedRunList := linked_list.NewDoublyLinkedList()
+	affectedRunList := ll.NewDoublyLinkedList()
 	for i := 0; i <= len(sorted)-1; i++ {
 		affectedRunList.Push(sorted[i])
 	}
