@@ -1,4 +1,4 @@
-package linked_list
+package linkedlist
 
 import "github.com/spiral/endure/pkg/vertex"
 

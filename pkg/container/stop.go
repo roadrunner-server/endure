@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/spiral/endure/pkg/fsm"
-	"github.com/spiral/endure/pkg/linked_list"
+	ll "github.com/spiral/endure/pkg/linked_list"
 	"github.com/spiral/endure/pkg/vertex"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
@@ -46,7 +46,7 @@ func (e *Endure) callStopFn(vrtx *vertex.Vertex, in []reflect.Value) error {
 
 // true -> next
 // false -> prev
-func (e *Endure) shutdown(n *linked_list.DllNode, traverseNext bool) error {
+func (e *Endure) shutdown(n *ll.DllNode, traverseNext bool) error {
 	const op = errors.Op("endure_shutdown")
 	numOfVertices := calculateDepth(n, traverseNext)
 	if numOfVertices == 0 {
@@ -153,7 +153,7 @@ func (e *Endure) shutdown(n *linked_list.DllNode, traverseNext bool) error {
 }
 
 // Using to calculate number of Vertices in DLL
-func calculateDepth(n *linked_list.DllNode, traverse bool) int {
+func calculateDepth(n *ll.DllNode, traverse bool) int {
 	num := 0
 	if traverse {
 		tmp := n
