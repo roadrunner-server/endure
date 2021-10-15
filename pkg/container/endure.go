@@ -66,7 +66,8 @@ type Endure struct {
 	stopTimeout     time.Duration
 
 	// deps is a map with all saved deps
-	deps map[string]interface{}
+	deps    map[string]interface{}
+	depsOrd []string
 	// disabled is a map with disabled deps
 	disabled map[string]bool
 	// initialized vertices map
@@ -121,7 +122,8 @@ func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 		output:      Empty,
 		disabled:    make(map[string]bool),
 		initialized: make(map[string]bool),
-		deps:        make(map[string]interface{}),
+		deps:        make(map[string]interface{}, 5),
+		depsOrd:     make([]string, 0, 2),
 	}
 
 	// Transition map
@@ -266,6 +268,7 @@ func (e *Endure) Register(vertex interface{}) error {
 
 	// save all vertices on the initial stage
 	e.deps[vertexID] = vertex
+	e.depsOrd = append(e.depsOrd, vertexID)
 
 	return nil
 }
@@ -414,6 +417,9 @@ START:
 		head = head.Next
 	}
 
+	// we don't need startup helpers anymore
+	e.depsOrd = nil
+	e.deps = nil
 	return nil
 }
 
@@ -459,6 +465,8 @@ func (e *Endure) Shutdown() error {
 	return e.shutdown(e.runList.Head, true)
 }
 
+// I don't like this part, this should be rewritten
+// We should compute whole subgraph after we found disabled vertex and remove it with 1 operation.
 func (e *Endure) removeVertex(head *ll.DllNode) error {
 	const op = errors.Op("endure_disable")
 	e.logger.Debug("found disabled vertex", zap.String("id", head.Vertex.ID))
@@ -467,6 +475,12 @@ func (e *Endure) removeVertex(head *ll.DllNode) error {
 		// disable all types which vertex provides as a root
 		e.disabled[providesID] = true
 		delete(e.deps, providesID)
+		for i := 0; i < len(e.depsOrd); i++ {
+			if e.depsOrd[i] == head.Vertex.ID {
+				e.depsOrd = append(e.depsOrd[:i], e.depsOrd[i+1:]...)
+				break
+			}
+		}
 	}
 
 	e.disabled[head.Vertex.ID] = true
@@ -478,11 +492,17 @@ func (e *Endure) removeVertex(head *ll.DllNode) error {
 	e.graph = nil
 	e.graph = graph.NewGraph()
 
+	for i := 0; i < len(e.depsOrd); i++ {
+		if e.depsOrd[i] == head.Vertex.ID {
+			e.depsOrd = append(e.depsOrd[:i], e.depsOrd[i+1:]...)
+			break
+		}
+	}
 	delete(e.deps, head.Vertex.ID)
 
 	// re-register all deps, excluding disabled
-	for k := range e.deps {
-		err := e.reRegister(e.deps[k])
+	for i := 0; i < len(e.depsOrd); i++ {
+		err := e.reRegister(e.deps[e.depsOrd[i]])
 		if err != nil {
 			return errors.E(op, err)
 		}
