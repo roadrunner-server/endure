@@ -379,12 +379,6 @@ START:
 
 	head := e.runList.Head
 	for head != nil {
-		// do not initialize twice
-		if ok := e.initialized[head.Vertex.ID]; ok {
-			head = head.Next
-			continue
-		}
-
 		// check for disabled, because that can be interface
 		if _, ok := e.disabled[head.Vertex.ID]; ok {
 			err = e.removeVertex(head)

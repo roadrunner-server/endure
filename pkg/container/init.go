@@ -50,32 +50,35 @@ func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
 	}
 	// Iterate over dependencies
 	// And search in Vertices for the provided types
-	ret := init.Func.Call(in)
-	rErr := ret[0].Interface()
-	if rErr != nil {
-		var ok bool
-		if err, ok = rErr.(error); ok && err != nil {
-			/*
-				If vertex is disabled we skip all processing for it:
-				1. We don't add Init function args as dependencies
-			*/
-			if errors.Is(errors.Disabled, err) {
-				/*
-					DisableById vertex
-					1. But if vertex is disabled it can't PROVIDE via v.Provided value of itself for other vertices
-					and we should recalculate whole three without this dep.
-				*/
-				e.logger.Warn("vertex disabled", zap.String("id", vrtx.ID), zap.Error(err))
-				// disable current vertex
-				vrtx.IsDisabled = true
-				// Disabled is actually to an error, just notification to the graph, that it has some vertices which are disabled
-				return errors.E(op, errors.Disabled)
-			}
 
-			e.logger.Error("error calling internal_init", zap.String("id", vrtx.ID), zap.Error(err))
-			return errors.E(op, errors.FunctionCall, err)
+	// do not initialize twice, but we should add the init args to the global provider
+	if _, ok := e.initialized[vrtx.ID]; !ok {
+		ret := init.Func.Call(in)
+		rErr := ret[0].Interface()
+		if rErr != nil {
+			var ok bool
+			if err, ok = rErr.(error); ok && err != nil {
+				/*
+					If vertex is disabled we skip all processing for it:
+					1. We don't add Init function args as dependencies
+				*/
+				if errors.Is(errors.Disabled, err) {
+					/*
+						DisableById vertex
+						1. But if vertex is disabled it can't PROVIDE via v.Provided value of itself for other vertices, and we should recalculate whole three without this dep.
+					*/
+					e.logger.Warn("vertex disabled", zap.String("id", vrtx.ID), zap.Error(err))
+					// disable current vertex
+					vrtx.IsDisabled = true
+					// Disabled is actually to an error, just notification to the graph, that it has some vertices which are disabled
+					return errors.E(op, errors.Disabled)
+				}
+
+				e.logger.Error("error calling internal_init", zap.String("id", vrtx.ID), zap.Error(err))
+				return errors.E(op, errors.FunctionCall, err)
+			}
+			return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 		}
-		return errors.E(op, errors.FunctionCall, errors.Str("unknown error occurred during the function call"))
 	}
 
 	// just to be safe here
