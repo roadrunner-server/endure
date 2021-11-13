@@ -97,30 +97,34 @@ func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
 		return errors.E(op, errors.ArgType, errors.Str("0 or less parameters for Init"))
 	}
 
-	if len(vrtx.Meta.CollectorEntries) > 0 {
-		for i := 0; i < len(vrtx.Meta.CollectorEntries); i++ {
-			// try to find nil IN args and get it from global
-			for j := 0; j < len(vrtx.Meta.CollectorEntries[i].In); j++ {
-				if vrtx.Meta.CollectorEntries[i].In[j].In.IsZero() {
-					global, ok := e.graph.Providers[vrtx.Meta.CollectorEntries[i].In[j].Dep]
-					if !ok {
-						e.logger.Error("can't find in arg to Call Collects on the vertex", zap.String("id", vrtx.ID))
-						return errors.E(op, errors.Errorf("id: %s", vrtx.ID))
+	// do not call collectors twice
+	if _, ok := e.initialized[vrtx.ID]; !ok {
+		if len(vrtx.Meta.CollectorEntries) > 0 {
+			for i := 0; i < len(vrtx.Meta.CollectorEntries); i++ {
+				// try to find nil IN args and get it from global
+				for j := 0; j < len(vrtx.Meta.CollectorEntries[i].In); j++ {
+					if vrtx.Meta.CollectorEntries[i].In[j].In.IsZero() {
+						global, ok := e.graph.Providers[vrtx.Meta.CollectorEntries[i].In[j].Dep]
+						if !ok {
+							e.logger.Error("can't find in arg to Call Collects on the vertex", zap.String("id", vrtx.ID))
+							return errors.E(op, errors.Errorf("id: %s", vrtx.ID))
+						}
+						vrtx.Meta.CollectorEntries[i].In[j].In = global
 					}
-					vrtx.Meta.CollectorEntries[i].In[j].In = global
 				}
-			}
 
-			in := make([]reflect.Value, 0, len(vrtx.Meta.CollectorEntries[i].In))
-			for _, v := range vrtx.Meta.CollectorEntries[i].In {
-				in = append(in, v.In)
-			}
-			err = e.fnCallCollectors(vrtx, in, vrtx.Meta.CollectorEntries[i].Fn)
-			if err != nil {
-				return errors.E(op, errors.Traverse, err)
+				in := make([]reflect.Value, 0, len(vrtx.Meta.CollectorEntries[i].In))
+				for _, v := range vrtx.Meta.CollectorEntries[i].In {
+					in = append(in, v.In)
+				}
+				err = e.fnCallCollectors(vrtx, in, vrtx.Meta.CollectorEntries[i].Fn)
+				if err != nil {
+					return errors.E(op, errors.Traverse, err)
+				}
 			}
 		}
 	}
+
 	return nil
 }
 
