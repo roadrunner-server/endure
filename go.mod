@@ -3,7 +3,7 @@ module github.com/spiral/endure
 go 1.17
 
 require (
-	github.com/cenkalti/backoff/v4 v4.1.1
+	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/spiral/errors v1.0.12
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.19.1
