@@ -456,7 +456,7 @@ func (e *Endure) Shutdown() error {
 	if e.runList == nil {
 		return nil
 	}
-	return e.shutdown(e.runList.Head, true)
+	return e.shutdown(e.runList.Tail, false)
 }
 
 // I don't like this part, this should be rewritten
