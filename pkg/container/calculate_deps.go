@@ -172,12 +172,14 @@ func (e *Endure) implCollectorPath(vrtx *vertex.Vertex) error {
 			if err != nil {
 				return err
 			}
+			continue
 		}
-		// process only struct deps if not interfaces were found
+		// process only struct deps if no interfaces were found
 		err = e.processStructDeps(getFunctionName(fn), vrtx, params)
 		if err != nil {
 			return err
 		}
+		continue
 	}
 	return nil
 }
