@@ -92,13 +92,6 @@ func (g *Graph) AddInterfaceDep(vertex *vertex.Vertex, depID string, method Kind
 		return nil
 	}
 
-	for j := 0; j < len(depVertex.Dependencies); j++ {
-		tmpID := depVertex.Dependencies[j].ID
-		if tmpID == vertex.ID {
-			return nil
-		}
-	}
-
 	vertex.NumOfDeps++
 	vertex.Dependencies = append(vertex.Dependencies, depVertex)
 	return nil
@@ -123,14 +116,6 @@ func (g *Graph) AddStructureDep(vertex *vertex.Vertex, depID string, method Kind
 	// because we should know Init method parameters for every Vertex
 	if !g.addToList(method, vertex, depID, isRef, depVertex.ID, reflect.Struct) {
 		return nil
-	}
-
-	// append depID vertex
-	for i := 0; i < len(depVertex.Dependencies); i++ {
-		tmpID := depVertex.Dependencies[i].ID
-		if tmpID == vertex.ID {
-			return nil
-		}
 	}
 
 	vertex.NumOfDeps++
