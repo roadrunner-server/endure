@@ -7,6 +7,10 @@ import (
 	endure "github.com/spiral/endure/pkg/container"
 	"github.com/spiral/endure/tests/stress/CollectorFuncReturn"
 	"github.com/spiral/endure/tests/stress/CyclicDeps"
+	"github.com/spiral/endure/tests/stress/CyclicDepsCollects/p1"
+	"github.com/spiral/endure/tests/stress/CyclicDepsCollects/p2"
+	p1Init "github.com/spiral/endure/tests/stress/CyclicDepsCollectsInit/p1"
+	p2Init "github.com/spiral/endure/tests/stress/CyclicDepsCollectsInit/p2"
 	"github.com/spiral/endure/tests/stress/InitErr"
 	"github.com/spiral/endure/tests/stress/ServeErr"
 	"github.com/spiral/endure/tests/stress/ServeRetryErr"
@@ -253,6 +257,30 @@ func TestEndure_CyclicDeps(t *testing.T) {
 		&CyclicDeps.Plugin1{},
 		&CyclicDeps.Plugin2{},
 		&CyclicDeps.Plugin3{},
+	))
+
+	assert.Error(t, c.Init())
+}
+
+func TestEndure_CyclicDepsCollects(t *testing.T) {
+	c, err := endure.NewContainer(nil, endure.RetryOnFail(false))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.RegisterAll(
+		&p1.Plugin1{},
+		&p2.Plugin2{},
+	))
+
+	assert.Error(t, c.Init())
+}
+
+func TestEndure_CyclicDepsInterfaceInit(t *testing.T) {
+	c, err := endure.NewContainer(nil, endure.RetryOnFail(false))
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.RegisterAll(
+		&p1Init.Plugin1{},
+		&p2Init.Plugin2{},
 	))
 
 	assert.Error(t, c.Init())
