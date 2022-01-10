@@ -6,7 +6,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/spiral/errors v1.0.12
 	github.com/stretchr/testify v1.7.0
-	go.uber.org/zap v1.19.1
+	go.uber.org/zap v1.20.0
 )
 
 require (
