@@ -5,35 +5,35 @@ import (
 	"testing"
 	"time"
 
-	endure "github.com/spiral/endure/pkg/container"
-	"github.com/spiral/endure/tests/issues/issue33"
-	issue55_p1 "github.com/spiral/endure/tests/issues/issue55/plugin1"
-	issue55_p2 "github.com/spiral/endure/tests/issues/issue55/plugin2"
-	issue55_p3 "github.com/spiral/endure/tests/issues/issue55/plugin3"
+	endure "github.com/roadrunner-server/endure/pkg/container"
+	"github.com/roadrunner-server/endure/tests/issues/issue33"
+	issue55_p1 "github.com/roadrunner-server/endure/tests/issues/issue55/plugin1"
+	issue55_p2 "github.com/roadrunner-server/endure/tests/issues/issue55/plugin2"
+	issue55_p3 "github.com/roadrunner-server/endure/tests/issues/issue55/plugin3"
 
-	issue66_p1 "github.com/spiral/endure/tests/issues/issue66/plugin1"
-	issue66_p2 "github.com/spiral/endure/tests/issues/issue66/plugin2"
-	issue66_p3 "github.com/spiral/endure/tests/issues/issue66/plugin3"
+	issue66_p1 "github.com/roadrunner-server/endure/tests/issues/issue66/plugin1"
+	issue66_p2 "github.com/roadrunner-server/endure/tests/issues/issue66/plugin2"
+	issue66_p3 "github.com/roadrunner-server/endure/tests/issues/issue66/plugin3"
 
-	issue54_p1 "github.com/spiral/endure/tests/issues/issue54/plugin1"
-	issue54_p2 "github.com/spiral/endure/tests/issues/issue54/plugin2"
-	issue54_p3 "github.com/spiral/endure/tests/issues/issue54/plugin3"
+	issue54_p1 "github.com/roadrunner-server/endure/tests/issues/issue54/plugin1"
+	issue54_p2 "github.com/roadrunner-server/endure/tests/issues/issue54/plugin2"
+	issue54_p3 "github.com/roadrunner-server/endure/tests/issues/issue54/plugin3"
 
-	issue84_struct_p1 "github.com/spiral/endure/tests/issues/issue84/structs/plugin1"
-	issue84_struct_p2 "github.com/spiral/endure/tests/issues/issue84/structs/plugin2"
-	issue84_struct_p3 "github.com/spiral/endure/tests/issues/issue84/structs/plugin3"
+	issue84_struct_p1 "github.com/roadrunner-server/endure/tests/issues/issue84/structs/plugin1"
+	issue84_struct_p2 "github.com/roadrunner-server/endure/tests/issues/issue84/structs/plugin2"
+	issue84_struct_p3 "github.com/roadrunner-server/endure/tests/issues/issue84/structs/plugin3"
 
-	issue84_interface_p1 "github.com/spiral/endure/tests/issues/issue84/interfaces/plugin1"
-	issue84_interface_p2 "github.com/spiral/endure/tests/issues/issue84/interfaces/plugin2"
-	issue84_interface_p3 "github.com/spiral/endure/tests/issues/issue84/interfaces/plugin3"
+	issue84_interface_p1 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces/plugin1"
+	issue84_interface_p2 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces/plugin2"
+	issue84_interface_p3 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces/plugin3"
 
-	issue84_interfaces_structs_p1 "github.com/spiral/endure/tests/issues/issue84/interfaces_structs/plugin1"
-	issue84_interfaces_structs_p2 "github.com/spiral/endure/tests/issues/issue84/interfaces_structs/plugin2"
-	issue84_interfaces_structs_p3 "github.com/spiral/endure/tests/issues/issue84/interfaces_structs/plugin3"
+	issue84_interfaces_structs_p1 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces_structs/plugin1"
+	issue84_interfaces_structs_p2 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces_structs/plugin2"
+	issue84_interfaces_structs_p3 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces_structs/plugin3"
 
-	issue84_one_alive_p1 "github.com/spiral/endure/tests/issues/issue84/one_alive/plugin1"
-	issue84_one_alive_p2 "github.com/spiral/endure/tests/issues/issue84/one_alive/plugin2"
-	issue84_one_alive_p3 "github.com/spiral/endure/tests/issues/issue84/one_alive/plugin3"
+	issue84_one_alive_p1 "github.com/roadrunner-server/endure/tests/issues/issue84/one_alive/plugin1"
+	issue84_one_alive_p2 "github.com/roadrunner-server/endure/tests/issues/issue84/one_alive/plugin2"
+	issue84_one_alive_p3 "github.com/roadrunner-server/endure/tests/issues/issue84/one_alive/plugin3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,7 +46,7 @@ func TestEndure_Issue33(t *testing.T) {
 	assert.NoError(t, c.Register(&issue33.Plugin2{}))
 }
 
-// https://github.com/spiral/endure/issues/55
+// https://github.com/roadrunner-server/endure/issues/55
 // Plugin2 froze execution
 // Call Stop on the container
 // Should be only 1 stop

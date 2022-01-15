@@ -1,6 +1,6 @@
 package linkedlist
 
-import "github.com/spiral/endure/pkg/vertex"
+import "github.com/roadrunner-server/endure/pkg/vertex"
 
 // DllNode consists of the curr Vertex, Prev and Next DllNodes
 type DllNode struct {

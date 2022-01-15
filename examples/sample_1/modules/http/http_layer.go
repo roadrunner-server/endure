@@ -7,8 +7,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
-	"github.com/spiral/endure/examples/db_http_logger/modules/db"
-	"github.com/spiral/endure/examples/db_http_logger/modules/logger"
+	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/db"
+	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/logger"
 )
 
 type Http struct {

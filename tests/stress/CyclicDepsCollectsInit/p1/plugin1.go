@@ -1,7 +1,7 @@
 package p1
 
 import (
-	"github.com/spiral/endure/tests/stress/CyclicDepsCollectsInit/api/p2"
+	"github.com/roadrunner-server/endure/tests/stress/CyclicDepsCollectsInit/api/p2"
 )
 
 type Plugin1 struct {

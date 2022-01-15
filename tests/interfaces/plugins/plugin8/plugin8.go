@@ -1,8 +1,8 @@
 package plugin8
 
 import (
-	endure "github.com/spiral/endure/pkg/container"
-	"github.com/spiral/endure/tests/interfaces/plugins/plugin10"
+	endure "github.com/roadrunner-server/endure/pkg/container"
+	"github.com/roadrunner-server/endure/tests/interfaces/plugins/plugin10"
 	"github.com/spiral/errors"
 )
 

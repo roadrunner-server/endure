@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/spiral/endure/pkg/fsm"
+	"github.com/roadrunner-server/endure/pkg/fsm"
 )
 
 // CollectorEntry entry is collector interface struct which contain:

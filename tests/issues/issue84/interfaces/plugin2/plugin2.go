@@ -1,7 +1,7 @@
 package plugin2
 
 import (
-	"github.com/spiral/endure/tests/issues/issue84/interfaces/plugin3"
+	"github.com/roadrunner-server/endure/tests/issues/issue84/interfaces/plugin3"
 )
 
 type Plugin2 struct{}
