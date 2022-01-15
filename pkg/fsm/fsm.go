@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 )
 
 // FSM represents endure finite state machine

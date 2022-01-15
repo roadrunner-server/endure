@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 )
 
 func providersReturnType(m interface{}) ([]reflect.Type, error) {

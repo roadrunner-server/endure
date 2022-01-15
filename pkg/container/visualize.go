@@ -8,7 +8,7 @@ import (
 	"text/template"
 
 	"github.com/roadrunner-server/endure/pkg/vertex"
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 )
 
 // Output represents possible output variants for the visualizer

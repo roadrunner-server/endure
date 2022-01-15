@@ -11,7 +11,7 @@ import (
 	"github.com/roadrunner-server/endure/pkg/fsm"
 	"github.com/roadrunner-server/endure/pkg/graph"
 	ll "github.com/roadrunner-server/endure/pkg/linked_list"
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

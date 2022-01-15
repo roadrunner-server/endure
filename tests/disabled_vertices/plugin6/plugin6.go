@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 )
 
 type Plugin6 struct {

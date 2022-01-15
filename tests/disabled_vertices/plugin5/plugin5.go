@@ -1,7 +1,7 @@
 package plugin5
 
 import (
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 )
 
 type Plugin5 struct {

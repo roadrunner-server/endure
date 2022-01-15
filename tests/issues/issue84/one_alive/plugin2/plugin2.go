@@ -2,7 +2,7 @@ package plugin2
 
 import (
 	"github.com/roadrunner-server/endure/tests/issues/issue84/one_alive/plugin3"
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 )
 
 type Plugin2 struct{}

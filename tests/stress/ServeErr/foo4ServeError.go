@@ -1,6 +1,6 @@
 package ServeErr
 
-import "github.com/spiral/errors"
+import "github.com/roadrunner-server/errors"
 
 type FOO4DB struct {
 	Name string

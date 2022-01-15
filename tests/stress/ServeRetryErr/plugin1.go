@@ -3,7 +3,7 @@ package ServeRetryErr
 import (
 	"time"
 
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 )
 
 type S1ServeErr struct {

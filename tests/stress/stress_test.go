@@ -15,7 +15,7 @@ import (
 	"github.com/roadrunner-server/endure/tests/stress/ServeErr"
 	"github.com/roadrunner-server/endure/tests/stress/ServeRetryErr"
 	"github.com/roadrunner-server/endure/tests/stress/mixed"
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 	"github.com/stretchr/testify/assert"
 )
 

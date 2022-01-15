@@ -7,7 +7,7 @@ import (
 	"github.com/roadrunner-server/endure/pkg/fsm"
 	ll "github.com/roadrunner-server/endure/pkg/linked_list"
 	"github.com/roadrunner-server/endure/pkg/vertex"
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
 

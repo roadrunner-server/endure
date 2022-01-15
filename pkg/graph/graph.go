@@ -7,7 +7,7 @@ import (
 
 	"github.com/roadrunner-server/endure/pkg/fsm"
 	"github.com/roadrunner-server/endure/pkg/vertex"
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 )
 
 // Kind used to identify the method which invokes AddDeps

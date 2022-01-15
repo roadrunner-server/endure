@@ -1,6 +1,6 @@
 package plugin4
 
-import "github.com/spiral/errors"
+import "github.com/roadrunner-server/errors"
 
 type Plugin4 struct {
 }

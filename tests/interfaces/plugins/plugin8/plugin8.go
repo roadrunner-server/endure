@@ -3,7 +3,7 @@ package plugin8
 import (
 	endure "github.com/roadrunner-server/endure/pkg/container"
 	"github.com/roadrunner-server/endure/tests/interfaces/plugins/plugin10"
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 )
 
 type SomeInterface interface {

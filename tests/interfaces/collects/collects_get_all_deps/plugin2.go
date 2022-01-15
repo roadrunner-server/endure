@@ -1,6 +1,6 @@
 package collects_get_all_deps
 
-import "github.com/spiral/errors"
+import "github.com/roadrunner-server/errors"
 
 type Plugin2 struct {
 	collectsDeps []interface{}

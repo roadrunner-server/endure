@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/roadrunner-server/endure/pkg/vertex"
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
 

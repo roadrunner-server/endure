@@ -1,7 +1,7 @@
 package endure
 
 import (
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 )
 
 func (e *Endure) register(name string, vrtx interface{}) error {
