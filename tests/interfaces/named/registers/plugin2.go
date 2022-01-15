@@ -1,6 +1,6 @@
 package registers
 
-import endure "github.com/spiral/endure/pkg/container"
+import endure "github.com/roadrunner-server/endure/pkg/container"
 
 type Plugin2 struct {
 }

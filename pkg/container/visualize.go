@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/spiral/endure/pkg/vertex"
+	"github.com/roadrunner-server/endure/pkg/vertex"
 	"github.com/spiral/errors"
 )
 

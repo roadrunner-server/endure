@@ -5,12 +5,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/spiral/endure/examples/db_http_logger/modules/db"
-	"github.com/spiral/endure/examples/db_http_logger/modules/gzip"
-	"github.com/spiral/endure/examples/db_http_logger/modules/headers"
-	"github.com/spiral/endure/examples/db_http_logger/modules/http"
-	"github.com/spiral/endure/examples/db_http_logger/modules/logger"
-	endure "github.com/spiral/endure/pkg/container"
+	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/db"
+	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/gzip"
+	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/headers"
+	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/http"
+	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/logger"
+	endure "github.com/roadrunner-server/endure/pkg/container"
 )
 
 func main() {

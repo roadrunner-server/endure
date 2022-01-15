@@ -3,7 +3,7 @@ package plugin2
 import (
 	"time"
 
-	"github.com/spiral/endure/tests/issues/issue55/plugin3"
+	"github.com/roadrunner-server/endure/tests/issues/issue55/plugin3"
 	"github.com/spiral/errors"
 )
 

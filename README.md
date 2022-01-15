@@ -1,11 +1,11 @@
 # Endure
 
 <p align="center">
- <a href="https://pkg.go.dev/github.com/spiral/Endure?tab=doc"><img src="https://godoc.org/github.com/spiral/Endure?status.svg"></a>
- <a href="https://github.com/spiral/Endure/actions"><img src="https://github.com/spiral/Endure/workflows/Linux/badge.svg" alt=""></a>
- <a href="https://github.com/spiral/Endure/actions"><img src="https://github.com/spiral/Endure/workflows/macOS/badge.svg" alt=""></a>
- <a href="https://github.com/spiral/Endure/actions"><img src="https://github.com/spiral/Endure/workflows/Windows/badge.svg" alt=""></a>
- <a href="https://github.com/spiral/Endure/actions"><img src="https://github.com/spiral/Endure/workflows/Linters/badge.svg" alt=""></a>
+ <a href="https://pkg.go.dev/github.com/roadrunner-server/endure?tab=doc"><img src="https://godoc.org/github.com/roadrunner-server/endure?status.svg"></a>
+ <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/Linux/badge.svg" alt=""></a>
+ <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/macOS/badge.svg" alt=""></a>
+ <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/Windows/badge.svg" alt=""></a>
+ <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/Linters/badge.svg" alt=""></a>
  <a href="https://codecov.io/gh/spiral/endure"><img src="https://codecov.io/gh/spiral/endure/branch/master/graph/badge.svg?token=itNaiZ6ALN"/></a>
  <a href="https://discord.gg/TFeEmCs"><img src="https://img.shields.io/badge/discord-chat-magenta.svg"></a>
  <a href="https://lgtm.com/projects/g/spiral/endure/alerts/"><img src="https://img.shields.io/lgtm/alerts/g/spiral/endure.svg?logo=lgtm&logoWidth=18"></a>
@@ -25,7 +25,7 @@ Endure is an open-source (MIT licensed) plugin container with IoC and self-heali
 <h2>Installation</h2>
 
 ```go
-go get -u github.com/spiral/endure
+go get -u github.com/roadrunner-server/endure
 ```
 
 ### Why?
@@ -38,7 +38,7 @@ because all parts of our system need logger. All you need to do in `Endure` is t
 to the `Endure` and implement `Endure` interface. So, the dependency graph will be the following:
 
 <p align="left">
-  <img src="https://github.com/spiral/endure/blob/master/images/graph.png" width="300" height="250" />
+  <img src="https://github.com/roadrunner-server/endure/blob/master/images/graph.png" width="300" height="250" />
 </p>
 
 -------

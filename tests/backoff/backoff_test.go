@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	endure "github.com/spiral/endure/pkg/container"
-	"github.com/spiral/endure/tests/backoff/plugins/plugin2"
-	"github.com/spiral/endure/tests/backoff/plugins/plugin3"
-	"github.com/spiral/endure/tests/backoff/plugins/plugin4"
+	endure "github.com/roadrunner-server/endure/pkg/container"
+	"github.com/roadrunner-server/endure/tests/backoff/plugins/plugin2"
+	"github.com/roadrunner-server/endure/tests/backoff/plugins/plugin3"
+	"github.com/roadrunner-server/endure/tests/backoff/plugins/plugin4"
 	"github.com/stretchr/testify/assert"
 )
 

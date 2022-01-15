@@ -1,8 +1,8 @@
 package plugin1
 
 import (
-	"github.com/spiral/endure/tests/happy_scenarios/plugin2"
-	"github.com/spiral/endure/tests/happy_scenarios/plugin4"
+	"github.com/roadrunner-server/endure/tests/happy_scenarios/plugin2"
+	"github.com/roadrunner-server/endure/tests/happy_scenarios/plugin4"
 )
 
 type S1 struct {

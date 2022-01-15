@@ -1,4 +1,4 @@
-module github.com/spiral/endure
+module github.com/roadrunner-server/endure
 
 go 1.17
 

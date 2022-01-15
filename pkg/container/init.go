@@ -3,8 +3,8 @@ package endure
 import (
 	"reflect"
 
-	"github.com/spiral/endure/pkg/fsm"
-	"github.com/spiral/endure/pkg/vertex"
+	"github.com/roadrunner-server/endure/pkg/fsm"
+	"github.com/roadrunner-server/endure/pkg/vertex"
 	"github.com/spiral/errors"
 	"go.uber.org/zap"
 )

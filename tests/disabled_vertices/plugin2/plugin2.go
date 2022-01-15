@@ -1,7 +1,7 @@
 package plugin2
 
 import (
-	"github.com/spiral/endure/tests/disabled_vertices/plugin1"
+	"github.com/roadrunner-server/endure/tests/disabled_vertices/plugin1"
 )
 
 type Plugin2 struct {
