@@ -33,7 +33,7 @@ var _graphTmpl = template.Must(
 	graph [compound=true];
 	{{range $v := .}}
 		{{range $g := $v.Dependencies}}
-		{{quote $v.ID}} -> {{quote $g.ID}};
+			{{quote $v.ID}} -> {{quote $g.ID}};
 		{{end}}
 	{{end}}
 }`))
