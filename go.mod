@@ -6,7 +6,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/roadrunner-server/errors v1.1.1
 	github.com/stretchr/testify v1.7.0
-	go.uber.org/zap v1.20.0
+	go.uber.org/zap v1.21.0
 )
 
 require (
