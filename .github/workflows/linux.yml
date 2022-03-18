@@ -21,8 +21,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go: [ 1.17.6 ]
-        os: [ ubuntu-20.04 ]
+        go: [ 1.18 ]
+        os: [ ubuntu-latest ]
     env:
       GO111MODULE: on
     steps:
