@@ -20,15 +20,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Go 1.18
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v3
         with:
           go-version: 1.18
 
       - name: Run linter
-        uses: golangci/golangci-lint-action@v2 # Action page: <https://github.com/golangci/golangci-lint-action>
+        uses: golangci/golangci-lint-action@v3.1.0 # Action page: <https://github.com/golangci/golangci-lint-action>
         with:
           version: v1.45 # without patch version
           only-new-issues: false # show only new issues if it's a pull request
