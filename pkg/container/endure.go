@@ -59,8 +59,6 @@ type Endure struct {
 	// logger
 	logger *zap.Logger
 	// OPTIONS
-	// retry on vertex fail
-	retry           bool
 	maxInterval     time.Duration
 	initialInterval time.Duration
 	stopTimeout     time.Duration
@@ -305,6 +303,9 @@ func (e *Endure) RegisterAll(plugins ...interface{}) error {
 
 // Init container and all service edges.
 func (e *Endure) Init() error {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
 	_, err := e.Transition(fsm.Initialize, e)
 	if err != nil {
 		return err
@@ -315,6 +316,9 @@ func (e *Endure) Init() error {
 // Serve starts serving the graph
 // This is the initial serveInternal, if error produced immediately in the initial serveInternal, endure will traverse deps back, call internal_stop and exit
 func (e *Endure) Serve() (<-chan *Result, error) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
 	data, err := e.Transition(fsm.Start, e)
 	if err != nil {
 		return nil, err
@@ -325,6 +329,9 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 
 // Stop stops the execution and call Stop on every vertex
 func (e *Endure) Stop() error {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
 	_, err := e.Transition(fsm.Stop, e)
 	if err != nil {
 		return err
@@ -420,9 +427,6 @@ START:
 // Start used to start serving vertices
 // Do not change this method fn, sync with constants in the beginning of this file
 func (e *Endure) Start() (<-chan *Result, error) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-
 	const op = errors.Op("endure_start")
 	e.startMainThread()
 

@@ -60,7 +60,7 @@ func (pe *ProviderEntries) Merge() FnsToCall {
 	hash := make(map[[10]string][]string)
 	for i := 0; i < len(*pe); i++ {
 		arr := [10]string{}
-		for j := 0; j < len((*pe)[i].ReturnTypeIds); j++ {
+		for j := 0; j < len((*pe)[i].ReturnTypeIds); j++ { //nolint:gosimple
 			arr[j] = (*pe)[i].ReturnTypeIds[j]
 		}
 		hash[arr] = append(hash[arr], (*pe)[i].FunctionName)

@@ -9,13 +9,6 @@ func SetLogLevel(lvl Level) Options {
 	}
 }
 
-// RetryOnFail if set to true, endure will try to stop and restart graph if one or more vertices are failed
-func RetryOnFail(retry bool) Options {
-	return func(endure *Endure) {
-		endure.retry = retry
-	}
-}
-
 // SetBackoff sets initial and maximum backoff interval for retry
 func SetBackoff(initialInterval time.Duration, maxInterval time.Duration) Options {
 	return func(endure *Endure) {

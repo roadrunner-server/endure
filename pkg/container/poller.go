@@ -47,18 +47,13 @@ func (e *Endure) startMainThread() {
 				}
 
 				e.logger.Debug("processing error in the main thread", zap.String("id", res.vertexID))
-				if e.retry {
-					// TODO handle error from the retry handler
-					e.retryHandler(res)
-				} else {
-					e.logger.Info("retry is turned off, sending exit signal to every vertex in the graph")
-					// send exit signal to whole graph
-					err := e.Stop()
-					if err != nil {
-						e.logger.Error("error during stopping vertex", zap.String("id", res.vertexID), zap.Error(err))
-					}
-					e.sendResultToUser(res)
+
+				// send exit signal to whole graph
+				err := e.Stop()
+				if err != nil {
+					e.logger.Error("error during stopping vertex", zap.String("id", res.vertexID), zap.Error(err))
 				}
+				e.sendResultToUser(res)
 			}
 		}
 	}()
