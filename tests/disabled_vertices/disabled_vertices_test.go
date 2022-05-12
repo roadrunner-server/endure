@@ -18,7 +18,7 @@ import (
 )
 
 func TestVertexDisabled(t *testing.T) {
-	cont, err := endure.NewContainer(nil, endure.RetryOnFail(true))
+	cont, err := endure.NewContainer(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestVertexDisabled(t *testing.T) {
 }
 
 func TestDisabledViaInterface(t *testing.T) {
-	cont, err := endure.NewContainer(nil, endure.RetryOnFail(true))
+	cont, err := endure.NewContainer(nil)
 	if err != nil {
 		t.Fatal(err)
 	}

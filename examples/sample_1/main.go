@@ -15,7 +15,7 @@ import (
 
 func main() {
 	// no external logger
-	container, err := endure.NewContainer(nil, endure.RetryOnFail(true), endure.Visualize(endure.StdOut, ""), endure.SetLogLevel(endure.DebugLevel))
+	container, err := endure.NewContainer(nil, endure.Visualize(endure.StdOut, ""), endure.SetLogLevel(endure.DebugLevel))
 	if err != nil {
 		panic(err)
 	}

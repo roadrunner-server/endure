@@ -20,7 +20,7 @@ import (
 )
 
 func TestEndure_Init_Err(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(false))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&InitErr.S1Err{}))
@@ -29,7 +29,7 @@ func TestEndure_Init_Err(t *testing.T) {
 }
 
 func TestEndure_DoubleStop_Err(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(false))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&InitErr.S1Err{}))
@@ -41,7 +41,7 @@ func TestEndure_DoubleStop_Err(t *testing.T) {
 }
 
 func TestEndure_Serve_Err(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(false))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeErr.S4ServeError{})) // should produce an error during the Serve
@@ -66,7 +66,7 @@ time X is 0s
 4. In case of S1Err vertices S5 -> S4V -> S2ServeErr (with error in Serve in X+5s) -> S1Err should be restarted
 */
 func TestEndure_Serve_Retry_Err(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
@@ -83,24 +83,13 @@ func TestEndure_Serve_Retry_Err(t *testing.T) {
 	// we can't be sure, what node will be processed first
 	ord := [2]string{"ServeRetryErr.S1ServeErr", "ServeRetryErr.S2ServeErr"}
 
-	count := 0
-
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		for r := range res {
 			assert.Error(t, r.Error)
 			if r.VertexID == ord[0] || r.VertexID == ord[1] {
-				count++
-				if count == 2 {
-					assert.NoError(t, c.Stop())
-					wg.Done()
-					return
-				}
-			} else {
-				assert.Fail(t, "vertex should be in the ord slice")
 				wg.Done()
-				return
 			}
 		}
 	}()
@@ -117,7 +106,7 @@ time X is 0s
 5. Test should receive at least 100 errors
 */
 func TestEndure_Serve_Retry_100_Err(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
@@ -134,8 +123,6 @@ func TestEndure_Serve_Retry_100_Err(t *testing.T) {
 	// we can't be sure, what node will be processed first
 	ord := [2]string{"ServeRetryErr.S1ServeErr", "ServeRetryErr.S2ServeErr"}
 
-	count := 0
-
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -147,14 +134,6 @@ func TestEndure_Serve_Retry_100_Err(t *testing.T) {
 				return
 			}
 			if r.VertexID == ord[0] || r.VertexID == ord[1] {
-				count++
-				if count == 100 {
-					assert.NoError(t, c.Stop())
-					wg.Done()
-					return
-				}
-			} else {
-				assert.Fail(t, "vertex should be in the ord slice")
 				wg.Done()
 				return
 			}
@@ -165,7 +144,7 @@ func TestEndure_Serve_Retry_100_Err(t *testing.T) {
 }
 
 func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&ServeRetryErr.S4{}))
@@ -182,8 +161,6 @@ func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
 	// we can't be sure, what node will be processed first
 	ord := [2]string{"ServeRetryErr.S1ServeErr", "ServeRetryErr.S2ServeErr"}
 
-	count := 0
-
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -195,14 +172,9 @@ func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
 				return
 			}
 			if r.VertexID == ord[0] || r.VertexID == ord[1] {
-				count++
-				if count == 100 {
-					assert.NoError(t, c.Stop())
-					wg.Done()
-					return
-				}
-			} else {
-				assert.Fail(t, "vertex should be in the ord slice")
+				assert.Error(t, c.Stop())
+				wg.Done()
+				return
 			}
 		}
 	}()
@@ -211,7 +183,7 @@ func TestEndure_Serve_Retry_100_With_Random_Err(t *testing.T) {
 }
 
 func TestEndure_NoRegisterInvoke(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.Error(t, c.Init())
@@ -223,7 +195,7 @@ func TestEndure_NoRegisterInvoke(t *testing.T) {
 }
 
 func TestEndure_CollectorFuncReturnError(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(true))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&CollectorFuncReturn.FooDep{}))
@@ -237,7 +209,7 @@ func TestEndure_CollectorFuncReturnError(t *testing.T) {
 }
 
 func TestEndure_ForceExit(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(false)) // stop timeout 10 seconds
+	c, err := endure.NewContainer(nil) // stop timeout 10 seconds
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Register(&mixed.Foo{})) // sleep for 15 seconds
@@ -250,7 +222,7 @@ func TestEndure_ForceExit(t *testing.T) {
 }
 
 func TestEndure_CyclicDeps(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(false))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.RegisterAll(
@@ -263,7 +235,7 @@ func TestEndure_CyclicDeps(t *testing.T) {
 }
 
 func TestEndure_CyclicDepsCollects(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(false))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.RegisterAll(
@@ -275,7 +247,7 @@ func TestEndure_CyclicDepsCollects(t *testing.T) {
 }
 
 func TestEndure_CyclicDepsInterfaceInit(t *testing.T) {
-	c, err := endure.NewContainer(nil, endure.RetryOnFail(false))
+	c, err := endure.NewContainer(nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.RegisterAll(
