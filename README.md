@@ -20,7 +20,6 @@ Endure is an open-source (MIT licensed) plugin container with IoC and self-heali
 - Algorithms used: graph and double-linked list
 - Support easy to add Middleware plugins
 - Error reporting
-- Automatically restart failing vertices
 
 <h2>Installation</h2>
 
