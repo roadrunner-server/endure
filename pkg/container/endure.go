@@ -224,7 +224,11 @@ func profile() {
 		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
-		srv := &http.Server{Handler: mux, Addr: "0.0.0.0:6061"}
+		srv := &http.Server{
+			ReadHeaderTimeout: time.Minute * 5,
+			Handler:           mux,
+			Addr:              "0.0.0.0:6061",
+		}
 
 		_ = srv.ListenAndServe()
 	}()
