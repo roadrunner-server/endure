@@ -3,7 +3,7 @@ module github.com/roadrunner-server/endure
 go 1.19
 
 require (
-	github.com/roadrunner-server/errors v1.1.2
+	github.com/roadrunner-server/errors v1.2.0
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.21.0
 )
