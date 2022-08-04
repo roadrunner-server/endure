@@ -4,7 +4,7 @@ import (
 	"github.com/roadrunner-server/errors"
 )
 
-func (e *Endure) register(name string, vrtx interface{}) error {
+func (e *Endure) register(name string, vrtx any) error {
 	// check the vertex
 	const op = errors.Op("endure_register")
 	if e.graph.HasVertex(name) {

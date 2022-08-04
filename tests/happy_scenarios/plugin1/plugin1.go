@@ -8,8 +8,8 @@ import (
 type S1 struct {
 }
 
-func (s1 *S1) Collects() []interface{} {
-	return []interface{}{
+func (s1 *S1) Collects() []any {
+	return []any{
 		s1.AddService,
 	}
 }

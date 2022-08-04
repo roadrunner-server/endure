@@ -15,7 +15,7 @@ type FSM interface {
 	// InitialState sets the initial FSM state
 	InitialState(st State)
 	// Transition used to move from one state to another
-	Transition(event Event, args ...interface{}) (interface{}, error)
+	Transition(event Event, args ...any) (any, error)
 }
 
 // NewFSM returns new FSM implementation based on initial state and callbacks to move from one state to another
@@ -160,7 +160,7 @@ Event -> Start. Error on other events (Initialize, Stop)
 Event -> Stop. Error on other events (Start, Initialize)
 3. Stopping -> Stopped
 */
-func (f *FSMImpl) Transition(event Event, args ...interface{}) (interface{}, error) {
+func (f *FSMImpl) Transition(event Event, args ...any) (any, error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 	err := f.recognizer(event)

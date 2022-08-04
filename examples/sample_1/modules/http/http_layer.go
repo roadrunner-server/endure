@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/rs/cors"
 	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/db"
 	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/logger"
+	"github.com/rs/cors"
 )
 
 type Http struct {
@@ -100,8 +100,8 @@ func (h *Http) Stop() error {
 	return nil
 }
 
-func (h *Http) Collects() []interface{} {
-	return []interface{}{
+func (h *Http) Collects() []any {
+	return []any{
 		h.AddMiddleware,
 	}
 }

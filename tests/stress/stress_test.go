@@ -58,7 +58,9 @@ func TestEndure_Serve_Err(t *testing.T) {
 	assert.Error(t, err)
 }
 
-/* The scenario for this test is the following:
+/*
+	The scenario for this test is the following:
+
 time X is 0s
 1. After X+1s S2ServeErr produces error in Serve
 2. At the same time at X+1s S1Err also produces error in Serve
@@ -97,7 +99,9 @@ func TestEndure_Serve_Retry_Err(t *testing.T) {
 	wg.Wait()
 }
 
-/* The scenario for this test is the following:
+/*
+	The scenario for this test is the following:
+
 time X is 0s
 1. After X+1s S2ServeErr produces error in Serve
 2. At the same time at X+1s S1Err also produces error in Serve

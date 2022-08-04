@@ -10,8 +10,7 @@ import (
 )
 
 /*
-   Traverse the DLL in the forward direction
-
+Traverse the DLL in the forward direction
 */
 func (e *Endure) internalInit(vrtx *vertex.Vertex) error {
 	const op = errors.Op("endure_internal_init")
@@ -37,7 +36,6 @@ func (e *Endure) internalInit(vrtx *vertex.Vertex) error {
 
 /*
 Here we also track the Disabled vertices. If the vertex is disabled we should re-calculate the tree
-
 */
 func (e *Endure) callInitFn(init reflect.Method, vrtx *vertex.Vertex) error {
 	const op = errors.Op("endure_call_init_fn")

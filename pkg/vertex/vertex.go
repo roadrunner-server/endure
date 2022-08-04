@@ -120,7 +120,7 @@ type Vertex struct {
 	// ID of the vertex, currently string representation of the structure fn
 	ID string
 	// Vertex (Registered structure)
-	Iface interface{}
+	Iface any
 	// Meta information about current Vertex
 	Meta Meta
 	// Dependencies of the node

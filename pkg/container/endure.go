@@ -64,7 +64,7 @@ type Endure struct {
 	stopTimeout     time.Duration
 
 	// deps is a map with all saved deps
-	deps    map[string]interface{}
+	deps    map[string]any
 	depsOrd []string
 	// disabled is a map with disabled deps
 	disabled map[string]bool
@@ -95,16 +95,17 @@ type Options func(endure *Endure)
 /*
 NewContainer returns empty endure container
 Input parameters: logLevel
-   -1 is the most informative level - DebugLevel --> also turns on pprof endpoint
-   0 - InfoLevel defines info log level.
-   1 -
-   2 - WarnLevel defines warn log level.
-   3 - ErrorLevel defines error log level.
-   4 - FatalLevel defines fatal log level.
-   5 - PanicLevel defines panic log level.
-   6 - NoLevel defines an absent log level.
-   7 - Disabled disables the logger.
-   see the endure.Level
+
+	-1 is the most informative level - DebugLevel --> also turns on pprof endpoint
+	0 - InfoLevel defines info log level.
+	1 -
+	2 - WarnLevel defines warn log level.
+	3 - ErrorLevel defines error log level.
+	4 - FatalLevel defines fatal log level.
+	5 - PanicLevel defines panic log level.
+	6 - NoLevel defines an absent log level.
+	7 - Disabled disables the logger.
+	see the endure.Level
 */
 func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 	const op = errors.Op("new_container")
@@ -120,7 +121,7 @@ func NewContainer(logger *zap.Logger, options ...Options) (*Endure, error) {
 		output:      Empty,
 		disabled:    make(map[string]bool),
 		initialized: make(map[string]bool),
-		deps:        make(map[string]interface{}, 5),
+		deps:        make(map[string]any, 5),
 		depsOrd:     make([]string, 0, 2),
 	}
 
@@ -235,7 +236,7 @@ func profile() {
 }
 
 // Register registers the dependencies in the Endure graph without invoking any methods
-func (e *Endure) Register(vertex interface{}) error {
+func (e *Endure) Register(vertex any) error {
 	const op = errors.Op("endure_register")
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
@@ -275,7 +276,7 @@ func (e *Endure) Register(vertex interface{}) error {
 	return nil
 }
 
-func (e *Endure) reRegister(vertex interface{}) error {
+func (e *Endure) reRegister(vertex any) error {
 	const op = errors.Op("endure_register")
 	t := reflect.TypeOf(vertex)
 	vertexID := removePointerAsterisk(t.String())
@@ -293,7 +294,7 @@ func (e *Endure) reRegister(vertex interface{}) error {
 }
 
 // RegisterAll is the helper for the register to register more than one structure in the endure
-func (e *Endure) RegisterAll(plugins ...interface{}) error {
+func (e *Endure) RegisterAll(plugins ...any) error {
 	const op = errors.Op("endure_register_all")
 	for _, plugin := range plugins {
 		err := e.Register(plugin)

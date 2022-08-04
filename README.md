@@ -121,12 +121,12 @@ type (
 
 	// Provider declares the ability to provide dependencies to other plugins (OPTIONAL)
 	Provider interface {
-		Provides() []interface{}
+		Provides() []any
 	}
 
 	// Collector declares the ability to accept the plugins which match the provided method signature (OPTIONAL)
 	Collector interface {
-		Collects() []interface{}
+		Collects() []any
 	}
 )
 

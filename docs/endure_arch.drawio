@@ -13,7 +13,7 @@
         <mxCell id="HHnZ4qpc_pkSZuf3FhQu-26" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;fontSize=15;fontColor=#000000;fontFamily=Jetbrains Mono;" parent="HHnZ4qpc_pkSZuf3FhQu-21" vertex="1">
           <mxGeometry y="52" width="290" height="8" as="geometry" />
         </mxCell>
-        <mxCell id="HHnZ4qpc_pkSZuf3FhQu-23" value="Iface interface{}" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=14;fontStyle=0;fontFamily=Jetbrains Mono;" parent="HHnZ4qpc_pkSZuf3FhQu-21" vertex="1">
+        <mxCell id="HHnZ4qpc_pkSZuf3FhQu-23" value="Iface any" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=14;fontStyle=0;fontFamily=Jetbrains Mono;" parent="HHnZ4qpc_pkSZuf3FhQu-21" vertex="1">
           <mxGeometry y="60" width="290" height="26" as="geometry" />
         </mxCell>
         <mxCell id="HHnZ4qpc_pkSZuf3FhQu-25" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;fontSize=15;fontColor=#000000;fontFamily=Jetbrains Mono;" parent="HHnZ4qpc_pkSZuf3FhQu-21" vertex="1">

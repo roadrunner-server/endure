@@ -25,8 +25,8 @@ func (s *Plugin2) Stop() error {
 	return nil
 }
 
-func (s *Plugin2) Provides() []interface{} {
-	return []interface{}{s.ProvideInterface}
+func (s *Plugin2) Provides() []any {
+	return []any{s.ProvideInterface}
 }
 
 func (s *Plugin2) ProvideInterface() (FooWriter, error) {

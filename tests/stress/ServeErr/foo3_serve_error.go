@@ -3,8 +3,8 @@ package ServeErr
 type S3ServeError struct {
 }
 
-func (s3 *S3ServeError) Collects() []interface{} {
-	return []interface{}{
+func (s3 *S3ServeError) Collects() []any {
+	return []any{
 		s3.SomeOtherDep,
 	}
 }

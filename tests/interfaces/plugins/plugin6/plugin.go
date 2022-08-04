@@ -50,8 +50,8 @@ func (p *Plugin) ProvideWithOutName() (SuperInterface, error) {
 }
 
 // Provides declares factory methods.
-func (p *Plugin) Provides() []interface{} {
-	return []interface{}{
+func (p *Plugin) Provides() []any {
+	return []any{
 		p.ProvideWithOutName,
 		p.ProvideWithName,
 		p.ProvideWithInterfaceAndStruct,

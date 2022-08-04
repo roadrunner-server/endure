@@ -12,8 +12,8 @@ func (s2 *S2) Init(db *plugin4.DB) error {
 	return nil
 }
 
-func (s2 *S2) Provides() []interface{} {
-	return []interface{}{s2.CreateDB}
+func (s2 *S2) Provides() []any {
+	return []any{s2.CreateDB}
 }
 
 func (s2 *S2) CreateDB() (*DB, error) {

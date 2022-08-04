@@ -201,7 +201,7 @@ func (g *Graph) depthFirstSearch(deps []*vertex.Vertex, tmp map[string]*vertex.V
 }
 
 // AddVertex adds an vertex to the graph with its ID, value and meta information
-func (g *Graph) AddVertex(vertexID string, vertexIface interface{}) {
+func (g *Graph) AddVertex(vertexID string, vertexIface any) {
 	v := vertex.NewVertex()
 	v.ID = vertexID
 	v.Iface = vertexIface

@@ -50,9 +50,9 @@ type (
 		// Stop stops the plugins in rev-topological order
 		Stop() error
 		// Register registers one plugin in container
-		Register(service interface{}) error
+		Register(service any) error
 		// RegisterAll register set of comma separated plugins in container
-		RegisterAll(service ...interface{}) error
+		RegisterAll(service ...any) error
 		// Init initializes all plugins (calling Init function), calculate vertices, invoke Collects and Provided functions if exist
 		Init() error
 	}
@@ -60,12 +60,12 @@ type (
 	// Provider declares the ability to provide service edges of declared types.
 	Provider interface {
 		// Provides function return set of functions which provided dependencies to other plugins
-		Provides() []interface{}
+		Provides() []any
 	}
 
 	// Collector declares the ability to accept the plugins which match the provided method signature.
 	Collector interface {
 		// Collects search for the structures or (and) interfaces in the arguments and provides it for the plugin
-		Collects() []interface{}
+		Collects() []any
 	}
 )

@@ -9,7 +9,7 @@ import (
 	"github.com/roadrunner-server/errors"
 )
 
-func providersReturnType(m interface{}) ([]reflect.Type, error) {
+func providersReturnType(m any) ([]reflect.Type, error) {
 	const op = errors.Op("endure_providers_return_type")
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
@@ -29,7 +29,7 @@ func providersReturnType(m interface{}) ([]reflect.Type, error) {
 	return ret, nil
 }
 
-func fnIn(m interface{}) ([]reflect.Type, error) {
+func fnIn(m any) ([]reflect.Type, error) {
 	const op = errors.Op("fn_in")
 	r := reflect.TypeOf(m)
 	if r.Kind() != reflect.Func {
@@ -58,7 +58,7 @@ func functionParameters(r reflect.Method) []reflect.Type {
 	return args
 }
 
-func getFunctionName(i interface{}) string {
+func getFunctionName(i any) string {
 	rawName := runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 	name := strings.TrimPrefix(filepath.Ext(rawName), ".")
 

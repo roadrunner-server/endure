@@ -27,8 +27,8 @@ func (p *Plugin3) Stop() error {
 	return nil
 }
 
-func (p *Plugin3) Provides() []interface{} {
-	return []interface{}{
+func (p *Plugin3) Provides() []any {
+	return []any{
 		p.AddDB,
 		p.AddDBWithErr,
 		p.OtherType,

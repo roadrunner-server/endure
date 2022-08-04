@@ -25,8 +25,8 @@ func (s *S6Interface) Stop() error {
 	return nil
 }
 
-func (s *S6Interface) Provides() []interface{} {
-	return []interface{}{s.ProvideInterface}
+func (s *S6Interface) Provides() []any {
+	return []any{s.ProvideInterface}
 }
 
 func (s *S6Interface) ProvideInterface() FooWriter {

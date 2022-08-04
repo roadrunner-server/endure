@@ -20,8 +20,8 @@ func (p1 *Plugin1) Stop() error {
 	return nil
 }
 
-func (p1 *Plugin1) Collects() []interface{} {
-	return []interface{}{
+func (p1 *Plugin1) Collects() []any {
+	return []any{
 		p1.GetP2,
 	}
 }

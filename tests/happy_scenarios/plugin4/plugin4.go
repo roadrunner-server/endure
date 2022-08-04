@@ -20,8 +20,8 @@ func (s *S4) Init(foo5 *plugin5.S5, fooWriter plugin6.FooWriter) error {
 }
 
 // But provide some
-func (s *S4) Provides() []interface{} {
-	return []interface{}{
+func (s *S4) Provides() []any {
+	return []any{
 		s.CreateAnotherDB,
 	}
 }
@@ -33,8 +33,8 @@ func (s *S4) CreateAnotherDB() (*DB, error) {
 	}, nil
 }
 
-func (s *S4) Collects() []interface{} {
-	return []interface{}{
+func (s *S4) Collects() []any {
+	return []any{
 		s.AddService,
 	}
 }

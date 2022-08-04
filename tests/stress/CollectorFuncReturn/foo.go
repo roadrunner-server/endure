@@ -19,8 +19,8 @@ func (f *FooDep) Stop() error {
 	return nil
 }
 
-func (f *FooDep) Collects() []interface{} {
-	return []interface{}{
+func (f *FooDep) Collects() []any {
+	return []any{
 		f.AddService,
 	}
 }

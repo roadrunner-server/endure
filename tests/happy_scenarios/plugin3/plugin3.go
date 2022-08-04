@@ -8,8 +8,8 @@ import (
 type S3 struct {
 }
 
-func (s3 *S3) Collects() []interface{} {
-	return []interface{}{
+func (s3 *S3) Collects() []any {
+	return []any{
 		s3.SomeOtherDep,
 	}
 }

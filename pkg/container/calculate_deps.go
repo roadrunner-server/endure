@@ -16,7 +16,7 @@ Adds a provided type via the Provider interface:
 actual type after FnsProviderToInvoke will be invoked
 2. FnsProviderToInvoke --> is the list of the functions to invoke via the reflection to get the actual provided type
 */
-func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
+func (e *Endure) addProviders(vertexID string, vertex any) error {
 	// hot path
 	if _, ok := vertex.(Provider); !ok {
 		return nil
@@ -27,7 +27,7 @@ func (e *Endure) addProviders(vertexID string, vertex interface{}) error {
 }
 
 // vertex implements provider
-func (e *Endure) implProvidesPath(vertexID string, vrtx interface{}) error {
+func (e *Endure) implProvidesPath(vertexID string, vrtx any) error {
 	const op = errors.Op("endure_add_providers")
 	provider := vrtx.(Provider)
 	for _, fn := range provider.Provides() {
@@ -125,11 +125,9 @@ structs) in the function parameters list.
 If we found such vertex we can go by the following paths:
 1. Function parameters list contain interfaces
 2. Function parameters list contain only structures (easy case)
-
-
 */
 func (e *Endure) implCollectorPath(vrtx *vertex.Vertex) error {
-	// vertexID string, vertex interface{} same vertex
+	// vertexID string, vertex any same vertex
 	const op = errors.Op("endure_impl_collector_path")
 	collector := vrtx.Iface.(Collector)
 	// range Collectors functions

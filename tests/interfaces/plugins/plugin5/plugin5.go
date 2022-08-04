@@ -30,8 +30,8 @@ func (f9 *Plugin5) Stop() error {
 	return nil
 }
 
-func (f9 *Plugin5) Collects() []interface{} {
-	return []interface{}{
+func (f9 *Plugin5) Collects() []any {
+	return []any{
 		f9.AddMiddleware,
 	}
 }

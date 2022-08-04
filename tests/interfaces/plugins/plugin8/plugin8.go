@@ -11,12 +11,12 @@ type SomeInterface interface {
 }
 
 type Plugin8 struct {
-	collectedDeps []interface{}
+	collectedDeps []any
 }
 
 // No deps
 func (s *Plugin8) Init() error {
-	s.collectedDeps = make([]interface{}, 0, 6)
+	s.collectedDeps = make([]any, 0, 6)
 	return nil
 }
 
@@ -38,8 +38,8 @@ func (s *Plugin8) Name() string {
 	return "plugin8"
 }
 
-func (s *Plugin8) Collects() []interface{} {
-	return []interface{}{
+func (s *Plugin8) Collects() []any {
+	return []any{
 		s.SomeCollects,
 		s.SomeCollects2,
 		s.SomeCollects3,

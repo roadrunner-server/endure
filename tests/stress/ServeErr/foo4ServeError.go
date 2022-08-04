@@ -15,8 +15,8 @@ func (s *S4ServeError) Init(s5 *S5) error {
 }
 
 // But provide some
-func (s *S4ServeError) Provides() []interface{} {
-	return []interface{}{
+func (s *S4ServeError) Provides() []any {
+	return []any{
 		s.CreateAnotherDB,
 	}
 }

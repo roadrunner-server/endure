@@ -19,8 +19,8 @@ func (f *Plugin1) Stop() error {
 	return nil
 }
 
-func (f *Plugin1) Provides() []interface{} {
-	return []interface{}{
+func (f *Plugin1) Provides() []any {
+	return []any{
 		f, // <- should be a function
 	}
 }

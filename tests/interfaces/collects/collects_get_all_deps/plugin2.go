@@ -3,12 +3,12 @@ package collects_get_all_deps
 import "github.com/roadrunner-server/errors"
 
 type Plugin2 struct {
-	collectsDeps []interface{}
+	collectsDeps []any
 }
 
 func (f *Plugin2) Init() error {
 	// should be 2 deps
-	f.collectsDeps = make([]interface{}, 0, 2)
+	f.collectsDeps = make([]any, 0, 2)
 	return nil
 }
 
@@ -24,8 +24,8 @@ func (f *Plugin2) Stop() error {
 	return nil
 }
 
-func (f *Plugin2) Collects() []interface{} {
-	return []interface{}{
+func (f *Plugin2) Collects() []any {
+	return []any{
 		f.GetSuper,
 		f.GetSuper2,
 	}

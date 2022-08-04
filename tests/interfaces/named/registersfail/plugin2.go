@@ -24,8 +24,8 @@ func (f *Plugin2) Stop() error {
 }
 
 // But provide some
-func (f *Plugin2) Provides() []interface{} {
-	return []interface{}{
+func (f *Plugin2) Provides() []any {
+	return []any{
 		f.ProvideDB,
 	}
 }

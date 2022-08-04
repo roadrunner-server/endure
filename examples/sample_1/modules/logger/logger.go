@@ -22,8 +22,8 @@ func (l *Logger) Init() error {
 	return nil
 }
 
-func (l *Logger) Provides() []interface{} {
-	return []interface{}{
+func (l *Logger) Provides() []any {
+	return []any{
 		l.LoggerInstance,
 	}
 }

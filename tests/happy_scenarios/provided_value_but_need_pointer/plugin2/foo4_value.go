@@ -13,8 +13,8 @@ func (s *Plugin2) Init() error {
 }
 
 // But provide some
-func (s *Plugin2) Provides() []interface{} {
-	return []interface{}{
+func (s *Plugin2) Provides() []any {
+	return []any{
 		s.CreateAnotherDB,
 	}
 }
