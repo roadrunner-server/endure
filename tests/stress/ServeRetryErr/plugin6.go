@@ -13,7 +13,7 @@ type S2ServeErr struct {
 }
 
 func (s2 *S2ServeErr) Init(svc *S4) error {
-	s := rand.Intn(10)
+	s := rand.Intn(10) //nolint:gosec
 	// just random
 	if s == 5 {
 		return errors.New("random error during init from S2")

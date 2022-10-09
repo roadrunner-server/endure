@@ -49,7 +49,7 @@ func (s3 *S3Init) SomeOtherDep(svc *S4, svc2 *S2) error {
 // Collects on S3
 func (s3 *S3Init) Init(svc *S2) error {
 	const Op = "S3Init_Init"
-	s := rand.Intn(10)
+	s := rand.Intn(10) //nolint:gosec
 	if s == 5 {
 		return errors.E(Op, errors.Errorf("random error during init from S3"))
 	}

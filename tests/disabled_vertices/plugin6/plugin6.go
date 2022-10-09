@@ -12,8 +12,8 @@ type Plugin6 struct {
 
 func (p6 *Plugin6) Init() error {
 	go func() {
-		http.ListenAndServe(":8080", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, "hello")
+		_ = http.ListenAndServe(":8080", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { //nolint:gosec
+			_, _ = fmt.Fprint(w, "hello")
 		}))
 	}()
 

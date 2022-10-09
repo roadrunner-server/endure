@@ -1,12 +1,10 @@
 # Documentation: <https://github.com/golangci/golangci-lint#config-file>
 
 run:
-  go: '1.17'
   timeout: 1m
   skip-dirs:
     - .github
     - .git
-    - tests
   modules-download-mode: readonly
   allow-parallel-runners: true
 
@@ -47,7 +45,6 @@ linters: # All available linters list: <https://golangci-lint.run/usage/linters/
   enable:
     - asciicheck # Simple linter to check that your code does not contain non-ASCII identifiers
     - bodyclose # Checks whether HTTP response body is closed successfully
-    - deadcode # Finds unused code
     - depguard # Go linter that checks if package imports are in a list of acceptable packages
     - dogsled # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
     - errcheck # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases
@@ -69,13 +66,10 @@ linters: # All available linters list: <https://golangci-lint.run/usage/linters/
     - noctx # finds sending http request without context.Context
     - nolintlint # Reports ill-formed or insufficient nolint directives
     - prealloc # Finds slice declarations that could potentially be preallocated
-    - rowserrcheck # Checks whether Err of rows is checked successfully
     - staticcheck # Staticcheck is a go vet on steroids, applying a ton of static analysis checks
-    - structcheck # Finds unused struct fields
     - tparallel # detects inappropriate usage of t.Parallel() method in your Go test codes
     - unconvert # Remove unnecessary type conversions
     - unused # Checks Go code for unused constants, variables, functions and types
-    - varcheck # Finds unused global variables and constants
     - whitespace # Tool for detection of leading and trailing whitespace
 
 issues:

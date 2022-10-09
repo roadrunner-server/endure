@@ -1,7 +1,7 @@
 package happy_scenarios
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -261,7 +261,7 @@ func TestEndure_VisualizeFile(t *testing.T) {
 		}
 	}()
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		t.Fatal(err)
 	}
