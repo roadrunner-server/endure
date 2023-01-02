@@ -20,9 +20,13 @@ type Worker interface {
 	Work()
 }
 
-func (p *Plugin) Init(w Worker, ww Worker) error {
+type Wurker interface {
+	Wurk()
+}
+
+func (p *Plugin) Init(w Worker, ww Wurker) error {
 	w.Work()
-	ww.Work()
+	ww.Wurk()
 	return nil
 }
 

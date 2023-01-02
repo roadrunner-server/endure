@@ -5,6 +5,7 @@ type implements struct {
 	plugin any
 	// method will be non-empty if we have Provided dep
 	methods []string
+	weight  uint
 }
 
 func (i *implements) Plugin() any {

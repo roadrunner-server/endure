@@ -24,11 +24,9 @@ type Endure struct {
 	// Dependency graph
 	graph *graph.Graph
 	// log
-	log *slog.Logger
-	// OPTIONS
-	maxInterval     time.Duration
-	initialInterval time.Duration
-	stopTimeout     time.Duration
+	log         *slog.Logger
+	stopTimeout time.Duration
+	profiler    bool
 
 	// result always points on healthy channel associated with vertex
 	// since Endure structure has ALL method with pointer receiver, we do not need additional pointer to the sync.Map
@@ -52,21 +50,26 @@ func New(options ...Options) *Endure {
 		registar: registar.New(),
 		graph:    graph.New(),
 		///
-		mu:              &sync.RWMutex{},
-		initialInterval: time.Second * 1,
-		maxInterval:     time.Second * 60,
-		results:         sync.Map{},
-		stopTimeout:     time.Second * 10,
-		log:             slog.New(opts),
+		mu:          &sync.RWMutex{},
+		results:     sync.Map{},
+		stopTimeout: time.Second * 30,
+		log:         slog.New(opts),
 	}
 
 	// Main thread channels
 	c.handleErrorCh = make(chan *result)
 	c.userResultsCh = make(chan *Result)
 
-	// append options
-	for _, option := range options {
-		option(c)
+	if options != nil {
+		// append options
+		for _, option := range options {
+			option(c)
+		}
+	}
+
+	// start profiler server
+	if c.profiler {
+		profile()
 	}
 
 	return c
@@ -112,7 +115,7 @@ func (e *Endure) Register(vertex any) error {
 	// push the vertex
 	e.graph.AddVertex(vertex, weight)
 	// add the dependency for the resolver
-	e.registar.Insert(vertex, reflect.TypeOf(vertex), "")
+	e.registar.Insert(vertex, reflect.TypeOf(vertex), "", weight)
 
 	e.log.Debug(
 		"type registered",
@@ -136,7 +139,7 @@ func (e *Endure) Register(vertex any) error {
 
 		// iter
 		for i := 0; i < len(outDeps); i++ {
-			e.registar.Insert(vertex, outDeps[i].Type, outDeps[i].Method)
+			e.registar.Insert(vertex, outDeps[i].Type, outDeps[i].Method, weight)
 			e.log.Debug(
 				"provided type registered",
 				slog.String("type", outDeps[i].Type.String()),

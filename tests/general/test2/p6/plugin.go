@@ -1,10 +1,10 @@
-package p4
+package p6
 
 type Plugin struct {
 }
 
 func (p *Plugin) Init() error {
-	println("initp4")
+	println("initp6")
 	return nil
 }
 
@@ -17,9 +17,9 @@ func (p *Plugin) Stop() error {
 }
 
 func (p *Plugin) Name() string {
-	return "p4"
+	return "p6"
 }
 
-func (p *Plugin) Wurk() {
-	println("wooooorking!!!")
+func (p *Plugin) Work() {
+	println("wooooorking6!!!")
 }

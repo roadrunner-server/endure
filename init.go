@@ -32,8 +32,19 @@ func (e *Endure) init() error {
 			for j := 0; j < len(args[1:]); j++ {
 				arg := args[1:][j]
 
-				plugins := e.registar.Implements(arg)
-				inVals = append(inVals, reflect.ValueOf(plugins[0].Plugin()))
+				plugin := e.registar.Implements(arg)
+				if len(plugin) == 0 {
+					del := e.graph.Remove(vertices[i].Plugin())
+					for k := 0; k < len(del); k++ {
+						e.registar.Remove(del[k].Plugin())
+						e.log.Debug(
+							"plugin disabled, not enough Init dependencies",
+							slog.String("name", del[k].ID().String()),
+						)
+					}
+				}
+
+				inVals = append(inVals, reflect.ValueOf(plugin[0].Plugin()))
 			}
 		}
 
@@ -72,6 +83,12 @@ func (e *Endure) init() error {
 
 			return ret[0].Interface().(error)
 		}
+
+		// add vertex itself
+		vrtx := vertices[i].Plugin()
+		e.registar.Update(vrtx, reflect.TypeOf(vrtx), func() reflect.Value {
+			return reflect.ValueOf(vrtx)
+		})
 
 		if provider, ok := vertices[i].Plugin().(Provider); ok {
 			out := provider.Provides()

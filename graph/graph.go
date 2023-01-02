@@ -4,6 +4,11 @@ import (
 	"reflect"
 )
 
+const (
+	// InitMethodName is the function fn for the reflection
+	InitMethodName = "Init"
+)
+
 // Graph manages the set of services and their edges
 // type of the VerticesMap: directed
 type Graph struct {
@@ -94,6 +99,44 @@ func (g *Graph) Remove(plugin any) []*Vertex {
 
 		switch edges[i].connectionType {
 		case InitConnection:
+			p := edges[i].dest
+			initMethod, _ := reflect.TypeOf(p).MethodByName(InitMethodName)
+
+			args := make([]reflect.Type, initMethod.Type.NumIn())
+			// receiver + other (should be other, since this is a dest vertex)
+			for j := 0; j < initMethod.Type.NumIn(); j++ {
+				args[j] = initMethod.Type.In(j)
+			}
+
+			// remove receiver
+			args = args[1:]
+		retry:
+			for _, v := range g.vertices {
+				if len(args) == 0 {
+					break
+				}
+				if v.Plugin() == p || v.Plugin() == plugin {
+					continue
+				}
+
+				for j := 0; j < len(args); j++ {
+					if reflect.TypeOf(v.Plugin()).Implements(args[j]) {
+						/*
+							we've found a plugin which may replace our dependency
+							now, since we modified the slice, start iteration again
+						*/
+						args = append(args[:j], args[j+1:]...)
+						goto retry
+					}
+				}
+
+			}
+			// we found replacement
+			if len(args) == 0 {
+				return deletedVertices
+			}
+
+			// we didn't find a replacement, mark the vertex as inactive
 			deletedVertices = append(deletedVertices, g.vertices[reflect.TypeOf(edges[i].dest)])
 			g.vertices[reflect.TypeOf(edges[i].dest)].active = false
 			delete(g.vertices, reflect.TypeOf(edges[i].dest))

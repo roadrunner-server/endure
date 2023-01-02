@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"github.com/roadrunner-server/endure/v2"
-	"github.com/roadrunner-server/endure/v2/tests/general/test1/p1"
-	"github.com/roadrunner-server/endure/v2/tests/general/test1/p2"
-	"github.com/roadrunner-server/endure/v2/tests/general/test1/p3"
-	"github.com/roadrunner-server/endure/v2/tests/general/test1/p4"
-	"github.com/roadrunner-server/endure/v2/tests/general/test1/p5"
+	"github.com/roadrunner-server/endure/v2/tests/general/test2/p1"
+	"github.com/roadrunner-server/endure/v2/tests/general/test2/p2"
+	"github.com/roadrunner-server/endure/v2/tests/general/test2/p3"
+	"github.com/roadrunner-server/endure/v2/tests/general/test2/p4"
+	"github.com/roadrunner-server/endure/v2/tests/general/test2/p5"
+	"github.com/roadrunner-server/endure/v2/tests/general/test2/p6"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,6 +29,9 @@ func Test1(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = end.Register(&p5.Plugin{})
+	assert.NoError(t, err)
+
+	err = end.Register(&p6.Plugin{})
 	assert.NoError(t, err)
 
 	err = end.Init()

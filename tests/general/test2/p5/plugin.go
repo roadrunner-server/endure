@@ -18,7 +18,7 @@ type Fooer interface {
 func (p *Plugin) Init() error {
 	p.nnn = "foo"
 	return errors.E(errors.Disabled)
-	//return nil
+	return nil
 }
 
 func (p *Plugin) Serve() chan error {

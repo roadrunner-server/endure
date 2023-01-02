@@ -16,16 +16,16 @@ func (e *Endure) resolveCollectorEdges(plugin any) error {
 	inEntries := collector.Collects()
 
 	for i := 0; i < len(inEntries); i++ {
-		implList := e.registar.Implements(inEntries[i].Type)
-		if len(implList) > 0 {
-			for j := 0; j < len(implList); j++ {
-				e.graph.AddEdge(graph.CollectsConnection, implList[j].Plugin(), plugin)
+		res := e.registar.Implements(inEntries[i].Type)
+		if len(res) > 0 {
+			for j := 0; j < len(res); j++ {
+				e.graph.AddEdge(graph.CollectsConnection, res[j].Plugin(), plugin)
 				/*
 					Here we need to init the
 				*/
 				e.log.Debug("collects edge found",
-					slog.Any("methods", implList[j].Method()),
-					slog.Any("src", e.graph.VertexById(implList[j].Plugin()).ID().String()),
+					slog.Any("methods", res[j].Method()),
+					slog.Any("src", e.graph.VertexById(res[j].Plugin()).ID().String()),
 					slog.Any("dest", e.graph.VertexById(plugin).ID().String()))
 			}
 		}
@@ -70,19 +70,22 @@ func (e *Endure) resolveEdges() error {
 		}
 
 		if len(args) > 1 {
-			res := e.registar.Implements(args[1:]...)
-			if len(res) != 0 {
-				for j := 0; j < len(res); j++ {
-					// add graph edge
-					e.graph.AddEdge(graph.InitConnection, res[j].Plugin(), vertex.Plugin())
-					// log
-					e.log.Debug(
-						"init edge found",
-						slog.Any("src", e.graph.VertexById(res[j].Plugin()).ID().String()),
-						slog.Any("dest", e.graph.VertexById(vertex.Plugin()).ID().String()),
-					)
+			for j := 1; j < len(args); j++ {
+				res := e.registar.Implements(args[j])
+				if len(res) > 0 {
+					for k := 0; k < len(res); k++ {
+						// add graph edge
+						e.graph.AddEdge(graph.InitConnection, res[k].Plugin(), vertex.Plugin())
+						// log
+						e.log.Debug(
+							"init edge found",
+							slog.Any("src", e.graph.VertexById(res[k].Plugin()).ID().String()),
+							slog.Any("dest", e.graph.VertexById(vertex.Plugin()).ID().String()),
+						)
+					}
 				}
 			}
+
 		}
 
 		// we don't have a collector() method

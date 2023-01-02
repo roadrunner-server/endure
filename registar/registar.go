@@ -2,6 +2,7 @@ package registar
 
 import (
 	"reflect"
+	"sort"
 )
 
 type Registar struct {
@@ -16,7 +17,7 @@ func New() *Registar {
 	}
 }
 
-func (r *Registar) Insert(plugin any, retType reflect.Type, method string) {
+func (r *Registar) Insert(plugin any, retType reflect.Type, method string, weight uint) {
 	key := reflect.TypeOf(plugin)
 	if _, ok := r.types[key]; !ok {
 		r.types[key] = &registarEntry{}
@@ -27,6 +28,7 @@ func (r *Registar) Insert(plugin any, retType reflect.Type, method string) {
 		method:  method,
 	})
 
+	r.types[key].weight = weight
 	r.types[key].plugin = plugin
 }
 
@@ -75,6 +77,9 @@ func (r *Registar) TypeValue(plugin any, tp reflect.Type) (reflect.Value, bool) 
 
 	for i := 0; i < len(retTp.returnedTypes); i++ {
 		if retTp.returnedTypes[i].retType.Implements(tp) {
+			if retTp.returnedTypes[i].value == nil {
+				return reflect.Value{}, false
+			}
 			return retTp.returnedTypes[i].value(), true
 		}
 	}
@@ -87,49 +92,42 @@ func (r *Registar) Remove(plugin any) {
 }
 
 // Implements check that there are plugins (with Provides) that implement all types
-func (r *Registar) Implements(types ...reflect.Type) []*implements {
-	// matchingTypes are plugins (any)
-	var matchingTypes []*implements
-
+func (r *Registar) Implements(tp reflect.Type) []*implements {
+	var impl []*implements
 	// range over all registered types (basically all that we know about plugins and providers)
 	for k, entry := range r.types {
-		var methods []string
-		implementsAllTypes := true
 		// iterate over types, provided by the user
 		// plugin (w or w/o provides) should implement this type
-		for i := 0; i < len(types); i++ {
-			requiredType := types[i]
 
-			// our plugin might implement one of the needed types
-			// if not, check if the plugin provides some types which might implement the type
-			if !k.Implements(requiredType) {
-				implemented := false
-				// here we check that provides
-				for j := 0; j < len(entry.returnedTypes); j++ {
-					provided := entry.returnedTypes[j]
-					if provided.retType.Implements(requiredType) {
-						// plan -> call method
-						implemented = true
-						methods = append(methods, provided.method)
-						break
-					}
-				}
-
-				if !implemented {
-					implementsAllTypes = false
-					methods = nil
-					break
-				}
-			}
+		// our plugin might implement one of the needed types
+		// if not, check if the plugin provides some types which might implement the type
+		if k.Implements(tp) {
+			impl = append(impl, &implements{
+				plugin: entry.Plugin(),
+				weight: entry.Weight(),
+			})
+			continue
 		}
 
-		if implementsAllTypes {
-			matchingTypes = append(matchingTypes, &implements{
-				plugin:  entry.Plugin(),
-				methods: methods,
-			})
+		// here we check that provides
+		for j := 0; j < len(entry.returnedTypes); j++ {
+			provided := entry.returnedTypes[j]
+			if provided.retType.Implements(tp) {
+				impl = append(impl,
+					&implements{
+						plugin:  entry.Plugin(),
+						weight:  entry.Weight(),
+						methods: []string{provided.method},
+					},
+				)
+			}
 		}
 	}
 
-	return matchingTypes
+	// sort by weight
+	sort.Slice(impl, func(i, j int) bool {
+		return impl[i].weight > impl[j].weight
+	})
+
+	return impl
 }

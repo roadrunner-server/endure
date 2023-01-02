@@ -22,6 +22,10 @@ func (e *Endure) collects() error {
 		// get vals
 		for j := 0; j < len(collects); j++ {
 			impl := e.registar.Implements(collects[j].Type)
+			if len(impl) == 0 {
+				continue
+			}
+
 			for k := 0; k < len(impl); k++ {
 				value, ok := e.registar.TypeValue(impl[k].Plugin(), collects[j].Type)
 				if !ok {

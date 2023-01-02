@@ -16,8 +16,14 @@ type registarEntry struct {
 	returnedTypes []*returnedType
 	// plugin value
 	plugin any
+	// weight
+	weight uint
 }
 
 func (re *registarEntry) Plugin() any {
 	return re.plugin
+}
+
+func (re *registarEntry) Weight() uint {
+	return re.weight
 }

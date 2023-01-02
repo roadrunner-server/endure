@@ -20,6 +20,6 @@ func (p *Plugin) Name() string {
 	return "p4"
 }
 
-func (p *Plugin) Work() {
+func (p *Plugin) Wurk() {
 	println("wooooorking!!!")
 }

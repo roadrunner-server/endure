@@ -20,9 +20,14 @@ type Worker interface {
 	Work()
 }
 
-func (p *Plugin) Init(w Worker, ww Worker) error {
+type Wurker interface {
+	Wurk()
+}
+
+func (p *Plugin) Init(w Worker, ww Wurker) error {
+	println("initp3")
 	w.Work()
-	ww.Work()
+	ww.Wurk()
 	return nil
 }
 
@@ -51,6 +56,6 @@ func callback(p any) {
 func (p *Plugin) Collects() []*dep.In {
 	return []*dep.In{
 		dep.Fits(callback, (*Fooer)(nil)),
-		//dep.Fits(callback, (*Fooer)(nil)),
+		dep.Fits(callback, (*Fooer)(nil)),
 	}
 }
