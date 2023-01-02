@@ -10,6 +10,7 @@ type Gzip struct {
 }
 
 func (gz *Gzip) Init() error {
+	println("init gzip")
 	return nil
 }
 

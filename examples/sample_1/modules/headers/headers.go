@@ -8,6 +8,7 @@ type Headers struct {
 }
 
 func (h *Headers) Init() error {
+	println("init headers")
 	return nil
 }
 

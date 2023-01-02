@@ -6,17 +6,27 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/db"
-	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/logger"
+	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/rs/cors"
 )
+
+type Repository interface {
+	Insert()
+	Update()
+	Delete()
+	Select()
+}
+
+type SuperLogger interface {
+	SuperLogToStdOut(message string)
+}
 
 type Http struct {
 	client http.Client
 	server *http.Server
 	mdwr   []Middleware
-	db     db.Repository
-	logger logger.SuperLogger
+	db     Repository
+	logger SuperLogger
 }
 
 // Middleware interface
@@ -24,7 +34,7 @@ type Middleware interface {
 	Middleware(f http.Handler) http.HandlerFunc
 }
 
-func (h *Http) Init(db db.Repository, logger logger.SuperLogger) error {
+func (h *Http) Init(db Repository, logger SuperLogger) error {
 	logger.SuperLogToStdOut("initializing http")
 	tr := &http.Transport{
 		MaxIdleConns:       10,
@@ -100,9 +110,11 @@ func (h *Http) Stop() error {
 	return nil
 }
 
-func (h *Http) Collects() []any {
-	return []any{
-		h.AddMiddleware,
+func (h *Http) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(p any) {
+			h.mdwr = append(h.mdwr, p.(Middleware))
+		}, (*Middleware)(nil)),
 	}
 }
 
@@ -113,19 +125,19 @@ func (h *Http) AddMiddleware(m Middleware) error {
 
 ///////////////// INFRA HANDLERS //////////////////////////////
 
-func (h *Http) update(writer http.ResponseWriter, request *http.Request) {
+func (h *Http) update(writer http.ResponseWriter, _ *http.Request) {
 	h.db.Update()
 	writer.WriteHeader(http.StatusOK)
 }
 
 // ddelete just to not collide with delete keyword
-func (h *Http) ddelete(writer http.ResponseWriter, request *http.Request) {
+func (h *Http) ddelete(writer http.ResponseWriter, _ *http.Request) {
 	h.db.Delete()
 	writer.WriteHeader(http.StatusOK)
 }
 
 // sselect just to not collide with select keyword
-func (h *Http) sselect(writer http.ResponseWriter, request *http.Request) {
+func (h *Http) sselect(writer http.ResponseWriter, _ *http.Request) {
 	h.db.Select()
 	writer.WriteHeader(http.StatusOK)
 
@@ -134,7 +146,7 @@ func (h *Http) sselect(writer http.ResponseWriter, request *http.Request) {
 	}
 
 }
-func (h *Http) insert(writer http.ResponseWriter, request *http.Request) {
+func (h *Http) insert(writer http.ResponseWriter, _ *http.Request) {
 	h.db.Insert()
 	writer.WriteHeader(http.StatusOK)
 }

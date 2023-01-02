@@ -3,8 +3,13 @@ package logger
 import (
 	"fmt"
 
-	endure "github.com/roadrunner-server/endure/pkg/container"
+	"github.com/roadrunner-server/endure/v2/dep"
 )
+
+type Named interface {
+	// Name return user friendly name of the plugin
+	Name() string
+}
 
 type Logger struct {
 }
@@ -22,13 +27,13 @@ func (l *Logger) Init() error {
 	return nil
 }
 
-func (l *Logger) Provides() []any {
-	return []any{
-		l.LoggerInstance,
+func (l *Logger) Provides() []*dep.Out {
+	return []*dep.Out{
+		dep.OutType((*SuperLogger)(nil), l.LoggerInstance),
 	}
 }
 
-func (l *Logger) LoggerInstance(name endure.Named) (*Logger, error) {
-	println(name.Name() + " invoke " + "logger")
+func (l *Logger) LoggerInstance() (*Logger, error) {
+	println("logger invoked")
 	return l, nil
 }
