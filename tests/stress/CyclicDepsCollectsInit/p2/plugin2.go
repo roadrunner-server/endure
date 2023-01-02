@@ -1,13 +1,13 @@
 package p2
 
-import (
-	"github.com/roadrunner-server/endure/tests/stress/CyclicDepsCollectsInit/api/p1"
-)
+type Foo interface {
+	Foo() string
+}
 
 type Plugin2 struct {
 }
 
-func (p2 *Plugin2) Init(p1 p1.Foo) error {
+func (p2 *Plugin2) Init(p1 Foo) error {
 	_ = p1
 	return nil
 }

@@ -1,6 +1,6 @@
 package plugin2
 
-import "github.com/roadrunner-server/endure/tests/happy_scenarios/plugin4"
+import "github.com/roadrunner-server/endure/v2/tests/happy_scenarios/plugin4"
 
 type DB struct {
 }

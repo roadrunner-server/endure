@@ -5,42 +5,41 @@ import (
 	"testing"
 	"time"
 
-	endure "github.com/roadrunner-server/endure/pkg/container"
-	"github.com/roadrunner-server/endure/tests/issues/issue33"
-	issue55_p1 "github.com/roadrunner-server/endure/tests/issues/issue55/plugin1"
-	issue55_p2 "github.com/roadrunner-server/endure/tests/issues/issue55/plugin2"
-	issue55_p3 "github.com/roadrunner-server/endure/tests/issues/issue55/plugin3"
+	"github.com/roadrunner-server/endure/v2"
+	"github.com/roadrunner-server/endure/v2/tests/issues/issue33"
+	issue55p1 "github.com/roadrunner-server/endure/v2/tests/issues/issue55/plugin1"
+	issue55p2 "github.com/roadrunner-server/endure/v2/tests/issues/issue55/plugin2"
+	issue55p3 "github.com/roadrunner-server/endure/v2/tests/issues/issue55/plugin3"
 
-	issue66_p1 "github.com/roadrunner-server/endure/tests/issues/issue66/plugin1"
-	issue66_p2 "github.com/roadrunner-server/endure/tests/issues/issue66/plugin2"
-	issue66_p3 "github.com/roadrunner-server/endure/tests/issues/issue66/plugin3"
+	issue66p1 "github.com/roadrunner-server/endure/v2/tests/issues/issue66/plugin1"
+	issue66p2 "github.com/roadrunner-server/endure/v2/tests/issues/issue66/plugin2"
+	issue66p3 "github.com/roadrunner-server/endure/v2/tests/issues/issue66/plugin3"
 
-	issue54_p1 "github.com/roadrunner-server/endure/tests/issues/issue54/plugin1"
-	issue54_p2 "github.com/roadrunner-server/endure/tests/issues/issue54/plugin2"
-	issue54_p3 "github.com/roadrunner-server/endure/tests/issues/issue54/plugin3"
+	issue54p1 "github.com/roadrunner-server/endure/v2/tests/issues/issue54/plugin1"
+	issue54p2 "github.com/roadrunner-server/endure/v2/tests/issues/issue54/plugin2"
+	issue54p3 "github.com/roadrunner-server/endure/v2/tests/issues/issue54/plugin3"
 
-	issue84_struct_p1 "github.com/roadrunner-server/endure/tests/issues/issue84/structs/plugin1"
-	issue84_struct_p2 "github.com/roadrunner-server/endure/tests/issues/issue84/structs/plugin2"
-	issue84_struct_p3 "github.com/roadrunner-server/endure/tests/issues/issue84/structs/plugin3"
+	issue84structP1 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/structs/plugin1"
+	issue84structP2 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/structs/plugin2"
+	issue84structP3 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/structs/plugin3"
 
-	issue84_interface_p1 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces/plugin1"
-	issue84_interface_p2 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces/plugin2"
-	issue84_interface_p3 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces/plugin3"
+	issue84interfaceP1 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/interfaces/plugin1"
+	issue84interfaceP2 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/interfaces/plugin2"
+	issue84interfaceP3 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/interfaces/plugin3"
 
-	issue84_interfaces_structs_p1 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces_structs/plugin1"
-	issue84_interfaces_structs_p2 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces_structs/plugin2"
-	issue84_interfaces_structs_p3 "github.com/roadrunner-server/endure/tests/issues/issue84/interfaces_structs/plugin3"
+	issue84interfacesStructsP1 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/interfaces_structs/plugin1"
+	issue84interfacesStructsP2 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/interfaces_structs/plugin2"
+	issue84interfacesStructsP3 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/interfaces_structs/plugin3"
 
-	issue84_one_alive_p1 "github.com/roadrunner-server/endure/tests/issues/issue84/one_alive/plugin1"
-	issue84_one_alive_p2 "github.com/roadrunner-server/endure/tests/issues/issue84/one_alive/plugin2"
-	issue84_one_alive_p3 "github.com/roadrunner-server/endure/tests/issues/issue84/one_alive/plugin3"
+	issue84oneAliveP1 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/one_alive/plugin1"
+	issue84oneAliveP2 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/one_alive/plugin2"
+	issue84oneAliveP3 "github.com/roadrunner-server/endure/v2/tests/issues/issue84/one_alive/plugin3"
 	"github.com/stretchr/testify/assert"
 )
 
 // Provided structure instead of function
 func TestEndure_Issue33(t *testing.T) {
-	c, err := endure.NewContainer(nil)
-	assert.NoError(t, err)
+	c := endure.New()
 
 	assert.Error(t, c.Register(&issue33.Plugin1{}))
 	assert.NoError(t, c.Register(&issue33.Plugin2{}))
@@ -51,12 +50,11 @@ func TestEndure_Issue33(t *testing.T) {
 // Call Stop on the container
 // Should be only 1 stop
 func TestEndure_Issue55(t *testing.T) {
-	container, err := endure.NewContainer(nil)
-	assert.NoError(t, err)
+	container := endure.New()
 
-	assert.NoError(t, container.Register(&issue55_p1.Plugin1{}))
-	assert.NoError(t, container.Register(&issue55_p2.Plugin2{}))
-	assert.NoError(t, container.Register(&issue55_p3.Plugin3{}))
+	assert.NoError(t, container.Register(&issue55p1.Plugin1{}))
+	assert.NoError(t, container.Register(&issue55p2.Plugin2{}))
+	assert.NoError(t, container.Register(&issue55p3.Plugin3{}))
 
 	assert.NoError(t, container.Init())
 
@@ -95,14 +93,13 @@ func TestEndure_Issue55(t *testing.T) {
 }
 
 func TestIssue54(t *testing.T) {
-	c, err := endure.NewContainer(nil)
-	assert.NoError(t, err)
+	c := endure.New()
 
-	assert.NoError(t, c.Register(&issue54_p1.Plugin1{}))
-	assert.NoError(t, c.Register(&issue54_p2.Plugin2{}))
-	assert.NoError(t, c.Register(&issue54_p3.Plugin3{}))
+	assert.NoError(t, c.Register(&issue54p1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue54p2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue54p3.Plugin3{}))
 
-	err = c.Init()
+	err := c.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,14 +123,13 @@ func TestIssue54(t *testing.T) {
 }
 
 func TestIssue66(t *testing.T) {
-	c, err := endure.NewContainer(nil)
-	assert.NoError(t, err)
+	c := endure.New()
 
-	assert.NoError(t, c.Register(&issue66_p1.Plugin1{}))
-	assert.NoError(t, c.Register(&issue66_p2.Plugin2{}))
-	assert.NoError(t, c.Register(&issue66_p3.Plugin3{}))
+	assert.NoError(t, c.Register(&issue66p1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue66p2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue66p3.Plugin3{}))
 
-	err = c.Init()
+	err := c.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,47 +153,43 @@ func TestIssue66(t *testing.T) {
 }
 
 func TestIssue84_structs_all_disabled(t *testing.T) {
-	c, err := endure.NewContainer(nil)
-	assert.NoError(t, err)
+	c := endure.New()
 
-	assert.NoError(t, c.Register(&issue84_struct_p1.Plugin1{}))
-	assert.NoError(t, c.Register(&issue84_struct_p2.Plugin2{}))
-	assert.NoError(t, c.Register(&issue84_struct_p3.Plugin3{}))
+	assert.NoError(t, c.Register(&issue84structP1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue84structP2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue84structP3.Plugin3{}))
 
-	err = c.Init()
+	err := c.Init()
 	assert.Error(t, err)
 }
 
 func TestIssue84_interfaces_all_disabled(t *testing.T) {
-	c, err := endure.NewContainer(nil)
-	assert.NoError(t, err)
+	c := endure.New()
 
-	assert.NoError(t, c.Register(&issue84_interface_p2.Plugin2{}))
-	assert.NoError(t, c.Register(&issue84_interface_p1.Plugin1{}))
-	assert.NoError(t, c.Register(&issue84_interface_p3.Plugin3{}))
+	assert.NoError(t, c.Register(&issue84interfaceP2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue84interfaceP1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue84interfaceP3.Plugin3{}))
 
-	err = c.Init()
+	err := c.Init()
 	assert.Error(t, err)
 }
 
 func TestIssue84_structs_interface_all_disabled_interface(t *testing.T) {
-	c, err := endure.NewContainer(nil)
-	assert.NoError(t, err)
-	assert.NoError(t, c.Register(&issue84_interfaces_structs_p2.Plugin2{}))
-	assert.NoError(t, c.Register(&issue84_interfaces_structs_p1.Plugin1{}))
-	assert.NoError(t, c.Register(&issue84_interfaces_structs_p3.Plugin3{}))
+	c := endure.New()
+	assert.NoError(t, c.Register(&issue84interfacesStructsP2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue84interfacesStructsP1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue84interfacesStructsP3.Plugin3{}))
 
-	err = c.Init()
+	err := c.Init()
 	assert.Error(t, err)
 }
 
 func TestIssue84_one_alive(t *testing.T) {
-	c, err := endure.NewContainer(nil)
-	assert.NoError(t, err)
-	assert.NoError(t, c.Register(&issue84_one_alive_p1.Plugin1{}))
-	assert.NoError(t, c.Register(&issue84_one_alive_p2.Plugin2{}))
-	assert.NoError(t, c.Register(&issue84_one_alive_p3.Plugin3{}))
+	c := endure.New()
+	assert.NoError(t, c.Register(&issue84oneAliveP1.Plugin1{}))
+	assert.NoError(t, c.Register(&issue84oneAliveP2.Plugin2{}))
+	assert.NoError(t, c.Register(&issue84oneAliveP3.Plugin3{}))
 
-	err = c.Init()
+	err := c.Init()
 	assert.NoError(t, err)
 }

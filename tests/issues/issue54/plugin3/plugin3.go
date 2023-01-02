@@ -1,6 +1,8 @@
 package plugin3
 
-import endure "github.com/roadrunner-server/endure/pkg/container"
+import (
+	"github.com/roadrunner-server/endure/v2"
+)
 
 // TODO algo to correctly fill the deps
 type Plugin3 struct {

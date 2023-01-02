@@ -1,8 +1,8 @@
 package plugin8
 
 import (
-	endure "github.com/roadrunner-server/endure/pkg/container"
-	"github.com/roadrunner-server/endure/tests/interfaces/plugins/plugin10"
+	"github.com/roadrunner-server/endure/v2"
+	"github.com/roadrunner-server/endure/v2/tests/interfaces/plugins/plugin10"
 	"github.com/roadrunner-server/errors"
 )
 

@@ -1,6 +1,8 @@
 package plugin6
 
-import endure "github.com/roadrunner-server/endure/pkg/container"
+import (
+	"github.com/roadrunner-server/endure/v2"
+)
 
 type SuperInterface interface {
 	Yo() string

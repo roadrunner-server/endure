@@ -3,7 +3,7 @@ package plugin2
 import (
 	"fmt"
 
-	"github.com/roadrunner-server/endure/tests/issues/issue66/plugin3"
+	"github.com/roadrunner-server/endure/v2/tests/issues/issue66/plugin3"
 )
 
 type Plugin2 struct {

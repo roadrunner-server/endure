@@ -1,7 +1,7 @@
 package plugin1
 
 import (
-	"github.com/roadrunner-server/endure/tests/happy_scenarios/plugin6"
+	"github.com/roadrunner-server/endure/v2/tests/happy_scenarios/plugin6"
 )
 
 type Plugin1 struct {

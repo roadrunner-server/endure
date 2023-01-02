@@ -1,8 +1,12 @@
 package p1
 
 import (
-	"github.com/roadrunner-server/endure/tests/stress/CyclicDepsCollects/api/p2"
+	"github.com/roadrunner-server/endure/v2/dep"
 )
+
+type Bar interface {
+	Bar() string
+}
 
 type Plugin1 struct {
 }
@@ -20,16 +24,14 @@ func (p1 *Plugin1) Stop() error {
 	return nil
 }
 
-func (p1 *Plugin1) Collects() []any {
-	return []any{
-		p1.GetP2,
+func (p1 *Plugin1) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(any) {
+
+		}, (*Bar)(nil)),
 	}
 }
 
 func (p1 *Plugin1) Foo() string {
 	return "foo"
-}
-
-func (p1 *Plugin1) GetP2(bar p2.Bar) {
-	_ = bar
 }

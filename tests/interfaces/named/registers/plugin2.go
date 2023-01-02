@@ -1,6 +1,8 @@
 package registers
 
-import endure "github.com/roadrunner-server/endure/pkg/container"
+import (
+	"github.com/roadrunner-server/endure/v2"
+)
 
 type Plugin2 struct {
 }

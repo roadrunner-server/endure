@@ -1,6 +1,6 @@
 package plugin7
 
-import "github.com/roadrunner-server/endure/tests/disabled_vertices/plugin6"
+import "github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin6"
 
 type Plugin7 struct {
 }

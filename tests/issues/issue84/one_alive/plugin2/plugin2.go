@@ -1,7 +1,7 @@
 package plugin2
 
 import (
-	"github.com/roadrunner-server/endure/tests/issues/issue84/one_alive/plugin3"
+	"github.com/roadrunner-server/endure/v2/tests/issues/issue84/one_alive/plugin3"
 	"github.com/roadrunner-server/errors"
 )
 

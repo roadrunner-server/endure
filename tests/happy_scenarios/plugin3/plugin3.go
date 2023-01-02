@@ -1,8 +1,8 @@
 package plugin3
 
 import (
-	"github.com/roadrunner-server/endure/tests/happy_scenarios/plugin2"
-	"github.com/roadrunner-server/endure/tests/happy_scenarios/plugin4"
+	"github.com/roadrunner-server/endure/v2/tests/happy_scenarios/plugin2"
+	"github.com/roadrunner-server/endure/v2/tests/happy_scenarios/plugin4"
 )
 
 type S3 struct {
