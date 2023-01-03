@@ -1,6 +1,8 @@
 package p5
 
 import (
+	"context"
+
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/endure/v2/tests/general/test1/p1/pkg"
 	"github.com/roadrunner-server/errors"
@@ -18,14 +20,13 @@ type Fooer interface {
 func (p *Plugin) Init() error {
 	p.nnn = "foo"
 	return errors.E(errors.Disabled)
-	//return nil
 }
 
 func (p *Plugin) Serve() chan error {
 	return make(chan error, 1)
 }
 
-func (p *Plugin) Stop() error {
+func (p *Plugin) Stop(context.Context) error {
 	return nil
 }
 

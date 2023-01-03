@@ -1,5 +1,9 @@
 package InitErr
 
+import (
+	"context"
+)
+
 type S2Err struct {
 }
 
@@ -12,6 +16,6 @@ func (s2 *S2Err) Serve() chan error {
 	return errCh
 }
 
-func (s2 *S2Err) Stop() error {
+func (s2 *S2Err) Stop(context.Context) error {
 	return nil
 }

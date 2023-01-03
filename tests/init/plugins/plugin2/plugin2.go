@@ -1,6 +1,9 @@
 package plugin2
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 type Plugin2 struct {
 }
@@ -15,6 +18,6 @@ func (f *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (f *Plugin2) Stop() error {
+func (f *Plugin2) Stop(context.Context) error {
 	return nil
 }

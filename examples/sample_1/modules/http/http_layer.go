@@ -102,7 +102,7 @@ func (h *Http) Serve() chan error {
 	return errCh
 }
 
-func (h *Http) Stop() error {
+func (h *Http) Stop(context.Context) error {
 	err := h.server.Shutdown(context.Background())
 	if err != nil {
 		return err

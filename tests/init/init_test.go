@@ -1,4 +1,4 @@
-package backoff
+package init
 
 import (
 	"sync"
@@ -6,14 +6,15 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/endure/v2"
-	"github.com/roadrunner-server/endure/v2/tests/backoff/plugins/plugin2"
-	"github.com/roadrunner-server/endure/v2/tests/backoff/plugins/plugin3"
-	"github.com/roadrunner-server/endure/v2/tests/backoff/plugins/plugin4"
+	"github.com/roadrunner-server/endure/v2/tests/init/plugins/plugin2"
+	"github.com/roadrunner-server/endure/v2/tests/init/plugins/plugin3"
+	"github.com/roadrunner-server/endure/v2/tests/init/plugins/plugin4"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slog"
 )
 
-func TestEndure_MainThread_Serve_Backoff(t *testing.T) {
-	c := endure.New()
+func TestEndure_MainThread_Serve(t *testing.T) {
+	c := endure.New(slog.LevelDebug)
 
 	assert.NoError(t, c.Register(&plugin4.Plugin4{}))
 	assert.NoError(t, c.Init())
@@ -31,11 +32,11 @@ func TestEndure_MainThread_Serve_Backoff(t *testing.T) {
 		}
 	}()
 	wg.Wait()
-	assert.Error(t, c.Stop())
+	assert.NoError(t, c.Stop())
 }
 
-func TestEndure_MainThread_Init_Backoff(t *testing.T) {
-	c := endure.New(endure.SetBackoff(time.Second, time.Second*10))
+func TestEndure_MainThread_Init(t *testing.T) {
+	c := endure.New(slog.LevelDebug)
 
 	assert.NoError(t, c.Register(&plugin3.Plugin3{}))
 	assert.NoError(t, c.Init())
@@ -50,7 +51,7 @@ func TestEndure_MainThread_Init_Backoff(t *testing.T) {
 	go func() {
 		for r := range res {
 			if r.Error != nil {
-				assert.Error(t, c.Stop())
+				assert.NoError(t, c.Stop())
 				wg.Done()
 			}
 		}
@@ -62,8 +63,8 @@ func TestEndure_MainThread_Init_Backoff(t *testing.T) {
 	assert.Greater(t, 11, after-now)
 }
 
-func TestEndure_BackoffTimers(t *testing.T) {
-	c := endure.New(endure.SetBackoff(time.Second, time.Second*5))
+func TestEndure_Init(t *testing.T) {
+	c := endure.New(slog.LevelDebug)
 
 	assert.NoError(t, c.Register(&plugin2.Plugin2{}))
 	assert.Error(t, c.Init())

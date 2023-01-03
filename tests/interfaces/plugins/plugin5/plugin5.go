@@ -1,7 +1,10 @@
 package plugin5
 
 import (
+	"context"
 	"net/http"
+
+	"github.com/roadrunner-server/endure/v2/dep"
 )
 
 type Plugin5 struct {
@@ -26,17 +29,14 @@ func (f9 *Plugin5) Serve() chan error {
 	return errCh
 }
 
-func (f9 *Plugin5) Stop() error {
+func (f9 *Plugin5) Stop(context.Context) error {
 	return nil
 }
 
-func (f9 *Plugin5) Collects() []any {
-	return []any{
-		f9.AddMiddleware,
+func (f9 *Plugin5) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(p any) {
+			f9.mdwr = append(f9.mdwr, p.(HTTPMiddleware))
+		}, (*HTTPMiddleware)(nil)),
 	}
-}
-
-func (f9 *Plugin5) AddMiddleware(m HTTPMiddleware) error {
-	f9.mdwr = append(f9.mdwr, m)
-	return nil
 }

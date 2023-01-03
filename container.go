@@ -1,6 +1,8 @@
 package endure
 
 import (
+	"context"
+
 	"github.com/roadrunner-server/endure/v2/dep"
 )
 
@@ -38,7 +40,7 @@ type (
 		// Serve starts the plugin
 		Serve() chan error
 		// Stop stops the plugin
-		Stop() error
+		Stop(context.Context) error
 	}
 
 	// Named -> Name of the service

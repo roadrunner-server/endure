@@ -20,17 +20,15 @@ type Endure struct {
 	/// NEW
 	registar *registar.Registar
 	///
-	mu *sync.RWMutex
+	mu sync.RWMutex
 	// Dependency graph
 	graph *graph.Graph
 	// log
 	log         *slog.Logger
 	stopTimeout time.Duration
 	profiler    bool
+	visualize   bool
 
-	// result always points on healthy channel associated with vertex
-	// since Endure structure has ALL method with pointer receiver, we do not need additional pointer to the sync.Map
-	results sync.Map
 	// main thread
 	handleErrorCh chan *result
 	userResultsCh chan *Result
@@ -40,18 +38,19 @@ type Endure struct {
 type Options func(endure *Endure)
 
 // New returns empty endure container
-func New(options ...Options) *Endure {
+func New(level slog.Leveler, options ...Options) *Endure {
+	if level == nil {
+		level = slog.LevelDebug
+	}
+
 	opts := slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: level,
 	}.NewJSONHandler(os.Stderr)
 
 	c := &Endure{
-		/// NEW
-		registar: registar.New(),
-		graph:    graph.New(),
-		///
-		mu:          &sync.RWMutex{},
-		results:     sync.Map{},
+		registar:    registar.New(),
+		graph:       graph.New(),
+		mu:          sync.RWMutex{},
 		stopTimeout: time.Second * 30,
 		log:         slog.New(opts),
 	}
@@ -60,11 +59,9 @@ func New(options ...Options) *Endure {
 	c.handleErrorCh = make(chan *result)
 	c.userResultsCh = make(chan *Result)
 
-	if options != nil {
-		// append options
-		for _, option := range options {
-			option(c)
-		}
+	// append options
+	for _, option := range options {
+		option(c)
 	}
 
 	// start profiler server
@@ -170,10 +167,19 @@ func (e *Endure) Init() error {
 	defer e.mu.Unlock()
 
 	const op = errors.Op("endure_initialize")
+
+	if len(e.graph.Vertices()) == 0 {
+		return errors.E(op, errors.Str("no plugins registered"))
+	}
+
 	// traverse the graph
 	err := e.resolveEdges()
 	if err != nil {
 		return errors.E(op, errors.Init, err)
+	}
+
+	if e.visualize {
+		e.graph.WriteDotString()
 	}
 
 	err = e.init()
@@ -195,12 +201,16 @@ func (e *Endure) Serve() (<-chan *Result, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	e.log.Debug("preparing to serve")
+
 	e.startMainThread()
 
 	err := e.serve()
 	if err != nil {
 		return nil, err
 	}
+
+	e.log.Debug("serving")
 
 	return e.userResultsCh, nil
 }
@@ -211,17 +221,36 @@ func (e *Endure) Stop() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	e.log.Info("exiting from the Endure")
+	if len(e.graph.Vertices()) == 0 {
+		return errors.E(errors.Str("no plugins registered"))
+	}
+
+	e.log.Debug("calling stop")
 
 	return e.stop()
 }
 
-func (e *Endure) Plugins() string {
+func (e *Endure) Plugins() []string {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	e.graph.TopologicalOrder()
-	return ""
+	v := e.graph.TopologicalOrder()
+	plugins := make([]string, 0, len(v))
+
+	for i := 0; i < len(v); i++ {
+		if !v[i].IsActive() {
+			continue
+		}
+
+		if val, ok := v[i].Plugin().(Named); ok {
+			plugins = append(plugins, val.Name())
+			continue
+		}
+
+		plugins = append(plugins, v[i].ID().String())
+	}
+
+	return plugins
 }
 
 func profile() {

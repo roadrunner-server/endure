@@ -10,10 +10,11 @@ import (
 	"github.com/roadrunner-server/endure/v2/tests/general/test1/p4"
 	"github.com/roadrunner-server/endure/v2/tests/general/test1/p5"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slog"
 )
 
 func Test1(t *testing.T) {
-	end := endure.New()
+	end := endure.New(slog.LevelDebug)
 
 	err := end.Register(&p1.Plugin{})
 	assert.NoError(t, err)
@@ -40,7 +41,7 @@ func Test1(t *testing.T) {
 }
 
 func Test2(t *testing.T) {
-	end := endure.New()
+	end := endure.New(slog.LevelDebug)
 
 	err := end.Register(&p3.Plugin{})
 	assert.NoError(t, err)

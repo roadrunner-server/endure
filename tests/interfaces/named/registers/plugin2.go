@@ -1,18 +1,26 @@
 package registers
 
 import (
-	"github.com/roadrunner-server/endure/v2"
+	"context"
+
+	"github.com/roadrunner-server/endure/v2/dep"
 )
 
 type Plugin2 struct {
 }
 
 type DB struct {
-	Name string
+	n string
 }
 
-type DB2 struct {
-	Name string
+func (d *DB) Select() {}
+func (d *DB) Name() string {
+	return d.n
+}
+
+type IDB interface {
+	Select()
+	Name() string
 }
 
 func (f *Plugin2) Init() error {
@@ -25,34 +33,19 @@ func (f *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (f *Plugin2) Stop() error {
+func (f *Plugin2) Stop(context.Context) error {
 	return nil
 }
 
-// But provide some
-func (f *Plugin2) Provides() []any {
-	return []any{
-		f.ProvideDB,
-		f.ProvideDB2,
+func (f *Plugin2) Provides() []*dep.Out {
+	return []*dep.Out{
+		dep.OutType((*IDB)(nil), f.ProvideDB),
 	}
 }
 
-// this is the same type but different packages
-// foo10 invokes foo11
-// foo11 should get the foo10 name or provide vertex id
-func (f *Plugin2) ProvideDB(name endure.Named) (*DB, error) {
+func (f *Plugin2) ProvideDB() *DB {
 	println("ProvideDB called")
 	return &DB{
-		Name: name.Name(),
-	}, nil
-}
-
-// this is the same type but different packages
-// foo10 invokes foo11
-// foo11 should get the foo10 name or provide vertex id
-func (f *Plugin2) ProvideDB2(name endure.Named, name2 endure.Named) (*DB2, error) {
-	println("ProvideDB2 called")
-	return &DB2{
-		Name: name.Name() + "; " + name2.Name(),
-	}, nil
+		n: "DB",
+	}
 }

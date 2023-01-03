@@ -1,5 +1,9 @@
 package p2
 
+import (
+	"context"
+)
+
 type Foo interface {
 	Foo() string
 }
@@ -17,7 +21,7 @@ func (p2 *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (p2 *Plugin2) Stop() error {
+func (p2 *Plugin2) Stop(context.Context) error {
 	return nil
 }
 

@@ -111,7 +111,7 @@ type (
 		// Serve
 		Serve() chan error
 		// Stop
-		Stop() error
+		Stop(context.Context) error
 	}
 
 	// Name of the service (OPTIONAL)

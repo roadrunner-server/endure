@@ -1,6 +1,7 @@
 package plugin1
 
 import (
+	"context"
 	"errors"
 )
 
@@ -19,6 +20,6 @@ func (f *Plugin1) Serve() chan error {
 	return errCh
 }
 
-func (f *Plugin1) Stop() error {
+func (f *Plugin1) Stop(context.Context) error {
 	return nil
 }

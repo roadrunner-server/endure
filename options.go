@@ -9,6 +9,12 @@ func GracefulShutdownTimeout(to time.Duration) Options {
 	}
 }
 
+func Visualize() Options {
+	return func(endure *Endure) {
+		endure.visualize = true
+	}
+}
+
 func EnableProfiler() Options {
 	return func(endure *Endure) {
 		endure.profiler = true

@@ -1,9 +1,17 @@
 package plugin6
 
+import (
+	"context"
+)
+
+type Yo interface {
+	Yo() string
+}
+
 type Plugin2 struct {
 }
 
-func (p *Plugin2) Init(super SuperInterface) error {
+func (p *Plugin2) Init(super Yo) error {
 	println(super.Yo())
 	return nil
 }
@@ -13,7 +21,7 @@ func (p *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin2) Stop() error {
+func (p *Plugin2) Stop(context.Context) error {
 	return nil
 }
 

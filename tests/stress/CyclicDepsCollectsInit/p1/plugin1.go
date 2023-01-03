@@ -1,5 +1,9 @@
 package p1
 
+import (
+	"context"
+)
+
 type Bar interface {
 	Bar() string
 }
@@ -17,7 +21,7 @@ func (p1 *Plugin1) Serve() chan error {
 	return errCh
 }
 
-func (p1 *Plugin1) Stop() error {
+func (p1 *Plugin1) Stop(context.Context) error {
 	return nil
 }
 

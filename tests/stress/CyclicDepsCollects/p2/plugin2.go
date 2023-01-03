@@ -1,6 +1,8 @@
 package p2
 
 import (
+	"context"
+
 	"github.com/roadrunner-server/endure/v2/dep"
 )
 
@@ -20,7 +22,7 @@ func (p2 *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (p2 *Plugin2) Stop() error {
+func (p2 *Plugin2) Stop(context.Context) error {
 	return nil
 }
 

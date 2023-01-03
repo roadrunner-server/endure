@@ -15,10 +15,11 @@ import (
 	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slog"
 )
 
 func TestVertexDisabled(t *testing.T) {
-	cont := endure.New()
+	cont := endure.New(slog.LevelDebug)
 	err := cont.Register(&plugin1.Plugin1{}) // disabled
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +36,7 @@ func TestVertexDisabled(t *testing.T) {
 }
 
 func TestDisabledViaInterface(t *testing.T) {
-	cont := endure.New()
+	cont := endure.New(slog.LevelDebug)
 
 	err := cont.Register(&plugin3.Plugin3{}) // disabled
 	if err != nil {
@@ -57,7 +58,7 @@ func TestDisabledViaInterface(t *testing.T) {
 }
 
 func TestDisabledRoot(t *testing.T) {
-	cont := endure.New()
+	cont := endure.New(slog.LevelDebug)
 
 	err := cont.Register(&plugin6.Plugin6{}) // Root
 	if err != nil {
@@ -84,7 +85,7 @@ func TestDisabledRoot(t *testing.T) {
 }
 
 func TestOneSurvived(t *testing.T) {
-	cont := endure.New()
+	cont := endure.New(slog.LevelDebug)
 
 	err := cont.RegisterAll(
 		&plugin6.Plugin6{},

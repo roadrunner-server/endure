@@ -16,7 +16,7 @@ func (e *Endure) resolveCollectorEdges(plugin any) error {
 	inEntries := collector.Collects()
 
 	for i := 0; i < len(inEntries); i++ {
-		res := e.registar.Implements(inEntries[i].Type)
+		res := e.registar.ImplementsExcept(inEntries[i].Type, plugin)
 		if len(res) > 0 {
 			for j := 0; j < len(res); j++ {
 				e.graph.AddEdge(graph.CollectsConnection, res[j].Plugin(), plugin)
@@ -24,7 +24,7 @@ func (e *Endure) resolveCollectorEdges(plugin any) error {
 					Here we need to init the
 				*/
 				e.log.Debug("collects edge found",
-					slog.Any("methods", res[j].Method()),
+					slog.Any("method", res[j].Method()),
 					slog.Any("src", e.graph.VertexById(res[j].Plugin()).ID().String()),
 					slog.Any("dest", e.graph.VertexById(plugin).ID().String()))
 			}
@@ -69,9 +69,11 @@ func (e *Endure) resolveEdges() error {
 			args[j] = initMethod.Type.In(j)
 		}
 
+		count := 0
 		if len(args) > 1 {
 			for j := 1; j < len(args); j++ {
 				res := e.registar.Implements(args[j])
+				count += len(res)
 				if len(res) > 0 {
 					for k := 0; k < len(res); k++ {
 						// add graph edge
@@ -86,6 +88,19 @@ func (e *Endure) resolveEdges() error {
 				}
 			}
 
+			if count < len(args[1:]) {
+				// if there are no plugins which implement Init deps, remove this vertex from the tree
+				del := e.graph.Remove(vertices[i].Plugin())
+				for k := 0; k < len(del); k++ {
+					e.registar.Remove(del[k].Plugin())
+					e.log.Debug(
+						"plugin disabled, not enough Init dependencies",
+						slog.String("name", del[k].ID().String()),
+					)
+				}
+
+				continue
+			}
 		}
 
 		// we don't have a collector() method

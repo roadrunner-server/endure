@@ -1,6 +1,10 @@
 package plugin1
 
-import "github.com/roadrunner-server/endure/v2/tests/issues/issue84/interfaces_structs/plugin2"
+import (
+	"context"
+
+	"github.com/roadrunner-server/endure/v2/tests/issues/issue84/interfaces_structs/plugin2"
+)
 
 type Plugin1 struct {
 }
@@ -14,6 +18,6 @@ func (p *Plugin1) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin1) Stop() error {
+func (p *Plugin1) Stop(context.Context) error {
 	return nil
 }

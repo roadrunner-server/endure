@@ -1,6 +1,7 @@
 package ServeErr
 
 import (
+	"context"
 	"errors"
 	"time"
 )
@@ -9,7 +10,7 @@ type S1ServeErr struct {
 }
 
 // No deps
-func (s *S1ServeErr) Init(s2 *S2, db *DB) error {
+func (s *S1ServeErr) Init(s2 SuperDB, db SuperDB) error {
 	return nil
 }
 
@@ -26,6 +27,6 @@ func (s *S1ServeErr) Serve() chan error {
 	return errCh
 }
 
-func (s *S1ServeErr) Stop() error {
+func (s *S1ServeErr) Stop(context.Context) error {
 	return nil
 }

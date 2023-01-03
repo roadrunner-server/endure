@@ -10,6 +10,7 @@ import (
 	issue55p1 "github.com/roadrunner-server/endure/v2/tests/issues/issue55/plugin1"
 	issue55p2 "github.com/roadrunner-server/endure/v2/tests/issues/issue55/plugin2"
 	issue55p3 "github.com/roadrunner-server/endure/v2/tests/issues/issue55/plugin3"
+	"golang.org/x/exp/slog"
 
 	issue66p1 "github.com/roadrunner-server/endure/v2/tests/issues/issue66/plugin1"
 	issue66p2 "github.com/roadrunner-server/endure/v2/tests/issues/issue66/plugin2"
@@ -39,9 +40,9 @@ import (
 
 // Provided structure instead of function
 func TestEndure_Issue33(t *testing.T) {
-	c := endure.New()
+	c := endure.New(slog.LevelDebug)
 
-	assert.Error(t, c.Register(&issue33.Plugin1{}))
+	assert.NoError(t, c.Register(&issue33.Plugin1{}))
 	assert.NoError(t, c.Register(&issue33.Plugin2{}))
 }
 
@@ -50,7 +51,7 @@ func TestEndure_Issue33(t *testing.T) {
 // Call Stop on the container
 // Should be only 1 stop
 func TestEndure_Issue55(t *testing.T) {
-	container := endure.New()
+	container := endure.New(slog.LevelDebug)
 
 	assert.NoError(t, container.Register(&issue55p1.Plugin1{}))
 	assert.NoError(t, container.Register(&issue55p2.Plugin2{}))
@@ -93,7 +94,7 @@ func TestEndure_Issue55(t *testing.T) {
 }
 
 func TestIssue54(t *testing.T) {
-	c := endure.New()
+	c := endure.New(slog.LevelDebug)
 
 	assert.NoError(t, c.Register(&issue54p1.Plugin1{}))
 	assert.NoError(t, c.Register(&issue54p2.Plugin2{}))
@@ -123,7 +124,7 @@ func TestIssue54(t *testing.T) {
 }
 
 func TestIssue66(t *testing.T) {
-	c := endure.New()
+	c := endure.New(slog.LevelDebug)
 
 	assert.NoError(t, c.Register(&issue66p1.Plugin1{}))
 	assert.NoError(t, c.Register(&issue66p2.Plugin2{}))
@@ -153,7 +154,7 @@ func TestIssue66(t *testing.T) {
 }
 
 func TestIssue84_structs_all_disabled(t *testing.T) {
-	c := endure.New()
+	c := endure.New(slog.LevelDebug)
 
 	assert.NoError(t, c.Register(&issue84structP1.Plugin1{}))
 	assert.NoError(t, c.Register(&issue84structP2.Plugin2{}))
@@ -164,7 +165,7 @@ func TestIssue84_structs_all_disabled(t *testing.T) {
 }
 
 func TestIssue84_interfaces_all_disabled(t *testing.T) {
-	c := endure.New()
+	c := endure.New(slog.LevelDebug)
 
 	assert.NoError(t, c.Register(&issue84interfaceP2.Plugin2{}))
 	assert.NoError(t, c.Register(&issue84interfaceP1.Plugin1{}))
@@ -175,7 +176,7 @@ func TestIssue84_interfaces_all_disabled(t *testing.T) {
 }
 
 func TestIssue84_structs_interface_all_disabled_interface(t *testing.T) {
-	c := endure.New()
+	c := endure.New(slog.LevelDebug)
 	assert.NoError(t, c.Register(&issue84interfacesStructsP2.Plugin2{}))
 	assert.NoError(t, c.Register(&issue84interfacesStructsP1.Plugin1{}))
 	assert.NoError(t, c.Register(&issue84interfacesStructsP3.Plugin3{}))
@@ -185,7 +186,7 @@ func TestIssue84_structs_interface_all_disabled_interface(t *testing.T) {
 }
 
 func TestIssue84_one_alive(t *testing.T) {
-	c := endure.New()
+	c := endure.New(slog.LevelDebug)
 	assert.NoError(t, c.Register(&issue84oneAliveP1.Plugin1{}))
 	assert.NoError(t, c.Register(&issue84oneAliveP2.Plugin2{}))
 	assert.NoError(t, c.Register(&issue84oneAliveP3.Plugin3{}))

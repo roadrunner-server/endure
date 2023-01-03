@@ -1,7 +1,10 @@
 package graph
 
 import (
+	"fmt"
+	"os"
 	"reflect"
+	"strings"
 )
 
 const (
@@ -55,7 +58,7 @@ func (g *Graph) VertexById(plugin any) *Vertex {
 }
 
 func (g *Graph) Vertices() []*Vertex {
-	var v []*Vertex
+	v := make([]*Vertex, 0, len(g.vertices))
 
 	for _, vrx := range g.vertices {
 		v = append(v, vrx)
@@ -129,7 +132,6 @@ func (g *Graph) Remove(plugin any) []*Vertex {
 						goto retry
 					}
 				}
-
 			}
 			// we found replacement
 			if len(args) == 0 {
@@ -145,6 +147,15 @@ func (g *Graph) Remove(plugin any) []*Vertex {
 		}
 	}
 
+	// remove all edges where dest is our plugin prepared to delete
+	for _, v := range g.vertices {
+		for i := 0; i < len(v.edges); i++ {
+			if v.edges[i].dest == plugin {
+				v.edges = append(v.edges[:i], v.edges[i+1:]...)
+			}
+		}
+	}
+
 	for i := 0; i < len(g.topologicalOrder); i++ {
 		for j := 0; j < len(deletedVertices); j++ {
 			if g.topologicalOrder[i] == deletedVertices[j] {
@@ -154,4 +165,26 @@ func (g *Graph) Remove(plugin any) []*Vertex {
 	}
 
 	return deletedVertices
+}
+
+func (g *Graph) WriteDotString() {
+	var s strings.Builder
+	s.WriteString("digraph endure {\n")
+	s.WriteString("\trankdir=TB;\n")
+	s.WriteString("\tgraph [compound=true];\n")
+
+	seenEdges := make(map[string]struct{})
+	for i := 0; i < len(g.topologicalOrder); i++ {
+		for j := 0; j < len(g.topologicalOrder[i].edges); j++ {
+			src := reflect.TypeOf(g.topologicalOrder[i].edges[j].src).String()
+			dest := reflect.TypeOf(g.topologicalOrder[i].edges[j].dest).String()
+
+			if _, ok := seenEdges[src+dest]; !ok {
+				s.WriteString(fmt.Sprintf("\t\"%s\" -> \"%s\";\n", src, dest))
+				seenEdges[src+dest] = struct{}{}
+			}
+		}
+	}
+	s.WriteString("}\n")
+	_, _ = fmt.Fprint(os.Stderr, s.String())
 }

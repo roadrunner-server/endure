@@ -21,7 +21,7 @@ func (e *Endure) collects() error {
 
 		// get vals
 		for j := 0; j < len(collects); j++ {
-			impl := e.registar.Implements(collects[j].Type)
+			impl := e.registar.ImplementsExcept(collects[j].Type, vertices[i].Plugin())
 			if len(impl) == 0 {
 				continue
 			}
@@ -29,7 +29,7 @@ func (e *Endure) collects() error {
 			for k := 0; k < len(impl); k++ {
 				value, ok := e.registar.TypeValue(impl[k].Plugin(), collects[j].Type)
 				if !ok {
-					return errors.E("nil value from the implements. Value should be initialized due to the topological order")
+					return errors.E("this is likely a bug, nil value from the implements. Value should be initialized due to the topological order")
 				}
 
 				// call user's callback

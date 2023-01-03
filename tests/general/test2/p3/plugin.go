@@ -1,6 +1,8 @@
 package p3
 
 import (
+	"context"
+
 	"github.com/roadrunner-server/endure/v2/dep"
 )
 
@@ -34,7 +36,7 @@ func (p *Plugin) Serve() chan error {
 	return make(chan error, 1)
 }
 
-func (p *Plugin) Stop() error {
+func (p *Plugin) Stop(context.Context) error {
 	return nil
 }
 
@@ -55,6 +57,5 @@ func callback(p any) {
 func (p *Plugin) Collects() []*dep.In {
 	return []*dep.In{
 		dep.Fits(callback, (*Fooer)(nil)),
-		//dep.Fits(callback, (*Fooer)(nil)),
 	}
 }

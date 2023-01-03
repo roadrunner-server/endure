@@ -1,6 +1,8 @@
 package plugin2
 
 import (
+	"context"
+
 	"github.com/roadrunner-server/endure/v2/tests/issues/issue84/interfaces_structs/plugin3"
 )
 
@@ -15,6 +17,6 @@ func (p *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin2) Stop() error {
+func (p *Plugin2) Stop(context.Context) error {
 	return nil
 }

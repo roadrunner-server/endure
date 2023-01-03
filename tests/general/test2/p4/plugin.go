@@ -1,5 +1,9 @@
 package p4
 
+import (
+	"context"
+)
+
 type Plugin struct {
 }
 
@@ -12,7 +16,7 @@ func (p *Plugin) Serve() chan error {
 	return make(chan error, 1)
 }
 
-func (p *Plugin) Stop() error {
+func (p *Plugin) Stop(context.Context) error {
 	return nil
 }
 

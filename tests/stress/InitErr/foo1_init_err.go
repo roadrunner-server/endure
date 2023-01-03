@@ -1,6 +1,7 @@
 package InitErr
 
 import (
+	"context"
 	"errors"
 )
 
@@ -17,6 +18,6 @@ func (s *S1Err) Serve() chan error {
 	return errCh
 }
 
-func (s *S1Err) Stop() error {
+func (s *S1Err) Stop(context.Context) error {
 	return nil
 }

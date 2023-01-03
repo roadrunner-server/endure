@@ -40,7 +40,7 @@ func (db *DB) Serve() chan error {
 	return errCh
 }
 
-func (db *DB) Stop() error {
+func (db *DB) Stop(context.Context) error {
 	return db.boltdb.Close()
 }
 

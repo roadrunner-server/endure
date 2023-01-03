@@ -1,6 +1,10 @@
 package plugin3
 
-import "github.com/roadrunner-server/errors"
+import (
+	"context"
+
+	"github.com/roadrunner-server/errors"
+)
 
 type Plugin3 struct{}
 
@@ -17,7 +21,7 @@ func (p *Plugin3) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin3) Stop() error {
+func (p *Plugin3) Stop(context.Context) error {
 	return nil
 }
 

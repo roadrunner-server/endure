@@ -1,5 +1,9 @@
 package ServeErr
 
+import (
+	"context"
+)
+
 type S5 struct {
 }
 
@@ -17,6 +21,8 @@ func (s *S5) Serve() chan error {
 	return errCh
 }
 
-func (s *S5) Stop() error {
+func (s *S5) Stop(context.Context) error {
 	return nil
 }
+
+func (s *S5) S5Dep() {}

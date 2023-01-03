@@ -1,5 +1,11 @@
 package randominterface
 
+import (
+	"context"
+
+	"github.com/roadrunner-server/endure/v2/dep"
+)
+
 type Plugin2 struct {
 }
 
@@ -16,22 +22,19 @@ func (f *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (f *Plugin2) Stop() error {
+func (f *Plugin2) Stop(context.Context) error {
 	return nil
 }
 
 // But provide some
-func (f *Plugin2) Provides() []any {
-	return []any{
-		f.ProvideDB,
+func (f *Plugin2) Provides() []*dep.Out {
+	return []*dep.Out{
+		dep.OutType((*SuperInterface)(nil), f.ProvideDB),
 	}
 }
 
-// this is the same type but different packages
-// foo10 invokes foo11
-// foo11 should get the foo10 name or provide vertex id
-func (f *Plugin2) ProvideDB(super SuperInterface) (*DB, error) {
+func (f *Plugin2) ProvideDB() *DB {
 	return &DB{
-		Name: super.Super() + "ME",
-	}, nil
+		Name: "DB",
+	}
 }

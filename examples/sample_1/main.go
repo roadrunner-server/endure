@@ -16,7 +16,7 @@ import (
 
 func main() {
 	// no external logger
-	container := endure.New()
+	container := endure.New(slog.LevelDebug)
 
 	err := container.RegisterAll(
 		&http.Http{},

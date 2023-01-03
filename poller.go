@@ -15,7 +15,7 @@ func (e *Endure) poll(r *result) {
 			case err := <-res.errCh:
 				if err != nil {
 					// log error message
-					e.log.Error("vertex got an error", err, slog.String("id", res.vertexID))
+					e.log.Error("plugin returned an error from the Serve", err, slog.String("id", res.vertexID))
 
 					// set the error
 					res.err = err
@@ -25,7 +25,7 @@ func (e *Endure) poll(r *result) {
 				}
 			// exit from the goroutine
 			case <-res.signal:
-				e.log.Info("vertex got exit signal, exiting from poller", slog.String("id", res.vertexID))
+				e.log.Info("shutdown signal received", slog.String("id", res.vertexID))
 				return
 			}
 		}
@@ -40,8 +40,10 @@ func (e *Endure) startMainThread() {
 	go func() {
 		for res := range e.handleErrorCh {
 			e.log.Debug("processing error in the main thread", slog.String("id", res.vertexID))
-			e.sendResultToUser(res)
-
+			e.userResultsCh <- &Result{
+				Error:    res.err,
+				VertexID: res.vertexID,
+			}
 		}
 	}()
 }

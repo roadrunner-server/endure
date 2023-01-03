@@ -1,7 +1,10 @@
 package endure
 
 import (
+	"context"
 	"reflect"
+
+	"golang.org/x/exp/slog"
 )
 
 func (e *Endure) stop() error {
@@ -25,10 +28,24 @@ func (e *Endure) stop() error {
 		var inVals []reflect.Value
 		inVals = append(inVals, reflect.ValueOf(vertices[i].Plugin()))
 
+		e.log.Debug(
+			"calling stop function",
+			slog.String("plugin", vertices[i].ID().String()),
+		)
+
+		ctx, cancel := context.WithTimeout(context.Background(), e.stopTimeout)
+		inVals = append(inVals, reflect.ValueOf(ctx))
+
+		go func() {
+
+		}()
 		ret := stopMethod.Func.Call(inVals)[0].Interface()
 		if ret != nil {
+			cancel()
 			return ret.(error)
 		}
+
+		cancel()
 	}
 
 	return nil

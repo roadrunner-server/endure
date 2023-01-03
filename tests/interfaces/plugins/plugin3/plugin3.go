@@ -1,6 +1,9 @@
 package plugin3
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+)
 
 type Plugin3 struct {
 }
@@ -14,7 +17,7 @@ func (f7 *Plugin3) Serve() chan error {
 	return errCh
 }
 
-func (f7 *Plugin3) Stop() error {
+func (f7 *Plugin3) Stop(context.Context) error {
 	return nil
 }
 

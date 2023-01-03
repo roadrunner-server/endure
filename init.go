@@ -44,7 +44,21 @@ func (e *Endure) init() error {
 					}
 				}
 
-				inVals = append(inVals, reflect.ValueOf(plugin[0].Plugin()))
+				// check if the provided plugin dep has a method
+				// existence of the method indicates, that the dep provided by this plugin should be obtained via the method call
+				switch plugin[0].Method() == "" {
+				// we don't have a method, that means, plugin itself implements the dep
+				case true:
+					inVals = append(inVals, reflect.ValueOf(plugin[0].Plugin()))
+
+					// we have a method, thus we need to get the value, because previous plugin have registered it's provided deps
+				case false:
+					value, ok := e.registar.TypeValue(plugin[0].Plugin(), arg)
+					if !ok {
+						return errors.E("this is likely a bug, nil value from the implements. Value should be initialized due to the topological order")
+					}
+					inVals = append(inVals, value)
+				}
 			}
 		}
 
@@ -99,10 +113,13 @@ func (e *Endure) init() error {
 					continue
 				}
 
-				e.registar.Update(vertices[i].Plugin(), out[j].Type, func() reflect.Value {
-					vals := providesMethod.Func.Call([]reflect.Value{inVals[0]})
-					if len(vals) > 1 {
-						panic(">1")
+				tp := out[j].Type
+				pl := vertices[i].Plugin()
+				in := []reflect.Value{inVals[0]}
+				e.registar.Update(pl, tp, func() reflect.Value {
+					vals := providesMethod.Func.Call(in)
+					if len(vals) != 1 {
+						panic("provides method should provide only 1 arg - structure")
 					}
 
 					return vals[0]

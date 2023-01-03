@@ -1,6 +1,9 @@
 package plugin10
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 type Plugin10 struct{}
 
@@ -14,7 +17,7 @@ func (s *Plugin10) Serve() chan error {
 	return errCh
 }
 
-func (s *Plugin10) Stop() error {
+func (s *Plugin10) Stop(context.Context) error {
 	return nil
 }
 

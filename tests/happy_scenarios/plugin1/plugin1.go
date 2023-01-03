@@ -1,25 +1,35 @@
 package plugin1
 
 import (
-	"github.com/roadrunner-server/endure/v2/tests/happy_scenarios/plugin2"
-	"github.com/roadrunner-server/endure/v2/tests/happy_scenarios/plugin4"
+	"context"
+
+	"github.com/roadrunner-server/endure/v2/dep"
 )
 
 type S1 struct {
 }
 
-func (s1 *S1) Collects() []any {
-	return []any{
-		s1.AddService,
+func (s1 *S1) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(p any) {
+
+		}, (*P4DB)(nil)),
 	}
 }
 
-func (s1 *S1) AddService(svc *plugin4.DB) error {
-	return nil
+type P4DB interface {
+	P4DB()
 }
 
-// Collects on S2 and DB (S3 in the current case)
-func (s1 *S1) Init(s2 *plugin2.S2, db *plugin2.DB) error {
+type P2DB interface {
+	P2DB()
+}
+
+type S2Dep interface {
+	S2SomeMethod()
+}
+
+func (s1 *S1) Init(S2Dep, P2DB) error {
 	return nil
 }
 
@@ -28,6 +38,6 @@ func (s1 *S1) Serve() chan error {
 	return errCh
 }
 
-func (s1 *S1) Stop() error {
+func (s1 *S1) Stop(context.Context) error {
 	return nil
 }
