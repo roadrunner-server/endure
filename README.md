@@ -15,9 +15,8 @@ Endure is an open-source (MIT licensed) plugin container with IoC (Inversion of 
 
 ## Features
 
-- Supports structs and interfaces (see examples)
+- Supports interfaces (see examples)
 - Uses a graph to topologically sort, run, stop, and restart dependent plugins
-- Algorithms used: graph and double-linked list
 - Supports easy addition of Middleware plugins
 - Error reporting
 
