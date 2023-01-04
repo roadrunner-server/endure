@@ -5,6 +5,7 @@ import (
 
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/endure/v2/tests/general/test1/p1/pkg"
+	"github.com/roadrunner-server/errors"
 )
 
 type Plugin struct {
@@ -18,11 +19,11 @@ type Fooer interface {
 
 func (p *Plugin) Init() error {
 	p.nnn = "foo"
-	return nil
+	return errors.E(errors.Disabled)
 }
 
 func (p *Plugin) Serve() chan error {
-	return make(chan error, 1)
+	panic("should not be called")
 }
 
 func (p *Plugin) Stop(context.Context) error {

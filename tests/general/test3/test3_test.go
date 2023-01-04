@@ -19,8 +19,6 @@ func Test1(t *testing.T) {
 	err = end.Register(&p2.Plugin{})
 	assert.NoError(t, err)
 
-	assert.NoError(t, err)
-
 	err = end.Init()
 	assert.NoError(t, err)
 
