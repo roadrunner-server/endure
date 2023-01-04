@@ -39,7 +39,7 @@ func (f *Plugin2) Stop(context.Context) error {
 
 func (f *Plugin2) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*IDB)(nil), f.ProvideDB),
+		dep.Bind((*IDB)(nil), f.ProvideDB),
 	}
 }
 

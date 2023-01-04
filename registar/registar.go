@@ -91,47 +91,7 @@ func (r *Registar) Remove(plugin any) {
 	delete(r.types, reflect.TypeOf(plugin))
 }
 
-// Implements check that there are plugins (with Provides) that implement all types
-func (r *Registar) Implements(tp reflect.Type) []*implements {
-	var impl []*implements
-	// range over all registered types (basically all that we know about plugins and providers)
-	for k, entry := range r.types {
-		// iterate over types, provided by the user
-		// plugin (w or w/o provides) should implement this type
-
-		// our plugin might implement one of the needed types
-		// if not, check if the plugin provides some types which might implement the type
-		if k.Implements(tp) {
-			impl = append(impl, &implements{
-				plugin: entry.Plugin(),
-				weight: entry.Weight(),
-			})
-			continue
-		}
-
-		// here we check that provides
-		for j := 0; j < len(entry.returnedTypes); j++ {
-			provided := entry.returnedTypes[j]
-			if provided.retType.Implements(tp) {
-				impl = append(impl,
-					&implements{
-						plugin:  entry.Plugin(),
-						weight:  entry.Weight(),
-						methods: provided.method,
-					},
-				)
-			}
-		}
-	}
-
-	// sort by weight
-	sort.Slice(impl, func(i, j int) bool {
-		return impl[i].weight > impl[j].weight
-	})
-
-	return impl
-}
-
+// ImplementsExcept check for the deps which implements the type 'tp' except the plugin itself (or any other plugin)
 func (r *Registar) ImplementsExcept(tp reflect.Type, plugin any) []*implements {
 	var impl []*implements
 	excl := reflect.TypeOf(plugin)

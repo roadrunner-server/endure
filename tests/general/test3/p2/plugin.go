@@ -1,13 +1,13 @@
-package p1
+package p2
 
 import (
 	"context"
 
 	"github.com/roadrunner-server/endure/v2/dep"
-	"github.com/roadrunner-server/endure/v2/tests/general/test1/p1/pkg"
 )
 
-type Plugin struct{}
+type Plugin struct {
+}
 
 type Fooer interface {
 	FooBar() string
@@ -15,7 +15,6 @@ type Fooer interface {
 }
 
 func (p *Plugin) Init() error {
-	println("initp1")
 	return nil
 }
 
@@ -28,19 +27,17 @@ func (p *Plugin) Stop(context.Context) error {
 }
 
 func (p *Plugin) Name() string {
-	return "p1"
+	return "p2"
 }
 
-func (p *Plugin) Weight() uint {
-	return 10
+func callback(p any) {
+	pp := p.(Fooer)
+	_ = pp.Init("foo")
+	println(pp.FooBar())
 }
 
-func (p *Plugin) Provides() []*dep.Out {
-	return []*dep.Out{
-		dep.Bind((*Fooer)(nil), p.InitFoo),
+func (p *Plugin) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(callback, (*Fooer)(nil)),
 	}
-}
-
-func (p *Plugin) InitFoo() *pkg.Foo {
-	return pkg.InitFoo()
 }

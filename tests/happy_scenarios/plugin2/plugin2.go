@@ -28,7 +28,7 @@ func (s2 *S2) Init(P4DB) error {
 
 func (s2 *S2) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*P2DB)(nil), s2.CreateDB),
+		dep.Bind((*P2DB)(nil), s2.CreateDB),
 	}
 }
 

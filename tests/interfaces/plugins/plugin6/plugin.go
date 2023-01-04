@@ -44,9 +44,9 @@ func (p *Plugin) Stop(context.Context) error {
 // Provides declares factory methods.
 func (p *Plugin) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*SuperInterface)(nil), p.ProvideWithName),
-		dep.OutType((*SuperInterface)(nil), p.ProvideWithInterfaceAndStruct),
-		dep.OutType((*SuperInterface)(nil), p.ProvideWithOutName),
+		dep.Bind((*SuperInterface)(nil), p.ProvideWithName),
+		dep.Bind((*SuperInterface)(nil), p.ProvideWithInterfaceAndStruct),
+		dep.Bind((*SuperInterface)(nil), p.ProvideWithOutName),
 	}
 }
 

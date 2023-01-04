@@ -33,7 +33,7 @@ func (s *S6Interface) Stop(context.Context) error {
 
 func (s *S6Interface) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*FooWriter)(nil), s.ProvideInterface),
+		dep.Bind((*FooWriter)(nil), s.ProvideInterface),
 	}
 }
 

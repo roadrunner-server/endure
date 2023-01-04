@@ -34,7 +34,7 @@ func (s *S4ServeError) Init(S5Deper) error {
 // But provide some
 func (s *S4ServeError) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*SuperSelecter)(nil), s.CreateAnotherDB),
+		dep.Bind((*SuperSelecter)(nil), s.CreateAnotherDB),
 	}
 }
 

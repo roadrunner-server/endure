@@ -39,7 +39,7 @@ func (p *Plugin3) Stop(context.Context) error {
 
 func (p *Plugin3) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*IDB3)(nil), p.ProvidePlugin3DB),
+		dep.Bind((*IDB3)(nil), p.ProvidePlugin3DB),
 	}
 }
 

@@ -29,7 +29,7 @@ func (l *Logger) Init() error {
 
 func (l *Logger) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*SuperLogger)(nil), l.LoggerInstance),
+		dep.Bind((*SuperLogger)(nil), l.LoggerInstance),
 	}
 }
 

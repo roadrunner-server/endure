@@ -33,7 +33,7 @@ func (s *Plugin2) Stop(context.Context) error {
 
 func (s *Plugin2) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*FooWriter)(nil), s.ProvideInterface),
+		dep.Bind((*FooWriter)(nil), s.ProvideInterface),
 	}
 }
 

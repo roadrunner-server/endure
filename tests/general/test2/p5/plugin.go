@@ -39,7 +39,7 @@ func (p *Plugin) Weight() uint {
 
 func (p *Plugin) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*Fooer)(nil), p.InitFoo),
+		dep.Bind((*Fooer)(nil), p.InitFoo),
 	}
 }
 

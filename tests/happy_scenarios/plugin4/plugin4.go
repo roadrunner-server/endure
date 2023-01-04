@@ -31,7 +31,7 @@ func (s *S4) Init(_ IFOO5DB, fooWriter FooWriter) error {
 
 func (s *S4) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*P4DB)(nil), s.CreateAnotherDB),
+		dep.Bind((*P4DB)(nil), s.CreateAnotherDB),
 	}
 }
 

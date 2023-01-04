@@ -22,7 +22,7 @@ func (s2 *S2) Init(SuperSelecter) error {
 
 func (s2 *S2) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*SuperDB)(nil), s2.CreateDB),
+		dep.Bind((*SuperDB)(nil), s2.CreateDB),
 	}
 }
 

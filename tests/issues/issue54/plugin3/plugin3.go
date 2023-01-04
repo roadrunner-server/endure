@@ -51,8 +51,8 @@ func (p *Plugin3) Stop(context.Context) error {
 
 func (p *Plugin3) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*IPlugin3Dep)(nil), p.AddDB),
-		dep.OutType((*IPlugin3OtherDepM)(nil), p.OtherType),
+		dep.Bind((*IPlugin3Dep)(nil), p.AddDB),
+		dep.Bind((*IPlugin3OtherDepM)(nil), p.OtherType),
 	}
 }
 

@@ -29,7 +29,7 @@ func (f *Plugin2) Stop(context.Context) error {
 // But provide some
 func (f *Plugin2) Provides() []*dep.Out {
 	return []*dep.Out{
-		dep.OutType((*SuperInterface)(nil), f.ProvideDB),
+		dep.Bind((*SuperInterface)(nil), f.ProvideDB),
 	}
 }
 

@@ -25,7 +25,7 @@ func (p *Plugin) F() (*TestStruct, error) {
 
 func TestOutType(t *testing.T) {
 	p := Plugin{}
-	tt := OutType((*FooBar)(nil), p.F)
+	tt := Bind((*FooBar)(nil), p.F)
 
 	assert.Equal(t, reflect.Interface, tt.Type.Kind())
 	assert.Equal(t, "F", tt.Method)

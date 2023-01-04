@@ -72,7 +72,7 @@ func (e *Endure) resolveEdges() error {
 		count := 0
 		if len(args) > 1 {
 			for j := 1; j < len(args); j++ {
-				res := e.registar.Implements(args[j])
+				res := e.registar.ImplementsExcept(args[j], vertices[i].Plugin())
 				count += len(res)
 				if len(res) > 0 {
 					for k := 0; k < len(res); k++ {

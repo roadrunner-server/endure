@@ -13,7 +13,7 @@ type Out struct {
 	Method string
 }
 
-func OutType(tp any, method any) *Out {
+func Bind(tp any, method any) *Out {
 	if reflect.TypeOf(tp) == nil {
 		panic("nil type provided, should be of the form of: (*FooBar)(nil), not (FooBar)(nil)")
 	}
@@ -36,6 +36,10 @@ func OutType(tp any, method any) *Out {
 		if !r.Out(i).Implements(reflect.TypeOf(tp).Elem()) {
 			panic("provided method should return an implementation of the provided interface")
 		}
+	}
+
+	if r.NumIn() > 0 {
+		panic("dep.Bind function should not receive any arguments")
 	}
 
 	return &Out{

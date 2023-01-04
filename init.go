@@ -29,10 +29,10 @@ func (e *Endure) init() error {
 		inVals = append(inVals, reflect.ValueOf(vertices[i].Plugin()))
 		// has deps if > 1
 		if len(args) > 1 {
-			for j := 0; j < len(args[1:]); j++ {
-				arg := args[1:][j]
-
-				plugin := e.registar.Implements(arg)
+			// exclude first arg (it's receiver)
+			arg := args[1:]
+			for j := 0; j < len(arg); j++ {
+				plugin := e.registar.ImplementsExcept(arg[j], vertices[i].Plugin())
 				if len(plugin) == 0 {
 					del := e.graph.Remove(vertices[i].Plugin())
 					for k := 0; k < len(del); k++ {
@@ -53,7 +53,7 @@ func (e *Endure) init() error {
 
 					// we have a method, thus we need to get the value, because previous plugin have registered it's provided deps
 				case false:
-					value, ok := e.registar.TypeValue(plugin[0].Plugin(), arg)
+					value, ok := e.registar.TypeValue(plugin[0].Plugin(), arg[j])
 					if !ok {
 						return errors.E("this is likely a bug, nil value from the implements. Value should be initialized due to the topological order")
 					}
