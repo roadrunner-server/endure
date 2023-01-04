@@ -1,5 +1,9 @@
 package primitive
 
+import (
+	"context"
+)
+
 type Plugin8 struct {
 }
 
@@ -13,6 +17,6 @@ func (f *Plugin8) Serve() chan error {
 	return errCh
 }
 
-func (f *Plugin8) Stop() error {
+func (f *Plugin8) Stop(context.Context) error {
 	return nil
 }

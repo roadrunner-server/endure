@@ -1,5 +1,9 @@
 package CyclicDeps
 
+import (
+	"context"
+)
+
 type Plugin3 struct {
 }
 
@@ -12,6 +16,6 @@ func (p3 *Plugin3) Serve() chan error {
 	return errCh
 }
 
-func (p3 *Plugin3) Stop() error {
+func (p3 *Plugin3) Stop(context.Context) error {
 	return nil
 }

@@ -1,14 +1,18 @@
 package plugin1
 
 import (
-	"github.com/roadrunner-server/endure/tests/happy_scenarios/plugin6"
+	"context"
 )
+
+type FooWriter interface {
+	Fooo() // just stupid name
+}
 
 type Plugin1 struct {
 }
 
 // No deps
-func (s *Plugin1) Init(foow plugin6.FooWriter) error {
+func (s *Plugin1) Init(foow FooWriter) error {
 	foow.Fooo()
 	return nil
 }
@@ -18,6 +22,6 @@ func (s *Plugin1) Serve() chan error {
 	return errCh
 }
 
-func (s *Plugin1) Stop() error {
+func (s *Plugin1) Stop(context.Context) error {
 	return nil
 }

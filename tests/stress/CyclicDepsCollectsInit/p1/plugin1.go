@@ -1,13 +1,17 @@
 package p1
 
 import (
-	"github.com/roadrunner-server/endure/tests/stress/CyclicDepsCollectsInit/api/p2"
+	"context"
 )
+
+type Bar interface {
+	Bar() string
+}
 
 type Plugin1 struct {
 }
 
-func (p1 *Plugin1) Init(bar p2.Bar) error {
+func (p1 *Plugin1) Init(bar Bar) error {
 	_ = bar
 	return nil
 }
@@ -17,7 +21,7 @@ func (p1 *Plugin1) Serve() chan error {
 	return errCh
 }
 
-func (p1 *Plugin1) Stop() error {
+func (p1 *Plugin1) Stop(context.Context) error {
 	return nil
 }
 

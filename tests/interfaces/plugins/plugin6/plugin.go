@@ -1,6 +1,10 @@
 package plugin6
 
-import endure "github.com/roadrunner-server/endure/pkg/container"
+import (
+	"context"
+
+	"github.com/roadrunner-server/endure/v2/dep"
+)
 
 type SuperInterface interface {
 	Yo() string
@@ -16,6 +20,11 @@ func NewSomeOtherStruct() SuperInterface {
 	return &SomeOtherStruct{}
 }
 
+type Named interface {
+	// Name return user friendly name of the plugin
+	Name() string
+}
+
 type Plugin struct {
 }
 
@@ -28,32 +37,32 @@ func (p *Plugin) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin) Stop() error {
+func (p *Plugin) Stop(context.Context) error {
 	return nil
 }
 
-func (p *Plugin) ProvideWithName(named endure.Named) (SuperInterface, error) {
-	println("this is the case, when we need the name")
-	println(named.Name())
-	return NewSomeOtherStruct(), nil
-}
-
-func (p *Plugin) ProvideWithInterfaceAndStruct(named endure.Named, p3 *Plugin3) (SuperInterface, error) {
-	println("this is the case, when we need the name and struct")
-	println(p3.Boo())
-	return NewSomeOtherStruct(), nil
-}
-
-func (p *Plugin) ProvideWithOutName() (SuperInterface, error) {
-	println("this is the case, when we don't need the name")
-	return NewSomeOtherStruct(), nil
-}
-
 // Provides declares factory methods.
-func (p *Plugin) Provides() []any {
-	return []any{
-		p.ProvideWithOutName,
-		p.ProvideWithName,
-		p.ProvideWithInterfaceAndStruct,
+func (p *Plugin) Provides() []*dep.Out {
+	return []*dep.Out{
+		dep.Bind((*SuperInterface)(nil), p.ProvideWithName),
+		dep.Bind((*SuperInterface)(nil), p.ProvideWithInterfaceAndStruct),
+		dep.Bind((*SuperInterface)(nil), p.ProvideWithOutName),
 	}
+}
+
+func (p *Plugin) ProvideWithName() SuperInterface {
+	println("this is the case, when we need the name")
+	println("first")
+	return NewSomeOtherStruct()
+}
+
+func (p *Plugin) ProvideWithInterfaceAndStruct() SuperInterface {
+	println("this is the case, when we need the name and struct")
+	println("second")
+	return NewSomeOtherStruct()
+}
+
+func (p *Plugin) ProvideWithOutName() SuperInterface {
+	println("this is the case, when we don't need the name")
+	return NewSomeOtherStruct()
 }

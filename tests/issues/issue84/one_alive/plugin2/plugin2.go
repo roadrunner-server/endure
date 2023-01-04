@@ -1,13 +1,22 @@
 package plugin2
 
 import (
-	"github.com/roadrunner-server/endure/tests/issues/issue84/one_alive/plugin3"
+	"context"
+
 	"github.com/roadrunner-server/errors"
 )
 
 type Plugin2 struct{}
 
-func (p *Plugin2) Init(_ plugin3.Fooer, _ *plugin3.Plugin3) error {
+type Fooer interface {
+	Foo() string
+}
+
+type I3 interface {
+	SomeP3DepMethod()
+}
+
+func (p *Plugin2) Init(_ Fooer, _ I3) error {
 	return errors.E(errors.Disabled)
 }
 
@@ -16,6 +25,6 @@ func (p *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin2) Stop() error {
+func (p *Plugin2) Stop(context.Context) error {
 	return nil
 }

@@ -3,27 +3,24 @@ package disabled_vertices
 import (
 	"testing"
 
-	endure "github.com/roadrunner-server/endure/pkg/container"
-	"github.com/roadrunner-server/endure/tests/disabled_vertices/plugin1"
-	"github.com/roadrunner-server/endure/tests/disabled_vertices/plugin2"
-	"github.com/roadrunner-server/endure/tests/disabled_vertices/plugin3"
-	"github.com/roadrunner-server/endure/tests/disabled_vertices/plugin4"
-	"github.com/roadrunner-server/endure/tests/disabled_vertices/plugin5"
-	"github.com/roadrunner-server/endure/tests/disabled_vertices/plugin6"
-	"github.com/roadrunner-server/endure/tests/disabled_vertices/plugin7"
-	"github.com/roadrunner-server/endure/tests/disabled_vertices/plugin8"
-	"github.com/roadrunner-server/endure/tests/disabled_vertices/plugin9"
+	"github.com/roadrunner-server/endure/v2"
+	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin1"
+	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin2"
+	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin3"
+	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin4"
+	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin5"
+	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin6"
+	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin7"
+	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin8"
+	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slog"
 )
 
 func TestVertexDisabled(t *testing.T) {
-	cont, err := endure.NewContainer(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = cont.Register(&plugin1.Plugin1{}) // disabled
+	cont := endure.New(slog.LevelDebug)
+	err := cont.Register(&plugin1.Plugin1{}) // disabled
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,12 +36,9 @@ func TestVertexDisabled(t *testing.T) {
 }
 
 func TestDisabledViaInterface(t *testing.T) {
-	cont, err := endure.NewContainer(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	cont := endure.New(slog.LevelDebug)
 
-	err = cont.Register(&plugin3.Plugin3{}) // disabled
+	err := cont.Register(&plugin3.Plugin3{}) // disabled
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,16 +54,13 @@ func TestDisabledViaInterface(t *testing.T) {
 	}
 
 	err = cont.Init()
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestDisabledRoot(t *testing.T) {
-	cont, err := endure.NewContainer(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	cont := endure.New(slog.LevelDebug)
 
-	err = cont.Register(&plugin6.Plugin6{}) // Root
+	err := cont.Register(&plugin6.Plugin6{}) // Root
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,12 +85,9 @@ func TestDisabledRoot(t *testing.T) {
 }
 
 func TestOneSurvived(t *testing.T) {
-	cont, err := endure.NewContainer(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	cont := endure.New(slog.LevelDebug)
 
-	err = cont.RegisterAll(
+	err := cont.RegisterAll(
 		&plugin6.Plugin6{},
 		&plugin7.Plugin7{},
 		&plugin8.Plugin8{},
@@ -109,7 +97,7 @@ func TestOneSurvived(t *testing.T) {
 
 	require.NoError(t, err)
 	err = cont.Init()
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
 	_, err = cont.Serve()
 	require.NoError(t, err)

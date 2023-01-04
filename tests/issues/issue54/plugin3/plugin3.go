@@ -1,17 +1,39 @@
 package plugin3
 
-import endure "github.com/roadrunner-server/endure/pkg/container"
+import (
+	"context"
 
-// TODO algo to correctly fill the deps
+	"github.com/roadrunner-server/endure/v2/dep"
+)
+
 type Plugin3 struct {
 }
 
 type Plugin3Dep struct {
-	Name string
+	N string
+}
+
+func (pp *Plugin3Dep) Plugin3DepM() {}
+func (pp *Plugin3Dep) Name() string {
+	return pp.N
+}
+
+type IPlugin3Dep interface {
+	Plugin3DepM()
 }
 
 type Plugin3OtherType struct {
-	Name string
+	N string
+}
+
+func (pp *Plugin3OtherType) Name() string {
+	return pp.N
+}
+
+func (pp *Plugin3OtherType) Plugin3OtherDepM() {}
+
+type IPlugin3OtherDepM interface {
+	Plugin3OtherDepM()
 }
 
 func (p *Plugin3) Init() error {
@@ -23,32 +45,21 @@ func (p *Plugin3) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin3) Stop() error {
+func (p *Plugin3) Stop(context.Context) error {
 	return nil
 }
 
-func (p *Plugin3) Provides() []any {
-	return []any{
-		p.AddDB,
-		p.AddDBWithErr,
-		p.OtherType,
-		p.JustOtherType,
+func (p *Plugin3) Provides() []*dep.Out {
+	return []*dep.Out{
+		dep.Bind((*IPlugin3Dep)(nil), p.AddDB),
+		dep.Bind((*IPlugin3OtherDepM)(nil), p.OtherType),
 	}
 }
 
 func (p *Plugin3) AddDB() *Plugin3Dep {
-	return &Plugin3Dep{Name: "Hey Plugin!"}
+	return &Plugin3Dep{N: "Hey Plugin!"}
 }
 
-// error will be filtered out
-func (p *Plugin3) AddDBWithErr() (*Plugin3Dep, error) {
-	return &Plugin3Dep{Name: "Hey Plugin!"}, nil
-}
-
-func (p *Plugin3) OtherType(named endure.Named) (*Plugin3Dep, *Plugin3OtherType, error) {
-	return &Plugin3Dep{Name: "Hey, I'm with other type"}, &Plugin3OtherType{Name: "Hey, I'm other type"}, nil
-}
-
-func (p *Plugin3) JustOtherType() *Plugin3OtherType {
-	return &Plugin3OtherType{Name: "Hey, I'm alone here"}
+func (p *Plugin3) OtherType() *Plugin3OtherType {
+	return &Plugin3OtherType{N: "Hey, I'm other type"}
 }

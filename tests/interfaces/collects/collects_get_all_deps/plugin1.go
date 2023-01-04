@@ -1,5 +1,9 @@
 package collects_get_all_deps
 
+import (
+	"context"
+)
+
 type Plugin1 struct {
 }
 
@@ -20,7 +24,7 @@ func (f *Plugin1) Serve() chan error {
 	return errCh
 }
 
-func (f *Plugin1) Stop() error {
+func (f *Plugin1) Stop(context.Context) error {
 	return nil
 }
 

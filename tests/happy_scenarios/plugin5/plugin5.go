@@ -1,11 +1,20 @@
 package plugin5
 
-type S5 struct {
-}
+import (
+	"context"
+)
+
+type S5 struct{}
 
 type FOO5DB struct {
 	Name string
 }
+
+type IFOO5DB interface {
+	FOO5DB()
+}
+
+func (s *S5) FOO5DB() {}
 
 // No deps
 func (s *S5) Init() error {
@@ -17,6 +26,6 @@ func (s *S5) Serve() chan error {
 	return errCh
 }
 
-func (s *S5) Stop() error {
+func (s *S5) Stop(context.Context) error {
 	return nil
 }

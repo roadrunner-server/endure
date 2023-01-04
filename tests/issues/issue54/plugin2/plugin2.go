@@ -1,15 +1,25 @@
 package plugin2
 
 import (
-	"github.com/roadrunner-server/endure/tests/issues/issue54/plugin3"
+	"context"
 )
 
 type Plugin2 struct {
 }
 
-func (p *Plugin2) Init(p3 *plugin3.Plugin3Dep, po *plugin3.Plugin3OtherType) error {
-	println(p3.Name)
-	println(po.Name)
+type IPlugin3Dep interface {
+	Plugin3DepM()
+	Name() string
+}
+
+type IPlugin3OtherDepM interface {
+	Plugin3OtherDepM()
+	Name() string
+}
+
+func (p *Plugin2) Init(p3 IPlugin3Dep, po IPlugin3OtherDepM) error {
+	println(p3.Name())
+	println(po.Name())
 	return nil
 }
 
@@ -18,6 +28,8 @@ func (p *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin2) Stop() error {
+func (p *Plugin2) Stop(context.Context) error {
 	return nil
 }
+
+func (p *Plugin2) SomeMethodP2() {}

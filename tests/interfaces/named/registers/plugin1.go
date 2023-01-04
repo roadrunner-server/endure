@@ -1,11 +1,14 @@
 package registers
 
+import (
+	"context"
+)
+
 type Plugin1 struct {
 }
 
-func (f *Plugin1) Init(db *DB, db2 *DB2) error {
-	println(db.Name)
-	println(db2.Name)
+func (f *Plugin1) Init(db IDB) error {
+	println(db.Name())
 	return nil
 }
 
@@ -14,7 +17,7 @@ func (f *Plugin1) Serve() chan error {
 	return errCh
 }
 
-func (f *Plugin1) Stop() error {
+func (f *Plugin1) Stop(context.Context) error {
 	return nil
 }
 

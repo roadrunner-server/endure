@@ -1,12 +1,15 @@
 package db
 
 import (
-	"github.com/roadrunner-server/endure/examples/db_http_logger/modules/logger"
 	bolt "go.etcd.io/bbolt"
 )
 
+type SuperLogger interface {
+	SuperLogToStdOut(message string)
+}
+
 type DB struct {
-	logger logger.SuperLogger
+	logger SuperLogger
 	boltdb *bolt.DB
 	path   string
 }
@@ -18,7 +21,7 @@ type Repository interface {
 	Select()
 }
 
-func (db *DB) Init(logger logger.SuperLogger) error {
+func (db *DB) Init(logger SuperLogger) error {
 	logger.SuperLogToStdOut("initializing DB")
 	db.logger = logger
 	db.path = "./examples_bolt_db"
@@ -37,7 +40,7 @@ func (db *DB) Serve() chan error {
 	return errCh
 }
 
-func (db *DB) Stop() error {
+func (db *DB) Stop(context.Context) error {
 	return db.boltdb.Close()
 }
 

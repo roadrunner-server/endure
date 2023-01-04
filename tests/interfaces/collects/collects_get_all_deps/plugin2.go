@@ -1,6 +1,11 @@
 package collects_get_all_deps
 
-import "github.com/roadrunner-server/errors"
+import (
+	"context"
+
+	"github.com/roadrunner-server/endure/v2/dep"
+	"github.com/roadrunner-server/errors"
+)
 
 type Plugin2 struct {
 	collectsDeps []any
@@ -20,21 +25,17 @@ func (f *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (f *Plugin2) Stop() error {
+func (f *Plugin2) Stop(context.Context) error {
 	return nil
 }
 
-func (f *Plugin2) Collects() []any {
-	return []any{
-		f.GetSuper,
-		f.GetSuper2,
+func (f *Plugin2) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(p any) {
+			f.collectsDeps = append(f.collectsDeps, p)
+		}, (*SuperInterface)(nil)),
+		dep.Fits(func(p any) {
+			f.collectsDeps = append(f.collectsDeps, p)
+		}, (*Super2Interface)(nil)),
 	}
-}
-
-func (f *Plugin2) GetSuper(s SuperInterface) {
-	f.collectsDeps = append(f.collectsDeps, s)
-}
-
-func (f *Plugin2) GetSuper2(s Super2Interface) {
-	f.collectsDeps = append(f.collectsDeps, s)
 }

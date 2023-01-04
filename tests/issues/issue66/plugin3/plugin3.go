@@ -1,10 +1,27 @@
 package plugin3
 
+import (
+	"context"
+
+	"github.com/roadrunner-server/endure/v2/dep"
+)
+
 type Plugin3 struct {
 }
 
 type Plugin3DB struct {
-	Name string
+	N string
+}
+
+func (p *Plugin3DB) SomeDB3DepMethod() {}
+
+func (p *Plugin3DB) Name() string {
+	return p.N
+}
+
+type IDB3 interface {
+	SomeDB3DepMethod()
+	Name() string
 }
 
 func (p *Plugin3) Init() error {
@@ -16,18 +33,18 @@ func (p *Plugin3) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin3) Stop() error {
+func (p *Plugin3) Stop(context.Context) error {
 	return nil
 }
 
-func (p *Plugin3) Provides() []any {
-	return []any{
-		p.ProvidePlugin3DB,
+func (p *Plugin3) Provides() []*dep.Out {
+	return []*dep.Out{
+		dep.Bind((*IDB3)(nil), p.ProvidePlugin3DB),
 	}
 }
 
 func (p *Plugin3) ProvidePlugin3DB() *Plugin3DB {
 	return &Plugin3DB{
-		Name: "plugin3DB",
+		N: "plugin3DB",
 	}
 }

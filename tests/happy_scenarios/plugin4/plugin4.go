@@ -1,46 +1,57 @@
 package plugin4
 
 import (
-	"github.com/roadrunner-server/endure/tests/happy_scenarios/plugin5"
-	"github.com/roadrunner-server/endure/tests/happy_scenarios/plugin6"
+	"context"
+
+	"github.com/roadrunner-server/endure/v2/dep"
 )
 
 type S4 struct {
-	fooW plugin6.FooWriter
+	fooW FooWriter
+}
+
+type FooWriter interface {
+	Fooo() // just stupid name
 }
 
 type DB struct {
 	Name string
 }
 
-// No deps
-func (s *S4) Init(foo5 *plugin5.S5, fooWriter plugin6.FooWriter) error {
+func (d *DB) P4DB() {}
+
+type P4DB interface {
+	P4DB()
+}
+
+func (s *S4) Init(_ IFOO5DB, fooWriter FooWriter) error {
 	s.fooW = fooWriter
 	return nil
 }
 
-// But provide some
-func (s *S4) Provides() []any {
-	return []any{
-		s.CreateAnotherDB,
+func (s *S4) Provides() []*dep.Out {
+	return []*dep.Out{
+		dep.Bind((*P4DB)(nil), s.CreateAnotherDB),
 	}
 }
 
 // this is the same type but different packages
-func (s *S4) CreateAnotherDB() (*DB, error) {
+func (s *S4) CreateAnotherDB() *DB {
 	return &DB{
 		Name: "foo4DB",
-	}, nil
-}
-
-func (s *S4) Collects() []any {
-	return []any{
-		s.AddService,
 	}
 }
 
-func (s *S4) AddService(svc *plugin5.S5) error {
-	return nil
+func (s *S4) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(p any) {
+
+		}, (*IFOO5DB)(nil)),
+	}
+}
+
+type IFOO5DB interface {
+	FOO5DB()
 }
 
 func (s *S4) Serve() chan error {
@@ -51,6 +62,8 @@ func (s *S4) Serve() chan error {
 	return errCh
 }
 
-func (s *S4) Stop() error {
+func (s *S4) Stop(context.Context) error {
 	return nil
 }
+
+func (s *S4) S4SomeMethod() {}

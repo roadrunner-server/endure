@@ -1,5 +1,11 @@
 package plugin2
 
+import (
+	"context"
+
+	"github.com/roadrunner-server/endure/v2/dep"
+)
+
 type FooWriter interface {
 	Fooo() // just stupid name
 }
@@ -21,12 +27,14 @@ func (s *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (s *Plugin2) Stop() error {
+func (s *Plugin2) Stop(context.Context) error {
 	return nil
 }
 
-func (s *Plugin2) Provides() []any {
-	return []any{s.ProvideInterface}
+func (s *Plugin2) Provides() []*dep.Out {
+	return []*dep.Out{
+		dep.Bind((*FooWriter)(nil), s.ProvideInterface),
+	}
 }
 
 func (s *Plugin2) ProvideInterface() (FooWriter, error) {

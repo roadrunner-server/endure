@@ -1,21 +1,33 @@
 package ServeErr
 
-type DB struct {
+import (
+	"context"
+
+	"github.com/roadrunner-server/endure/v2/dep"
+)
+
+type DB struct{}
+
+func (d *DB) SuperDB() {}
+
+type S2 struct{}
+
+type SuperDB interface {
+	SuperDB()
 }
 
-type S2 struct {
-}
-
-func (s2 *S2) Init(db *FOO4DB) error {
+func (s2 *S2) Init(SuperSelecter) error {
 	return nil
 }
 
-func (s2 *S2) Provides() []any {
-	return []any{s2.CreateDB}
+func (s2 *S2) Provides() []*dep.Out {
+	return []*dep.Out{
+		dep.Bind((*SuperDB)(nil), s2.CreateDB),
+	}
 }
 
-func (s2 *S2) CreateDB() (*DB, error) {
-	return &DB{}, nil
+func (s2 *S2) CreateDB() *DB {
+	return &DB{}
 }
 
 func (s2 *S2) Serve() chan error {
@@ -23,6 +35,6 @@ func (s2 *S2) Serve() chan error {
 	return errCh
 }
 
-func (s2 *S2) Stop() error {
+func (s2 *S2) Stop(context.Context) error {
 	return nil
 }

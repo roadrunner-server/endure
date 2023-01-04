@@ -1,6 +1,7 @@
 package mixed
 
 import (
+	"context"
 	"time"
 )
 
@@ -16,7 +17,16 @@ func (f *Foo) Serve() chan error {
 	return errCh
 }
 
-func (f *Foo) Stop() error {
-	time.Sleep(time.Second * 15)
-	return nil
+func (f *Foo) Stop(ctx context.Context) error {
+	fin := make(chan struct{}, 1)
+	go func() {
+		time.Sleep(time.Second * 15)
+		fin <- struct{}{}
+	}()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-fin:
+		return nil
+	}
 }

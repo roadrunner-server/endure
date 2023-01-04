@@ -1,5 +1,9 @@
 package plugin3
 
+import (
+	"context"
+)
+
 type Plugin3 struct{}
 
 type Fooer interface {
@@ -15,10 +19,12 @@ func (p *Plugin3) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin3) Stop() error {
+func (p *Plugin3) Stop(context.Context) error {
 	return nil
 }
 
 func (p *Plugin3) Foo() string {
 	return "foo"
 }
+
+func (p *Plugin3) SomeP3DepMethod() {}

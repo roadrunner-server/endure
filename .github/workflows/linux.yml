@@ -45,7 +45,7 @@ jobs:
       - name: Run golang tests on ${{ matrix.os }}
         run: |
           mkdir ./coverage-ci
-          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/backoff.txt -covermode=atomic ./tests/backoff
+          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/backoff.txt -covermode=atomic ./tests/init
           go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/happy_scenarios.txt -covermode=atomic ./tests/happy_scenarios
           go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/interfaces.txt -covermode=atomic ./tests/interfaces
           go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/issues.txt -covermode=atomic ./tests/issues

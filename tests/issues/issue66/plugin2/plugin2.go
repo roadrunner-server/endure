@@ -1,16 +1,20 @@
 package plugin2
 
 import (
+	"context"
 	"fmt"
-
-	"github.com/roadrunner-server/endure/tests/issues/issue66/plugin3"
 )
 
 type Plugin2 struct {
 }
 
-func (p *Plugin2) Init(p3 *plugin3.Plugin3DB) error {
-	fmt.Println(p3.Name)
+type IDB3 interface {
+	SomeDB3DepMethod()
+	Name() string
+}
+
+func (p *Plugin2) Init(p3 IDB3) error {
+	fmt.Println(p3.Name())
 	return nil
 }
 
@@ -19,6 +23,8 @@ func (p *Plugin2) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin2) Stop() error {
+func (p *Plugin2) Stop(context.Context) error {
 	return nil
 }
+
+func (p *Plugin2) SomeDepP2Method() {}
