@@ -1,11 +1,11 @@
-package test4
+package test5
 
 import (
 	"testing"
 
 	"github.com/roadrunner-server/endure/v2"
-	"github.com/roadrunner-server/endure/v2/tests/general/test4/p1"
-	"github.com/roadrunner-server/endure/v2/tests/general/test4/p2"
+	"github.com/roadrunner-server/endure/v2/tests/general/test5/p1"
+	"github.com/roadrunner-server/endure/v2/tests/general/test5/p2"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/slog"
 )
