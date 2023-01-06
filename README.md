@@ -23,7 +23,7 @@ Endure is an open-source (MIT licensed) plugin container with IoC (Inversion of 
 ## Installation
 
 ```go
-go get -u github.com/roadrunner-server/endure
+go get -u github.com/roadrunner-server/endure/v2
 ```
 
 
