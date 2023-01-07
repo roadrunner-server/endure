@@ -1,7 +1,7 @@
 # Endure
 
 <p align="center">
- <a href="https://pkg.go.dev/github.com/roadrunner-server/endure?tab=doc"><img src="https://godoc.org/github.com/roadrunner-server/endure?status.svg"></a>
+ <a href="https://pkg.go.dev/github.com/roadrunner-server/endure/v2?tab=doc"><img src="https://godoc.org/github.com/roadrunner-server/endure/v2?status.svg"></a>
  <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/Linux/badge.svg" alt=""></a>
  <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/macOS/badge.svg" alt=""></a>
  <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/Windows/badge.svg" alt=""></a>
