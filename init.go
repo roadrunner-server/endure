@@ -127,8 +127,6 @@ func (e *Endure) init() error {
 					return vals[0]
 				})
 			}
-
-			continue
 		}
 	}
 
