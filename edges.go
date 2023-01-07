@@ -69,12 +69,13 @@ func (e *Endure) resolveEdges() error {
 			args[j] = initMethod.Type.In(j)
 		}
 
+		// we need to have the same number of plugins which implements the needed dep
 		count := 0
 		if len(args) > 1 {
 			for j := 1; j < len(args); j++ {
 				res := e.registar.ImplementsExcept(args[j], vertices[i].Plugin())
-				count += len(res)
 				if len(res) > 0 {
+					count += 1
 					for k := 0; k < len(res); k++ {
 						// add graph edge
 						e.graph.AddEdge(graph.InitConnection, res[k].Plugin(), vertex.Plugin())
@@ -88,7 +89,8 @@ func (e *Endure) resolveEdges() error {
 				}
 			}
 
-			if count < len(args[1:]) {
+			// we should have here exact the same number of the deps implementing every particular arg
+			if count != len(args[1:]) {
 				// if there are no plugins which implement Init deps, remove this vertex from the tree
 				del := e.graph.Remove(vertices[i].Plugin())
 				for k := 0; k < len(del); k++ {

@@ -42,6 +42,8 @@ func (e *Endure) init() error {
 							slog.String("name", del[k].ID().String()),
 						)
 					}
+
+					continue
 				}
 
 				// check if the provided plugin dep has a method
