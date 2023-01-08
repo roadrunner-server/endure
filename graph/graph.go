@@ -71,6 +71,11 @@ func (g *Graph) TopologicalOrder() []*Vertex {
 	return g.topologicalOrder
 }
 
+func (g *Graph) Clean() {
+	g.topologicalOrder = nil
+	g.vertices = nil
+}
+
 // AddVertex adds an vertex to the graph with its ID, value and meta information
 func (g *Graph) AddVertex(vertex any, weight uint) {
 	tp := reflect.TypeOf(vertex)

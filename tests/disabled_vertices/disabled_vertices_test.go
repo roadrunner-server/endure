@@ -97,7 +97,7 @@ func TestOneSurvived(t *testing.T) {
 
 	require.NoError(t, err)
 	err = cont.Init()
-	assert.Error(t, err)
+	assert.NoError(t, err)
 
 	_, err = cont.Serve()
 	require.NoError(t, err)

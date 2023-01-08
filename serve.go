@@ -12,6 +12,10 @@ func (e *Endure) serve() error {
 	*/
 	vertices := e.graph.TopologicalOrder()
 
+	if len(vertices) == 0 {
+		return errors.E(errors.Str("error occurred, nothing to run"))
+	}
+
 	for i := 0; i < len(vertices); i++ {
 		if !vertices[i].IsActive() {
 			continue

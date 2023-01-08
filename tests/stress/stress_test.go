@@ -31,8 +31,8 @@ func TestEndure_DoubleStop_Err(t *testing.T) {
 	assert.NoError(t, c.Register(&InitErr.S1Err{}))
 	assert.NoError(t, c.Register(&InitErr.S2Err{})) // should produce an error during the Init
 	assert.Error(t, c.Init())
-	assert.NoError(t, c.Stop())
-	assert.NoError(t, c.Stop())
+	assert.Error(t, c.Stop())
+	assert.Error(t, c.Stop())
 }
 
 func TestEndure_Serve_Err(t *testing.T) {
@@ -58,7 +58,7 @@ func TestEndure_NoRegisterInvoke(t *testing.T) {
 	assert.Error(t, c.Init())
 
 	_, err := c.Serve()
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
 	assert.Error(t, c.Stop())
 }

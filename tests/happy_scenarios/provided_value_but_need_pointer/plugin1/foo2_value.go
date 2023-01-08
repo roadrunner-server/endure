@@ -2,14 +2,16 @@ package plugin1
 
 import (
 	"context"
-
-	"github.com/roadrunner-server/endure/v2/tests/happy_scenarios/provided_value_but_need_pointer/plugin2"
 )
+
+type DBVp2 interface {
+	DBV2()
+}
 
 type Plugin1 struct {
 }
 
-func (s2 *Plugin1) Init(db *plugin2.DBV) error {
+func (s2 *Plugin1) Init(DBVp2) error {
 	return nil
 }
 

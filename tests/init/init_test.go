@@ -70,7 +70,7 @@ func TestEndure_Init(t *testing.T) {
 	assert.Error(t, c.Init())
 
 	_, err := c.Serve()
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
-	assert.NoError(t, c.Stop())
+	assert.Error(t, c.Stop())
 }

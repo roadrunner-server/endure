@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/roadrunner-server/errors"
 	"golang.org/x/exp/slog"
 )
 
@@ -12,6 +13,10 @@ func (e *Endure) stop() error {
 		topological order
 	*/
 	vertices := e.graph.TopologicalOrder()
+
+	if len(vertices) == 0 {
+		return errors.E(errors.Str("error occurred, nothing to run"))
+	}
 
 	// reverse order
 	for i := len(vertices) - 1; i >= 0; i-- {

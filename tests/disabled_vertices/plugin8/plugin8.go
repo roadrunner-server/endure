@@ -1,10 +1,11 @@
 package plugin8
 
-import "github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin6"
-
-type Plugin8 struct {
+type P6Dep interface {
+	SomeProvidesP6()
 }
 
-func (p9 *Plugin8) Init(plugin6.Plugin6) error {
+type Plugin8 struct{}
+
+func (p9 *Plugin8) Init(P6Dep) error {
 	return nil
 }

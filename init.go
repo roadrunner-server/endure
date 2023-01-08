@@ -13,6 +13,10 @@ func (e *Endure) init() error {
 	*/
 	vertices := e.graph.TopologicalOrder()
 
+	if len(vertices) == 0 {
+		return errors.E(errors.Str("error occurred, nothing to run"))
+	}
+
 	for i := 0; i < len(vertices); i++ {
 		if !vertices[i].IsActive() {
 			continue
@@ -66,16 +70,22 @@ func (e *Endure) init() error {
 
 		ret := initMethod.Func.Call(inVals)
 		if len(ret) > 1 {
+			// fatal error, clean the graph
+			e.graph.Clean()
 			return errors.E("Init function should return only error, `Init(args) error {}`")
 		}
 
 		if ret[0].Type() != reflect.TypeOf((*error)(nil)).Elem() {
+			// fatal error, clean the graph
+			e.graph.Clean()
 			return errors.E("Init function return type should be the error")
 		}
 
 		if ret[0].Interface() != nil {
 			// may panic here?
 			if _, ok := ret[0].Interface().(error); !ok {
+				// fatal error, clean the graph
+				e.graph.Clean()
 				return errors.E("Init function should return only error, `Init(args) error {}`")
 			}
 
@@ -97,6 +107,8 @@ func (e *Endure) init() error {
 				continue
 			}
 
+			// fatal error, clean the graph
+			e.graph.Clean()
 			return ret[0].Interface().(error)
 		}
 
@@ -128,6 +140,17 @@ func (e *Endure) init() error {
 				})
 			}
 		}
+	}
+
+	inactive := 0
+	for i := 0; i < len(vertices); i++ {
+		if !vertices[i].IsActive() {
+			inactive++
+		}
+	}
+
+	if inactive == len(vertices) {
+		return errors.E(errors.Str("All plugins are disabled, nothing to serve"))
 	}
 
 	return nil

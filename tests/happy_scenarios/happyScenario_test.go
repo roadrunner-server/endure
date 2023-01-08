@@ -132,10 +132,12 @@ func TestEndure_Init_1_Element(t *testing.T) {
 	assert.NoError(t, c.Stop())
 }
 
-func TestEndure_ProvidedValueButNeedPointer(t *testing.T) {
+func TestEndure_ProvidedPointerToTheStruct(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 			println("test should panic")
+		} else {
+			panic("test should panic")
 		}
 	}()
 	c := endure.New(slog.LevelDebug)
@@ -173,9 +175,9 @@ func TestEndure_PrimitiveTypes(t *testing.T) {
 	assert.Error(t, c.Init())
 
 	_, err := c.Serve()
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
-	assert.NoError(t, c.Stop())
+	assert.Error(t, c.Stop())
 }
 
 func TestEndure_VisualizeFile(t *testing.T) {
