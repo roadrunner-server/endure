@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/roadrunner-server/errors"
+	"golang.org/x/exp/slog"
 )
 
 func (e *Endure) serve() error {
@@ -29,6 +30,8 @@ func (e *Endure) serve() error {
 
 		var inVals []reflect.Value
 		inVals = append(inVals, reflect.ValueOf(vertices[i].Plugin()))
+
+		e.log.Debug("calling serve method", slog.String("plugin", vertices[i].ID().String()))
 
 		ret := serveMethod.Func.Call(inVals)[0].Interface()
 		if ret != nil {
