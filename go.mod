@@ -1,6 +1,6 @@
 module github.com/roadrunner-server/endure/v2
 
-go 1.19
+go 1.20
 
 require (
 	github.com/roadrunner-server/errors v1.2.0
