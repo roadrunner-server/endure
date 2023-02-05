@@ -12,6 +12,7 @@ import (
 	"samples/modules/logger"
 
 	"github.com/roadrunner-server/endure/v2"
+	"golang.org/x/exp/slog"
 )
 
 func main() {
