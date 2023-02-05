@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/roadrunner-server/errors v1.2.0
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/exp v0.0.0-20230131160201-f062dba9d201
+	golang.org/x/exp v0.0.0-20230203172020-98cc5a0785f9
 )
 
 require (
