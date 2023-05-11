@@ -19,6 +19,7 @@ func main() {
 	// no external logger
 	container := endure.New(slog.LevelDebug)
 
+	// register your plugins here (references to the structures (aka implementations)
 	err := container.RegisterAll(
 		&http.Http{},
 		&db.DB{},
@@ -31,11 +32,13 @@ func main() {
 		panic(err)
 	}
 
+	// Init the graph
 	err = container.Init()
 	if err != nil {
 		panic(err)
 	}
 
+	// Start the graph
 	errCh, err := container.Serve()
 	if err != nil {
 		panic(err)
@@ -47,6 +50,8 @@ func main() {
 
 	for {
 		select {
+		// here is the error channel
+		// endure will automatically stop all deps if receive an error
 		case e := <-errCh:
 			println(e.Error.Error())
 			er := container.Stop()
