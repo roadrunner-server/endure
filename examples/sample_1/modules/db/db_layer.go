@@ -6,6 +6,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
+// SuperLogger represents logger module (modules/logger)
+// you don't need to depend on the particular structures, instead, just declare interface in-place (like Go-way)
 type SuperLogger interface {
 	SuperLogToStdOut(message string)
 }
@@ -23,6 +25,7 @@ type Repository interface {
 	Select()
 }
 
+// Init the plugin
 func (db *DB) Init(logger SuperLogger) error {
 	logger.SuperLogToStdOut("initializing DB")
 	db.logger = logger
