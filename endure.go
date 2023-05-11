@@ -43,16 +43,16 @@ func New(level slog.Leveler, options ...Options) *Endure {
 		level = slog.LevelDebug
 	}
 
-	opts := slog.HandlerOptions{
+	opts := &slog.HandlerOptions{
 		Level: level,
-	}.NewJSONHandler(os.Stderr)
+	}
 
 	c := &Endure{
 		registar:    registar.New(),
 		graph:       graph.New(),
 		mu:          sync.RWMutex{},
 		stopTimeout: time.Second * 30,
-		log:         slog.New(opts),
+		log:         slog.New(slog.NewJSONHandler(os.Stderr, opts)),
 	}
 
 	// Main thread channels
