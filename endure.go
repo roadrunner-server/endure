@@ -43,16 +43,11 @@ func New(level slog.Leveler, options ...Options) *Endure {
 		level = slog.LevelDebug
 	}
 
-	opts := &slog.HandlerOptions{
-		Level: level,
-	}
-
 	c := &Endure{
 		registar:    registar.New(),
 		graph:       graph.New(),
 		mu:          sync.RWMutex{},
 		stopTimeout: time.Second * 30,
-		log:         slog.New(slog.NewJSONHandler(os.Stderr, opts)),
 	}
 
 	// Main thread channels
@@ -62,6 +57,14 @@ func New(level slog.Leveler, options ...Options) *Endure {
 	// append options
 	for _, option := range options {
 		option(c)
+	}
+
+	// create default logger if not already defined in the provided options
+	if c.log == nil {
+		opts := &slog.HandlerOptions{
+			Level: level,
+		}
+		c.log = slog.New(slog.NewJSONHandler(os.Stderr, opts))
 	}
 
 	// start profiler server
