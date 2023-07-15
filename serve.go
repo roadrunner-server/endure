@@ -51,7 +51,7 @@ func (e *Endure) serve() error {
 					return errors.E(
 						errors.FunctionCall,
 						errors.Errorf(
-							"got initial serve error from the Vertex %s, stopping execution, error: %v",
+							"got initial serve error from the plugin %s stopping execution, error: %v",
 							serveVertices[i].ID().String(), err),
 					)
 				}

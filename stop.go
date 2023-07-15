@@ -41,9 +41,6 @@ func (e *Endure) stop() error {
 		ctx, cancel := context.WithTimeout(context.Background(), e.stopTimeout)
 		inVals = append(inVals, reflect.ValueOf(ctx))
 
-		go func() {
-
-		}()
 		ret := stopMethod.Func.Call(inVals)[0].Interface()
 		if ret != nil {
 			cancel()
