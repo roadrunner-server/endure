@@ -43,23 +43,24 @@ func (e *Endure) serve() error {
 
 		ret := serveMethod.Func.Call(inVals)[0].Interface()
 		if ret != nil {
-			if err, ok := ret.(chan error); ok && err != nil {
-				// error come right after we start serving the vertex
-				if len(err) > 0 {
-					// read the error
-					err := <-err
+			if errCh, ok := ret.(chan error); ok && errCh != nil {
+				// check if we have an error in the user's channel
+				select {
+				case er := <-errCh:
 					return errors.E(
 						errors.FunctionCall,
 						errors.Errorf(
-							"got initial serve error from the plugin %s stopping execution, error: %v",
-							serveVertices[i].ID().String(), err),
+							"serve error from the plugin %s stopping execution, error: %v",
+							serveVertices[i].ID().String(), er),
 					)
+				default:
+					// if we don't have an error in the user's channel, activate poller
+					e.poll(&result{
+						// listen for the user's error channel
+						errCh:    errCh,
+						vertexID: serveVertices[i].ID().String(),
+					})
 				}
-				e.poll(&result{
-					errCh:    err,
-					signal:   make(chan notify),
-					vertexID: serveVertices[i].ID().String(),
-				})
 			}
 		}
 	}
