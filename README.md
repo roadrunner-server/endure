@@ -7,7 +7,7 @@
  <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/Windows/badge.svg" alt=""></a>
  <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/Linters/badge.svg" alt=""></a>
  <a href="https://codecov.io/gh/roadrunner-server/endure"><img src="https://codecov.io/gh/roadrunner-server/endure/branch/master/graph/badge.svg?token=itNaiZ6ALN"/></a>
- <a href="https://discord.gg/TFeEmCs"><img src="https://img.shields.io/badge/discord-chat-magenta.svg"></a>
+ <a href="https://discord.gg/spiralphp"><img src="https://img.shields.io/badge/discord-chat-magenta.svg"></a>
 </p>
 
 Endure is an open-source (MIT licensed) plugin container with IoC (Inversion of Control) and self-healing capabilities.
@@ -101,7 +101,9 @@ The start will proceed in topological order (Logger -> DB -> HTTP), and the stop
 package sample
 
 import (
-   "github.com/roadrunner-server/endure/v2/dep"
+	"context"
+	
+	"github.com/roadrunner-server/endure/v2/dep"
 )
 
 type (
