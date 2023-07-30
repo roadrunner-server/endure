@@ -10,7 +10,7 @@
  <a href="https://discord.gg/spiralphp"><img src="https://img.shields.io/badge/discord-chat-magenta.svg"></a>
 </p>
 
-Endure is an open-source (MIT licensed) plugin container with IoC (Inversion of Control) and self-healing capabilities.
+Endure is an open-source (MIT licensed) plugin container with IoC (Inversion of Control).
 
 ## Features
 
