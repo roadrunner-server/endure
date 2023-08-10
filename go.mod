@@ -5,9 +5,9 @@ go 1.21
 toolchain go1.21.0
 
 require (
-	github.com/roadrunner-server/errors v1.2.0
+	github.com/roadrunner-server/errors v1.3.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20230809150735-7b3493d9a819
+	golang.org/x/exp v0.0.0-20230810033253-352e893a4cad
 )
 
 require (
