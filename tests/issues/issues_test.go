@@ -2,6 +2,7 @@ package issues
 
 import (
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	issue55p1 "github.com/roadrunner-server/endure/v2/tests/issues/issue55/plugin1"
 	issue55p2 "github.com/roadrunner-server/endure/v2/tests/issues/issue55/plugin2"
 	issue55p3 "github.com/roadrunner-server/endure/v2/tests/issues/issue55/plugin3"
-	"golang.org/x/exp/slog"
 
 	issue66p1 "github.com/roadrunner-server/endure/v2/tests/issues/issue66/plugin1"
 	issue66p2 "github.com/roadrunner-server/endure/v2/tests/issues/issue66/plugin2"

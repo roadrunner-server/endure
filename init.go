@@ -1,10 +1,10 @@
 package endure
 
 import (
+	"log/slog"
 	"reflect"
 
 	"github.com/roadrunner-server/errors"
-	"golang.org/x/exp/slog"
 )
 
 func (e *Endure) init() error {

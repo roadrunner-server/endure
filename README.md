@@ -36,7 +36,7 @@ First, we initialize the `endure` container:
 
 ```go
 import (
-    "golang.org/x/exp/slog"
+    "log/slog"
 )
 
 func main() {

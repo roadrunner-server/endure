@@ -1,12 +1,12 @@
 package endure
 
 import (
+	"log/slog"
 	"reflect"
 	"sort"
 
 	"github.com/roadrunner-server/endure/v2/graph"
 	"github.com/roadrunner-server/errors"
-	"golang.org/x/exp/slog"
 )
 
 func (e *Endure) serve() error {

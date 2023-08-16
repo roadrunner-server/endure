@@ -1,6 +1,7 @@
 package disabled_vertices
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/roadrunner-server/endure/v2"
@@ -15,7 +16,6 @@ import (
 	"github.com/roadrunner-server/endure/v2/tests/disabled_vertices/plugin9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slog"
 )
 
 func TestVertexDisabled(t *testing.T) {

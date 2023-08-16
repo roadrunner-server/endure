@@ -1,6 +1,7 @@
 package happy_scenarios
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	plugin12 "github.com/roadrunner-server/endure/v2/tests/happy_scenarios/provided_value_but_need_pointer/plugin1"
 	plugin22 "github.com/roadrunner-server/endure/v2/tests/happy_scenarios/provided_value_but_need_pointer/plugin2"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slog"
 )
 
 func TestEndure_DifferentLogLevels(t *testing.T) {

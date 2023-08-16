@@ -1,7 +1,7 @@
 package endure
 
 import (
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // poll is used to poll the errors from the vertex

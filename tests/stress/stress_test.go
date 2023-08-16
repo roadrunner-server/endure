@@ -1,6 +1,7 @@
 package stress
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/roadrunner-server/endure/v2/tests/stress/ServeErr"
 	"github.com/roadrunner-server/endure/v2/tests/stress/mixed"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slog"
 )
 
 func TestEndure_Init_Err(t *testing.T) {

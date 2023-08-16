@@ -2,10 +2,14 @@ package endure
 
 import (
 	"context"
+	stderr "errors"
+	"log/slog"
 	"reflect"
+	"sync"
+
+	"golang.org/x/sync/semaphore"
 
 	"github.com/roadrunner-server/errors"
-	"golang.org/x/exp/slog"
 )
 
 func (e *Endure) stop() error {
@@ -18,6 +22,10 @@ func (e *Endure) stop() error {
 		return errors.E(errors.Str("error occurred, nothing to run"))
 	}
 
+	mu := new(sync.Mutex)
+	errs := make([]error, 0, 2)
+	sema := semaphore.NewWeighted(int64(len(vertices)))
+
 	// reverse order
 	for i := len(vertices) - 1; i >= 0; i-- {
 		if !vertices[i].IsActive() {
@@ -28,26 +36,38 @@ func (e *Endure) stop() error {
 			continue
 		}
 
-		stopMethod, _ := reflect.TypeOf(vertices[i].Plugin()).MethodByName(StopMethodName)
+		_ = sema.Acquire(context.Background(), 1)
+		go func(i int) {
+			stopMethod, _ := reflect.TypeOf(vertices[i].Plugin()).MethodByName(StopMethodName)
 
-		var inVals []reflect.Value
-		inVals = append(inVals, reflect.ValueOf(vertices[i].Plugin()))
+			var inVals []reflect.Value
+			inVals = append(inVals, reflect.ValueOf(vertices[i].Plugin()))
 
-		e.log.Debug(
-			"calling stop function",
-			slog.String("plugin", vertices[i].ID().String()),
-		)
+			e.log.Debug(
+				"calling stop function",
+				slog.String("plugin", vertices[i].ID().String()),
+			)
 
-		ctx, cancel := context.WithTimeout(context.Background(), e.stopTimeout)
-		inVals = append(inVals, reflect.ValueOf(ctx))
+			ctx, cancel := context.WithTimeout(context.Background(), e.stopTimeout)
+			inVals = append(inVals, reflect.ValueOf(ctx))
 
-		ret := stopMethod.Func.Call(inVals)[0].Interface()
-		if ret != nil {
+			ret := stopMethod.Func.Call(inVals)[0].Interface()
+			if ret != nil {
+				e.log.Error("failed to stop the plugin", slog.String("error", ret.(error).Error()))
+				mu.Lock()
+				errs = append(errs, ret.(error))
+				mu.Unlock()
+			}
+
+			sema.Release(1)
 			cancel()
-			return ret.(error)
-		}
+		}(i)
+	}
 
-		cancel()
+	_ = sema.Acquire(context.Background(), int64(len(vertices)))
+
+	if len(errs) > 0 {
+		return stderr.Join(errs...)
 	}
 
 	return nil

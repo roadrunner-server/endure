@@ -1,13 +1,13 @@
 package test4
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/roadrunner-server/endure/v2"
 	"github.com/roadrunner-server/endure/v2/tests/general/test4/p1"
 	"github.com/roadrunner-server/endure/v2/tests/general/test4/p2"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slog"
 )
 
 func Test1(t *testing.T) {

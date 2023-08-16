@@ -1,6 +1,7 @@
 package test1
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/roadrunner-server/endure/v2"
@@ -10,7 +11,6 @@ import (
 	"github.com/roadrunner-server/endure/v2/tests/general/test1/p4"
 	"github.com/roadrunner-server/endure/v2/tests/general/test1/p5"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slog"
 )
 
 func Test1(t *testing.T) {

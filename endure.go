@@ -1,7 +1,9 @@
 package endure
 
 import (
+	"log/slog"
 	"net/http"
+
 	// pprof will be enabled in debug mode
 	"net/http/pprof"
 	"os"
@@ -12,7 +14,6 @@ import (
 	"github.com/roadrunner-server/endure/v2/graph"
 	"github.com/roadrunner-server/endure/v2/registar"
 	"github.com/roadrunner-server/errors"
-	"golang.org/x/exp/slog"
 )
 
 // Endure struct represent main endure repr

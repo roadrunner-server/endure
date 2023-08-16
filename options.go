@@ -1,9 +1,8 @@
 package endure
 
 import (
+	"log/slog"
 	"time"
-
-	"golang.org/x/exp/slog"
 )
 
 // GracefulShutdownTimeout sets the timeout to kill the vertices is one or more of them are frozen

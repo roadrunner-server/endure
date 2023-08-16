@@ -7,7 +7,7 @@ toolchain go1.21.0
 require (
 	github.com/roadrunner-server/errors v1.3.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20230811145659-89c5cff77bcb
+	golang.org/x/sync v0.3.0
 )
 
 require (

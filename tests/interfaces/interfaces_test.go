@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/roadrunner-server/endure/v2/tests/interfaces/plugins/plugin9"
 	notImplPlugin1 "github.com/roadrunner-server/endure/v2/tests/interfaces/service/not_implemented_service/plugin1"
 	notImplPlugin2 "github.com/roadrunner-server/endure/v2/tests/interfaces/service/not_implemented_service/plugin2"
-	"golang.org/x/exp/slog"
 
 	"github.com/roadrunner-server/endure/v2/tests/interfaces/collects/collects_get_all_deps"
 	"github.com/stretchr/testify/assert"

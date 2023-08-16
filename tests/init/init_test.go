@@ -1,6 +1,7 @@
 package init
 
 import (
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/roadrunner-server/endure/v2/tests/init/plugins/plugin3"
 	"github.com/roadrunner-server/endure/v2/tests/init/plugins/plugin4"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slog"
 )
 
 func TestEndure_MainThread_Serve(t *testing.T) {
