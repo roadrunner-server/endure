@@ -51,7 +51,6 @@ func (e *Endure) resolveEdges() error {
 			if isPrimitive(initMethod.Type.In(j).String()) {
 				e.log.Error(
 					"primitive type in the function parameters",
-					nil,
 					slog.String("plugin", vertices[i].ID().String()),
 					slog.String("type", initMethod.Type.In(j).String()),
 				)
