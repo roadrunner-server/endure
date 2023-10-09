@@ -1,6 +1,6 @@
 package graph
 
-func (g *Graph) TopologicalSort() bool {
+func (g *Graph) TopologicalSort() {
 	heap := &VertexHeap{}
 
 	for _, v := range g.vertices {
@@ -33,6 +33,4 @@ func (g *Graph) TopologicalSort() bool {
 			}
 		}
 	}
-
-	return len(g.topologicalOrder) >= len(g.vertices)
 }
