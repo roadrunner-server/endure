@@ -35,7 +35,7 @@ func (e *Endure) resolveCollectorEdges(plugin any) error {
 }
 
 // resolveEdges adds edges between the vertices
-// At this point, we know all plugins and all provides values
+// At this point, we know all plugins, and all provides values
 func (e *Endure) resolveEdges() error {
 	vertices := e.graph.Vertices()
 
@@ -90,7 +90,7 @@ func (e *Endure) resolveEdges() error {
 
 			// we should have here exact the same number of the deps implementing every particular arg
 			if count != len(args[1:]) {
-				// if there are no plugins which implement Init deps, remove this vertex from the tree
+				// if there are no plugins that implement Init deps, remove this vertex from the tree
 				del := e.graph.Remove(vertices[i].Plugin())
 				for k := 0; k < len(del); k++ {
 					e.registar.Remove(del[k].Plugin())
@@ -115,9 +115,24 @@ func (e *Endure) resolveEdges() error {
 		}
 	}
 
-	ok := e.graph.TopologicalSort()
-	if !ok {
-		return errors.E("cyclic dependencies found, see the DEBUG log")
+	e.graph.TopologicalSort()
+
+	// notify user about the disabled plugins
+	// after topological sorting we remove all plugins with indegree > 0, because there are no edges to them
+	if len(e.graph.TopologicalOrder()) != len(e.graph.Vertices()) {
+		tpl := e.graph.TopologicalOrder()
+		vrt := e.graph.Vertices()
+
+		tmpM := make(map[string]struct{}, 2)
+		for _, v := range tpl {
+			tmpM[v.ID().String()] = struct{}{}
+		}
+
+		for _, v := range vrt {
+			if _, ok := tmpM[v.ID().String()]; !ok {
+				e.log.Warn("topological sort, plugin disabled", slog.String("plugin", v.ID().String()))
+			}
+		}
 	}
 
 	return nil
