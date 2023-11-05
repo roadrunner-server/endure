@@ -1,5 +1,12 @@
 # Endure
-
+<p align="center">
+ <a href="https://roadrunner.dev" target="_blank">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/roadrunner-server/.github/assets/8040338/cf1bfcf2-b787-426d-80f5-2862bb2a39b2">
+    <img align="center" src="https://github.com/roadrunner-server/.github/assets/8040338/c4b971fd-b84f-406d-b850-0a4f072a5885">
+  </picture>
+</a>
+</p>
 <p align="center">
  <a href="https://pkg.go.dev/github.com/roadrunner-server/endure/v2?tab=doc"><img src="https://godoc.org/github.com/roadrunner-server/endure/v2?status.svg"></a>
  <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/Linux/badge.svg" alt=""></a>
@@ -8,6 +15,21 @@
  <a href="https://github.com/roadrunner-server/endure/actions"><img src="https://github.com/roadrunner-server/endure/workflows/Linters/badge.svg" alt=""></a>
  <a href="https://codecov.io/gh/roadrunner-server/endure"><img src="https://codecov.io/gh/roadrunner-server/endure/branch/master/graph/badge.svg?token=itNaiZ6ALN"/></a>
  <a href="https://discord.gg/spiralphp"><img src="https://img.shields.io/badge/discord-chat-magenta.svg"></a>
+</p>
+
+RoadRunner is an open-source (MIT licensed) high-performance PHP application server, load balancer, and process manager.
+It supports running as a service with the ability to extend its functionality on a per-project basis.
+
+RoadRunner includes PSR-7/PSR-17 compatible HTTP and HTTP/2 server and can be used to replace classic Nginx+FPM setup
+with much greater performance and flexibility.
+
+# Join our discord server: [Link](https://discord.gg/TFeEmCs)
+
+<p align="center">
+	<a href="https://roadrunner.dev/"><b>Official Website</b></a> |
+	<a href="https://roadrunner.dev/docs"><b>Documentation</b></a> |
+    <a href="https://forum.roadrunner.dev"><b>Forum</b></a> |
+    <a href="https://github.com/orgs/roadrunner-server/projects/4"><b>Release schedule</b></a>
 </p>
 
 Endure is an open-source (MIT licensed) plugin container with IoC (Inversion of Control).
