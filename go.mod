@@ -2,10 +2,10 @@ module github.com/roadrunner-server/endure/v2
 
 go 1.21
 
-toolchain go1.22rc1
+toolchain go1.22rc2
 
 require (
-	github.com/roadrunner-server/errors v1.3.0
+	github.com/roadrunner-server/errors v1.4.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/sync v0.6.0
 )
