@@ -1,8 +1,8 @@
 module samples
 
-go 1.21
+go 1.22
 
-toolchain go1.21.0
+toolchain go1.22.0
 
 require (
 	github.com/NYTimes/gziphandler v1.1.1
