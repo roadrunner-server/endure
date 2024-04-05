@@ -2,22 +2,16 @@
 
 run:
   timeout: 1m
-  skip-dirs:
-    - .github
-    - .git
   modules-download-mode: readonly
   allow-parallel-runners: true
 
 output:
-  format: colored-line-number # colored-line-number|line-number|json|tab|checkstyle|code-climate
+  formats:
+    - format: colored-line-number # colored-line-number|line-number|json|tab|checkstyle|code-climate
 
 linters-settings:
-  govet:
-    check-shadowing: true
   revive:
     confidence: 0.8
-    errorCode: 0
-    warningCode: 0
   gocyclo:
     min-complexity: 15
   godot:
@@ -37,7 +31,6 @@ linters-settings:
     range-loops: true
     for-loops: true
   nolintlint:
-    allow-leading-space: false
     require-specific: true
 
 linters: # All available linters list: <https://golangci-lint.run/usage/linters/>
@@ -72,6 +65,9 @@ linters: # All available linters list: <https://golangci-lint.run/usage/linters/
     - whitespace # Tool for detection of leading and trailing whitespace
 
 issues:
+  exclude-dirs:
+    - .github
+    - .git
   exclude-rules:
     - path: _test\.go
       linters:
