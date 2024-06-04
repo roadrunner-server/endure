@@ -12,7 +12,7 @@ func (e *Endure) poll(r *result) {
 				continue
 			}
 			// log error message
-			e.log.Error("plugin returned an error from the Serve method", err, slog.String("plugin", res.vertexID))
+			e.log.Error("plugin returned an error from the 'Serve' method", slog.Any("error", err), slog.String("plugin", res.vertexID))
 			// set the error
 			res.err = err
 			// send handleErrorCh signal
