@@ -53,7 +53,7 @@ func (e *Endure) stop() error {
 
 			ret := stopMethod.Func.Call(inVals)[0].Interface()
 			if ret != nil {
-				e.log.Error("failed to stop the plugin", slog.String("error", ret.(error).Error()))
+				e.log.Error("failed to stop the plugin", slog.Any("error", ret.(error)))
 				mu.Lock()
 				errs = append(errs, ret.(error))
 				mu.Unlock()
