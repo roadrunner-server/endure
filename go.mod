@@ -1,6 +1,8 @@
 module github.com/roadrunner-server/endure/v2
 
-go 1.22.4
+go 1.22.5
+
+toolchain go1.23rc1
 
 require (
 	github.com/roadrunner-server/errors v1.4.0
