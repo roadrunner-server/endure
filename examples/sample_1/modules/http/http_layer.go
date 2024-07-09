@@ -144,8 +144,8 @@ func (h *Http) sselect(writer http.ResponseWriter, _ *http.Request) {
 	for i := 0; i < 10000; i++ {
 		_, _ = writer.Write([]byte("TEST_GZIP_HEADERS"))
 	}
-
 }
+
 func (h *Http) insert(writer http.ResponseWriter, _ *http.Request) {
 	h.db.Insert()
 	writer.WriteHeader(http.StatusOK)
