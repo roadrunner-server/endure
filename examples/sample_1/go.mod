@@ -14,6 +14,6 @@ replace github.com/roadrunner-server/endure/v2 => ../../
 
 require (
 	github.com/roadrunner-server/errors v1.4.1 // indirect
-	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 )
