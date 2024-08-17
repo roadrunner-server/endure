@@ -46,7 +46,6 @@ linters: # All available linters list: <https://golangci-lint.run/usage/linters/
     - goconst # Finds repeated strings that could be replaced by a constant
     - gocritic # The most opinionated Go source code linter
     - gofmt # Gofmt checks whether code was gofmt-ed. By default this tool runs with -s option to check for code simplification
-    - goimports # Goimports does everything that gofmt does. Additionally it checks unused imports
     - revive # Golint differs from gofmt. Gofmt reformats Go source code, whereas golint prints out style mistakes
     - goprintffuncname # Checks that printf-like functions are named with `f` at the end
     - gosec # Inspects source code for security problems

@@ -3,7 +3,6 @@ package endure
 import (
 	"log/slog"
 	"net/http"
-
 	// pprof will be enabled in debug mode
 	"net/http/pprof"
 	"os"
@@ -98,7 +97,7 @@ func (e *Endure) Register(vertex any) error {
 	*/
 
 	if e.graph.HasVertex(vertex) {
-		e.log.Warn("already registered", errors.E(op, errors.Traverse, errors.Errorf("plugin `%s` is already registered", t.String())))
+		e.log.Warn("already registered", slog.Any("error", errors.Errorf("plugin `%s` is already registered", t.String())))
 		return nil
 	}
 
