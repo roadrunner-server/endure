@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"sync"
 
-	"golang.org/x/sync/semaphore"
-
 	"github.com/roadrunner-server/errors"
 )
 
@@ -24,20 +22,23 @@ func (e *Endure) stop() error {
 
 	mu := new(sync.Mutex)
 	errs := make([]error, 0, 2)
-	sema := semaphore.NewWeighted(int64(len(vertices)))
+	wg := &sync.WaitGroup{}
+	wg.Add(len(vertices))
 
 	// reverse order
 	for i := len(vertices) - 1; i >= 0; i-- {
 		if !vertices[i].IsActive() {
+			wg.Done()
 			continue
 		}
 
 		if !reflect.TypeOf(vertices[i].Plugin()).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
+			wg.Done()
 			continue
 		}
 
-		_ = sema.Acquire(context.Background(), 1)
 		go func(i int) {
+			defer wg.Done()
 			stopMethod, _ := reflect.TypeOf(vertices[i].Plugin()).MethodByName(StopMethodName)
 
 			var inVals []reflect.Value
@@ -59,12 +60,11 @@ func (e *Endure) stop() error {
 				mu.Unlock()
 			}
 
-			sema.Release(1)
 			cancel()
 		}(i)
 	}
 
-	_ = sema.Acquire(context.Background(), int64(len(vertices)))
+	wg.Wait()
 
 	if len(errs) > 0 {
 		return stderr.Join(errs...)

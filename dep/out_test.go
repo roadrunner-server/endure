@@ -3,8 +3,6 @@ package dep
 import (
 	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 type FooBar interface {
@@ -27,6 +25,11 @@ func TestOutType(t *testing.T) {
 	p := Plugin{}
 	tt := Bind((*FooBar)(nil), p.F)
 
-	assert.Equal(t, reflect.Interface, tt.Type.Kind())
-	assert.Equal(t, "F", tt.Method)
+	if reflect.Interface != tt.Type.Kind() {
+		t.Fail()
+	}
+
+	if tt.Method != "F" {
+		t.Fail()
+	}
 }
