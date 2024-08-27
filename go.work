@@ -2,6 +2,6 @@ go 1.23.0
 
 use (
 	.
-	./tests
 	./examples/sample_1
+	./tests
 )
