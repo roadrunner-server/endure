@@ -3,8 +3,6 @@ package dep
 import (
 	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 type BarBaz interface {
@@ -17,5 +15,7 @@ func TestImplements(t *testing.T) {
 		println("foo")
 	}, (*BarBaz)(nil))
 
-	assert.Equal(t, reflect.Interface, in.Type.Kind())
+	if reflect.Interface != in.Type.Kind() {
+		t.Fail()
+	}
 }

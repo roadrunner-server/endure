@@ -15,7 +15,7 @@ on:
       - "**.md"
 
 jobs:
-  golangci-lint:
+  linters:
     name: Golang-CI (lint)
     runs-on: ubuntu-latest
     steps:
