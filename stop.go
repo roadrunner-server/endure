@@ -3,11 +3,11 @@ package endure
 import (
 	"context"
 	stderr "errors"
-	"log/slog"
 	"reflect"
 	"sync"
 
 	"github.com/roadrunner-server/errors"
+	"go.uber.org/zap"
 )
 
 func (e *Endure) stop() error {
@@ -46,7 +46,7 @@ func (e *Endure) stop() error {
 
 			e.log.Debug(
 				"calling stop function",
-				slog.String("plugin", vertices[i].ID().String()),
+				zap.String("plugin", vertices[i].ID().String()),
 			)
 
 			ctx, cancel := context.WithTimeout(context.Background(), e.stopTimeout)
@@ -54,7 +54,7 @@ func (e *Endure) stop() error {
 
 			ret := stopMethod.Func.Call(inVals)[0].Interface()
 			if ret != nil {
-				e.log.Error("failed to stop the plugin", slog.Any("error", ret.(error)))
+				e.log.Error("failed to stop the plugin", zap.String("name", vertices[i].ID().String()), zap.Error(ret.(error)))
 				mu.Lock()
 				errs = append(errs, ret.(error))
 				mu.Unlock()

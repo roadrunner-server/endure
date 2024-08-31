@@ -1,12 +1,12 @@
 package endure
 
 import (
-	"log/slog"
 	"reflect"
 	"sort"
 
 	"github.com/roadrunner-server/endure/v2/graph"
 	"github.com/roadrunner-server/errors"
+	"go.uber.org/zap"
 )
 
 func (e *Endure) serve() error {
@@ -39,7 +39,7 @@ func (e *Endure) serve() error {
 		var inVals []reflect.Value
 		inVals = append(inVals, reflect.ValueOf(serveVertices[i].Plugin()))
 
-		e.log.Debug("calling serve method", slog.String("plugin", serveVertices[i].ID().String()))
+		e.log.Debug("calling serve method", zap.String("plugin", serveVertices[i].ID().String()))
 
 		ret := serveMethod.Func.Call(inVals)[0].Interface()
 		if ret != nil {
