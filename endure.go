@@ -52,7 +52,7 @@ func New(level slog.Leveler, options ...Options) *Endure {
 		graph:       graph.New(),
 		mu:          sync.RWMutex{},
 		stopTimeout: time.Second * 30,
-		log:         zlog,
+		log:         zlog.Named("endure"),
 	}
 
 	// Main thread channels
