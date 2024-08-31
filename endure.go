@@ -5,14 +5,15 @@ import (
 	"net/http"
 	// pprof will be enabled in debug mode
 	"net/http/pprof"
-	"os"
 	"reflect"
 	"sync"
 	"time"
 
 	"github.com/roadrunner-server/endure/v2/graph"
+	"github.com/roadrunner-server/endure/v2/logger"
 	"github.com/roadrunner-server/endure/v2/registar"
 	"github.com/roadrunner-server/errors"
+	"go.uber.org/zap"
 )
 
 // Endure struct represent main endure repr
@@ -24,7 +25,7 @@ type Endure struct {
 	// Dependency graph
 	graph *graph.Graph
 	// log
-	log         *slog.Logger
+	log         *zap.Logger
 	stopTimeout time.Duration
 	profiler    bool
 	visualize   bool
@@ -34,7 +35,7 @@ type Endure struct {
 	userResultsCh chan *Result
 }
 
-// Options is the endure options
+// Options is the 'endure' options
 type Options func(endure *Endure)
 
 // New returns empty endure container
@@ -43,11 +44,15 @@ func New(level slog.Leveler, options ...Options) *Endure {
 		level = slog.LevelDebug
 	}
 
+	// error handling is omitted because we are sure that the logger will be created
+	zlog, _ := logger.BuildLogger(level)
+
 	c := &Endure{
 		registar:    registar.New(),
 		graph:       graph.New(),
 		mu:          sync.RWMutex{},
 		stopTimeout: time.Second * 30,
+		log:         zlog,
 	}
 
 	// Main thread channels
@@ -57,14 +62,6 @@ func New(level slog.Leveler, options ...Options) *Endure {
 	// append options
 	for _, option := range options {
 		option(c)
-	}
-
-	// create default logger if not already defined in the provided options
-	if c.log == nil {
-		opts := &slog.HandlerOptions{
-			Level: level,
-		}
-		c.log = slog.New(slog.NewJSONHandler(os.Stderr, opts))
 	}
 
 	// start profiler server
@@ -97,7 +94,7 @@ func (e *Endure) Register(vertex any) error {
 	*/
 
 	if e.graph.HasVertex(vertex) {
-		e.log.Warn("already registered", slog.Any("error", errors.Errorf("plugin `%s` is already registered", t.String())))
+		e.log.Warn("already registered", zap.Error(errors.Errorf("plugin `%s` is already registered", t.String())))
 		return nil
 	}
 
@@ -106,9 +103,9 @@ func (e *Endure) Register(vertex any) error {
 		weight = val.Weight()
 		e.log.Debug(
 			"weight added",
-			slog.String("type", reflect.TypeOf(vertex).Elem().String()),
-			slog.String("kind", reflect.TypeOf(vertex).Elem().Kind().String()),
-			slog.Uint64("value", uint64(weight)),
+			zap.String("type", reflect.TypeOf(vertex).Elem().String()),
+			zap.String("kind", reflect.TypeOf(vertex).Elem().Kind().String()),
+			zap.Uint64("value", uint64(weight)),
 		)
 	}
 
@@ -119,9 +116,9 @@ func (e *Endure) Register(vertex any) error {
 
 	e.log.Debug(
 		"type registered",
-		slog.String("type", reflect.TypeOf(vertex).Elem().String()),
-		slog.String("kind", reflect.TypeOf(vertex).Elem().Kind().String()),
-		slog.String("method", "plugin"),
+		zap.String("type", reflect.TypeOf(vertex).Elem().String()),
+		zap.String("kind", reflect.TypeOf(vertex).Elem().Kind().String()),
+		zap.String("method", "plugin"),
 	)
 
 	/*
@@ -142,9 +139,9 @@ func (e *Endure) Register(vertex any) error {
 			e.registar.Insert(vertex, outDeps[i].Type, outDeps[i].Method, weight)
 			e.log.Debug(
 				"provided type registered",
-				slog.String("type", outDeps[i].Type.String()),
-				slog.String("kind", outDeps[i].Type.Kind().String()),
-				slog.String("method", outDeps[i].Method),
+				zap.String("type", outDeps[i].Type.String()),
+				zap.String("kind", outDeps[i].Type.Kind().String()),
+				zap.String("method", outDeps[i].Method),
 			)
 		}
 	}

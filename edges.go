@@ -1,11 +1,11 @@
 package endure
 
 import (
-	"log/slog"
 	"reflect"
 
 	"github.com/roadrunner-server/endure/v2/graph"
 	"github.com/roadrunner-server/errors"
+	"go.uber.org/zap"
 )
 
 func (e *Endure) resolveCollectorEdges(plugin any) error {
@@ -20,13 +20,10 @@ func (e *Endure) resolveCollectorEdges(plugin any) error {
 		if len(res) > 0 {
 			for j := 0; j < len(res); j++ {
 				e.graph.AddEdge(graph.CollectsConnection, res[j].Plugin(), plugin)
-				/*
-					Here we need to init the
-				*/
 				e.log.Debug("collects edge found",
-					slog.Any("method", res[j].Method()),
-					slog.Any("src", e.graph.VertexById(res[j].Plugin()).ID().String()),
-					slog.Any("dest", e.graph.VertexById(plugin).ID().String()))
+					zap.String("method", res[j].Method()),
+					zap.String("src", e.graph.VertexById(res[j].Plugin()).ID().String()),
+					zap.String("dest", e.graph.VertexById(plugin).ID().String()))
 			}
 		}
 	}
@@ -35,7 +32,7 @@ func (e *Endure) resolveCollectorEdges(plugin any) error {
 }
 
 // resolveEdges adds edges between the vertices
-// At this point, we know all plugins, and all provides values
+// At this point, we know all plugins and all 'provides' values
 func (e *Endure) resolveEdges() error {
 	vertices := e.graph.Vertices()
 
@@ -51,8 +48,8 @@ func (e *Endure) resolveEdges() error {
 			if isPrimitive(initMethod.Type.In(j).String()) {
 				e.log.Error(
 					"primitive type in the function parameters",
-					slog.String("plugin", vertices[i].ID().String()),
-					slog.String("type", initMethod.Type.In(j).String()),
+					zap.String("plugin", vertices[i].ID().String()),
+					zap.String("type", initMethod.Type.In(j).String()),
 				)
 
 				return errors.E("Init method should not receive primitive types (like string, int, etc). It should receive only interfaces")
@@ -81,14 +78,14 @@ func (e *Endure) resolveEdges() error {
 						// log
 						e.log.Debug(
 							"init edge found",
-							slog.Any("src", e.graph.VertexById(res[k].Plugin()).ID().String()),
-							slog.Any("dest", e.graph.VertexById(vertex.Plugin()).ID().String()),
+							zap.Any("src", e.graph.VertexById(res[k].Plugin()).ID().String()),
+							zap.Any("dest", e.graph.VertexById(vertex.Plugin()).ID().String()),
 						)
 					}
 				}
 			}
 
-			// we should have here exact the same number of the deps implementing every particular arg
+			// we should have here exactly the same number of the deps implementing every particular arg
 			if count != len(args[1:]) {
 				// if there are no plugins that implement Init deps, remove this vertex from the tree
 				del := e.graph.Remove(vertices[i].Plugin())
@@ -96,7 +93,7 @@ func (e *Endure) resolveEdges() error {
 					e.registar.Remove(del[k].Plugin())
 					e.log.Debug(
 						"plugin disabled, not enough Init dependencies",
-						slog.String("name", del[k].ID().String()),
+						zap.String("name", del[k].ID().String()),
 					)
 				}
 
@@ -117,8 +114,8 @@ func (e *Endure) resolveEdges() error {
 
 	e.graph.TopologicalSort()
 
-	// notify user about the disabled plugins
-	// after topological sorting we remove all plugins with indegree > 0, because there are no edges to them
+	// to notify user about the disabled plugins
+	// after topological sorting, we remove all plugins with indegree > 0, because there are no edges to them
 	if len(e.graph.TopologicalOrder()) != len(e.graph.Vertices()) {
 		tpl := e.graph.TopologicalOrder()
 		vrt := e.graph.Vertices()
@@ -130,7 +127,7 @@ func (e *Endure) resolveEdges() error {
 
 		for _, v := range vrt {
 			if _, ok := tmpM[v.ID().String()]; !ok {
-				e.log.Warn("topological sort, plugin disabled", slog.String("plugin", v.ID().String()))
+				e.log.Warn("topological sort, plugin disabled", zap.String("plugin", v.ID().String()))
 			}
 		}
 	}

@@ -1,10 +1,10 @@
 package endure
 
 import (
-	"log/slog"
 	"reflect"
 
 	"github.com/roadrunner-server/errors"
+	"go.uber.org/zap"
 )
 
 func (e *Endure) init() error {
@@ -33,7 +33,7 @@ func (e *Endure) init() error {
 		inVals = append(inVals, reflect.ValueOf(vertices[i].Plugin()))
 		// has deps if > 1
 		if len(args) > 1 {
-			// exclude first arg (it's receiver)
+			// exclude first arg (its receiver)
 			arg := args[1:]
 			for j := 0; j < len(arg); j++ {
 				plugin := e.registar.ImplementsExcept(arg[j], vertices[i].Plugin())
@@ -43,7 +43,7 @@ func (e *Endure) init() error {
 						e.registar.Remove(del[k].Plugin())
 						e.log.Debug(
 							"plugin disabled, not enough Init dependencies",
-							slog.String("name", del[k].ID().String()),
+							zap.String("name", del[k].ID().String()),
 						)
 					}
 
@@ -51,7 +51,7 @@ func (e *Endure) init() error {
 				}
 
 				// check if the provided plugin dep has a method
-				// existence of the method indicates, that the dep provided by this plugin should be obtained via the method call
+				// existence of the method indicates that the dep provided by this plugin should be obtained via the method call
 				switch plugin[0].Method() == "" {
 				// we don't have a method, that means, plugin itself implements the dep
 				case true:
@@ -92,7 +92,7 @@ func (e *Endure) init() error {
 			if errors.Is(errors.Disabled, ret[0].Interface().(error)) {
 				e.log.Debug(
 					"plugin disabled",
-					slog.String("name", vertices[i].ID().String()),
+					zap.String("name", vertices[i].ID().String()),
 				)
 				// delete vertex and continue
 				plugins := e.graph.Remove(vertices[i].Plugin())
@@ -100,7 +100,7 @@ func (e *Endure) init() error {
 				for j := 0; j < len(plugins); j++ {
 					e.log.Debug(
 						"destination plugin disabled because root was disabled",
-						slog.String("name", plugins[j].ID().String()),
+						zap.String("name", plugins[j].ID().String()),
 					)
 					e.registar.Remove(plugins[j].Plugin())
 				}

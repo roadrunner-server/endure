@@ -1,7 +1,7 @@
 package endure
 
 import (
-	"log/slog"
+	"go.uber.org/zap"
 )
 
 // poll is used to poll the errors from the vertex
@@ -12,7 +12,7 @@ func (e *Endure) poll(r *result) {
 				continue
 			}
 			// log error message
-			e.log.Error("plugin returned an error from the 'Serve' method", slog.Any("error", err), slog.String("plugin", res.vertexID))
+			e.log.Error("plugin returned an error from the 'Serve' method", zap.Error(err), zap.String("plugin", res.vertexID))
 			// set the error
 			res.err = err
 			// send handleErrorCh signal
@@ -25,7 +25,7 @@ func (e *Endure) startMainThread() {
 	// main thread used to handle errors from vertices
 	go func() {
 		for res := range e.handleErrorCh {
-			e.log.Debug("processing error in the main thread", slog.String("id", res.vertexID))
+			e.log.Debug("processing error in the main thread", zap.String("id", res.vertexID))
 			e.userResultsCh <- &Result{
 				Error:    res.err,
 				VertexID: res.vertexID,

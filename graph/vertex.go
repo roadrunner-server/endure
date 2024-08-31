@@ -4,7 +4,7 @@ import (
 	"reflect"
 )
 
-// Vertex is main vertex representation for the graph
+// Vertex is the main vertex representation for the graph
 // since we can have cyclic dependencies
 // when we traverse the VerticesMap, we should mark nodes as visited or not to detect cycle
 type Vertex struct {
