@@ -15,7 +15,7 @@ require (
 replace github.com/roadrunner-server/endure/v2 => ../../
 
 require (
-	github.com/fatih/color v1.17.0 // indirect
+	github.com/fatih/color v1.18.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/roadrunner-server/errors v1.4.1 // indirect
