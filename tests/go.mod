@@ -9,7 +9,7 @@ replace github.com/roadrunner-server/endure/v2 => ../
 require (
 	github.com/roadrunner-server/endure/v2 v2.0.0-00010101000000-000000000000
 	github.com/roadrunner-server/errors v1.4.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 )
 
 require (
