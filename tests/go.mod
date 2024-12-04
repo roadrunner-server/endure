@@ -2,7 +2,7 @@ module github.com/roadrunner-server/endure/v2/tests
 
 go 1.23
 
-toolchain go1.23.3
+toolchain go1.23.4
 
 replace github.com/roadrunner-server/endure/v2 => ../
 
