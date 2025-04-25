@@ -25,7 +25,7 @@ func (e *Endure) serve() error {
 		return errors.E(errors.Str("error occurred, nothing to run"))
 	}
 
-	for i := 0; i < len(serveVertices); i++ {
+	for i := range serveVertices {
 		if !serveVertices[i].IsActive() {
 			continue
 		}

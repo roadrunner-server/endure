@@ -15,10 +15,10 @@ func (e *Endure) resolveCollectorEdges(plugin any) error {
 	// retrieve the needed dependencies via Collects
 	inEntries := collector.Collects()
 
-	for i := 0; i < len(inEntries); i++ {
+	for i := range inEntries {
 		res := e.registar.ImplementsExcept(inEntries[i].Type, plugin)
 		if len(res) > 0 {
-			for j := 0; j < len(res); j++ {
+			for j := range res {
 				e.graph.AddEdge(graph.CollectsConnection, res[j].Plugin(), plugin)
 				e.log.Debug("collects edge found",
 					zap.String("method", res[j].Method()),
@@ -36,7 +36,7 @@ func (e *Endure) resolveCollectorEdges(plugin any) error {
 func (e *Endure) resolveEdges() error {
 	vertices := e.graph.Vertices()
 
-	for i := 0; i < len(vertices); i++ {
+	for i := range vertices {
 		vertex := e.graph.VertexById(vertices[i].Plugin())
 		initMethod, ok := vertex.ID().MethodByName(InitMethodName)
 		if !ok {
@@ -44,7 +44,7 @@ func (e *Endure) resolveEdges() error {
 		}
 
 		args := make([]reflect.Type, initMethod.Type.NumIn())
-		for j := 0; j < initMethod.Type.NumIn(); j++ {
+		for j := range initMethod.Type.NumIn() {
 			if isPrimitive(initMethod.Type.In(j).String()) {
 				e.log.Error(
 					"primitive type in the function parameters",
@@ -72,7 +72,7 @@ func (e *Endure) resolveEdges() error {
 				res := e.registar.ImplementsExcept(args[j], vertices[i].Plugin())
 				if len(res) > 0 {
 					count += 1
-					for k := 0; k < len(res); k++ {
+					for k := range res {
 						// add graph edge
 						e.graph.AddEdge(graph.InitConnection, res[k].Plugin(), vertex.Plugin())
 						// log
@@ -89,7 +89,7 @@ func (e *Endure) resolveEdges() error {
 			if count != len(args[1:]) {
 				// if there are no plugins that implement Init deps, remove this vertex from the tree
 				del := e.graph.Remove(vertices[i].Plugin())
-				for k := 0; k < len(del); k++ {
+				for k := range del {
 					e.registar.Remove(del[k].Plugin())
 					e.log.Debug(
 						"plugin disabled, not enough Init dependencies",

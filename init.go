@@ -17,7 +17,7 @@ func (e *Endure) init() error {
 		return errors.E(errors.Str("error occurred, nothing to run"))
 	}
 
-	for i := 0; i < len(vertices); i++ {
+	for i := range vertices {
 		if !vertices[i].IsActive() {
 			continue
 		}
@@ -25,7 +25,7 @@ func (e *Endure) init() error {
 		initMethod, _ := reflect.TypeOf(vertices[i].Plugin()).MethodByName(InitMethodName)
 
 		args := make([]reflect.Type, initMethod.Type.NumIn())
-		for j := 0; j < initMethod.Type.NumIn(); j++ {
+		for j := range initMethod.Type.NumIn() {
 			args[j] = initMethod.Type.In(j)
 		}
 
@@ -35,11 +35,11 @@ func (e *Endure) init() error {
 		if len(args) > 1 {
 			// exclude first arg (its receiver)
 			arg := args[1:]
-			for j := 0; j < len(arg); j++ {
+			for j := range arg {
 				plugin := e.registar.ImplementsExcept(arg[j], vertices[i].Plugin())
 				if len(plugin) == 0 {
 					del := e.graph.Remove(vertices[i].Plugin())
-					for k := 0; k < len(del); k++ {
+					for k := range del {
 						e.registar.Remove(del[k].Plugin())
 						e.log.Debug(
 							"plugin disabled, not enough Init dependencies",
@@ -97,7 +97,7 @@ func (e *Endure) init() error {
 				// delete vertex and continue
 				plugins := e.graph.Remove(vertices[i].Plugin())
 
-				for j := 0; j < len(plugins); j++ {
+				for j := range plugins {
 					e.log.Debug(
 						"destination plugin disabled because root was disabled",
 						zap.String("name", plugins[j].ID().String()),
@@ -120,7 +120,7 @@ func (e *Endure) init() error {
 
 		if provider, ok := vertices[i].Plugin().(Provider); ok {
 			out := provider.Provides()
-			for j := 0; j < len(out); j++ {
+			for j := range out {
 				providesMethod, okk := reflect.TypeOf(vertices[i].Plugin()).MethodByName(out[j].Method)
 				if !okk {
 					e.log.Warn("registered method doesn't exists ??")
@@ -143,7 +143,7 @@ func (e *Endure) init() error {
 	}
 
 	inactive := 0
-	for i := 0; i < len(vertices); i++ {
+	for i := range vertices {
 		if !vertices[i].IsActive() {
 			inactive++
 		}

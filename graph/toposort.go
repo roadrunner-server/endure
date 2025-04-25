@@ -24,7 +24,7 @@ func (g *Graph) TopologicalSort() {
 
 		// Decrement the indegree of each of the vertex's neighbors.
 		// If a neighbor's indegree becomes 0, add it to the priority queue.
-		for i := 0; i < len(v.edges); i++ {
+		for i := range v.edges {
 			dest := g.VertexById(v.edges[i].dest)
 			dest.indegree--
 

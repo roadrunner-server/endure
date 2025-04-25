@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 )
 
@@ -100,7 +101,7 @@ func (g *Graph) Remove(plugin any) []*Vertex {
 	}
 
 	edges := vertex.edges
-	for i := 0; i < len(edges); i++ {
+	for i := range edges {
 		if _, ok := g.vertices[reflect.TypeOf(edges[i].dest)]; !ok {
 			continue
 		}
@@ -112,7 +113,7 @@ func (g *Graph) Remove(plugin any) []*Vertex {
 
 			args := make([]reflect.Type, initMethod.Type.NumIn())
 			// receiver + other (should be other, since this is a dest vertex)
-			for j := 0; j < initMethod.Type.NumIn(); j++ {
+			for j := range initMethod.Type.NumIn() {
 				args[j] = initMethod.Type.In(j)
 			}
 
@@ -127,13 +128,13 @@ func (g *Graph) Remove(plugin any) []*Vertex {
 					continue
 				}
 
-				for j := 0; j < len(args); j++ {
+				for j := range args {
 					if reflect.TypeOf(v.Plugin()).Implements(args[j]) {
 						/*
 							we've found a plugin which may replace our dependency
 							now, since we modified the slice, start iteration again
 						*/
-						args = append(args[:j], args[j+1:]...)
+						args = slices.Delete(args, j, j+1)
 						goto retry
 					}
 				}
@@ -154,15 +155,15 @@ func (g *Graph) Remove(plugin any) []*Vertex {
 
 	// remove all edges where dest is our plugin prepared to delete
 	for _, v := range g.vertices {
-		for i := 0; i < len(v.edges); i++ {
+		for i := range v.edges {
 			if v.edges[i].dest == plugin {
-				v.edges = append(v.edges[:i], v.edges[i+1:]...)
+				v.edges = slices.Delete(v.edges, i, i+1)
 			}
 		}
 	}
 
-	for i := 0; i < len(g.topologicalOrder); i++ {
-		for j := 0; j < len(deletedVertices); j++ {
+	for i := range g.topologicalOrder {
+		for j := range deletedVertices {
 			if g.topologicalOrder[i] == deletedVertices[j] {
 				g.topologicalOrder[i].active = false
 			}
@@ -179,8 +180,8 @@ func (g *Graph) WriteDotString() {
 	s.WriteString("\tgraph [compound=true];\n")
 
 	seenEdges := make(map[string]struct{})
-	for i := 0; i < len(g.topologicalOrder); i++ {
-		for j := 0; j < len(g.topologicalOrder[i].edges); j++ {
+	for i := range g.topologicalOrder {
+		for j := range g.topologicalOrder[i].edges {
 			src := reflect.TypeOf(g.topologicalOrder[i].edges[j].src).String()
 			dest := reflect.TypeOf(g.topologicalOrder[i].edges[j].dest).String()
 

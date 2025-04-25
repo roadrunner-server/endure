@@ -135,7 +135,7 @@ func (e *Endure) Register(vertex any) error {
 		outDeps := val.Provides()
 
 		// iter
-		for i := 0; i < len(outDeps); i++ {
+		for i := range outDeps {
 			e.registar.Insert(vertex, outDeps[i].Type, outDeps[i].Method, weight)
 			e.log.Debug(
 				"provided type registered",
@@ -237,7 +237,7 @@ func (e *Endure) Plugins() []string {
 	v := e.graph.TopologicalOrder()
 	plugins := make([]string, 0, len(v))
 
-	for i := 0; i < len(v); i++ {
+	for i := range v {
 		if !v[i].IsActive() {
 			continue
 		}

@@ -27,7 +27,7 @@ func Bind(tp any, method any) *Out {
 		panic("second argument should be a function")
 	}
 
-	for i := 0; i < r.NumOut(); i++ {
+	for i := range r.NumOut() {
 		// skip errors
 		if r.Out(i) == reflect.TypeOf((*error)(nil)).Elem() {
 			continue

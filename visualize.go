@@ -44,7 +44,7 @@ func (e *Endure) Visualize(vertices []*graph.Vertex) error {
 	// set last string, because vertices are not distinct
 	var last string
 
-	for i := 0; i < len(strSl); i++ {
+	for i := range strSl {
 		if strSl[i] == last {
 			// skip
 			continue

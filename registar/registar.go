@@ -41,7 +41,7 @@ func (r *Registar) Update(plugin any, tp reflect.Type, value func() reflect.Valu
 	// returned types
 	types := r.types[key].returnedTypes
 
-	for i := 0; i < len(types); i++ {
+	for i := range types {
 		if types[i].retType == tp {
 			types[i].value = value
 		}
@@ -56,7 +56,7 @@ func (r *Registar) Value(plugin any, tp reflect.Type) (reflect.Value, bool) {
 	// returned types
 	types := r.types[key].returnedTypes
 
-	for i := 0; i < len(types); i++ {
+	for i := range types {
 		if types[i].retType == tp {
 			return types[i].value(), true
 		}
@@ -75,7 +75,7 @@ func (r *Registar) TypeValue(plugin any, tp reflect.Type) (reflect.Value, bool) 
 
 	retTp := r.types[key]
 
-	for i := 0; i < len(retTp.returnedTypes); i++ {
+	for i := range retTp.returnedTypes {
 		if retTp.returnedTypes[i].retType.Implements(tp) {
 			if retTp.returnedTypes[i].value == nil {
 				return reflect.Value{}, false
@@ -114,7 +114,7 @@ func (r *Registar) ImplementsExcept(tp reflect.Type, plugin any) []*implements {
 		}
 
 		// here we check that provides
-		for j := 0; j < len(entry.returnedTypes); j++ {
+		for j := range entry.returnedTypes {
 			provided := entry.returnedTypes[j]
 			if provided.retType.Implements(tp) {
 				impl = append(impl,
