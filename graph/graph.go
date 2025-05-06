@@ -155,11 +155,18 @@ func (g *Graph) Remove(plugin any) []*Vertex {
 
 	// remove all edges where dest is our plugin prepared to delete
 	for _, v := range g.vertices {
+		// since we are deleting while iterating, we need to create a new slice
+		// to prevent index out of range or similar errors
+		newEdges := make([]*edge, 0, len(v.edges))
 		for i := range v.edges {
 			if v.edges[i].dest == plugin {
-				v.edges = slices.Delete(v.edges, i, i+1)
+				// we found an edge which is pointing to our plugin,
+				// we need to remove it for the graph
+				continue
 			}
+			newEdges = append(newEdges, v.edges[i])
 		}
+		v.edges = newEdges
 	}
 
 	for i := range g.topologicalOrder {
