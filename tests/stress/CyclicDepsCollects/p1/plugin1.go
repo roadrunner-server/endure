@@ -29,7 +29,6 @@ func (p1 *Plugin1) Stop(context.Context) error {
 func (p1 *Plugin1) Collects() []*dep.In {
 	return []*dep.In{
 		dep.Fits(func(any) {
-
 		}, (*Bar)(nil)),
 	}
 }

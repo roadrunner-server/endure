@@ -7,7 +7,11 @@ import (
 type Plugin1 struct {
 }
 
-func (p1 *Plugin1) Init(p2 *Plugin2) error {
+type Stringer2 interface {
+	String2() string
+}
+
+func (p1 *Plugin1) Init(p2 Stringer2) error {
 	return nil
 }
 
@@ -18,4 +22,8 @@ func (p1 *Plugin1) Serve() chan error {
 
 func (p1 *Plugin1) Stop(context.Context) error {
 	return nil
+}
+
+func (p1 *Plugin1) String1() string {
+	return "Plugin1"
 }
