@@ -2,7 +2,7 @@ module github.com/roadrunner-server/endure/v2
 
 go 1.25
 
-toolchain go1.25.2
+toolchain go1.25.3
 
 require (
 	github.com/fatih/color v1.18.0
