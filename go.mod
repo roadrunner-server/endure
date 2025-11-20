@@ -7,7 +7,7 @@ toolchain go1.25.3
 require (
 	github.com/fatih/color v1.18.0
 	github.com/roadrunner-server/errors v1.4.1
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 )
 
 require (
