@@ -53,7 +53,7 @@ jobs:
           go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/disabled_vertices.txt -covermode=atomic ./tests/disabled_vertices
           cat ./coverage-ci/*.txt > ./coverage-ci/summary.txt
 
-      - uses: codecov/codecov-action@v5.5.1 # Docs: <https://github.com/codecov/codecov-action>
+      - uses: codecov/codecov-action@v5.5.2 # Docs: <https://github.com/codecov/codecov-action>
         if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest' }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
