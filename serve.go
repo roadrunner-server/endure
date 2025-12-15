@@ -30,7 +30,7 @@ func (e *Endure) serve() error {
 			continue
 		}
 
-		if !reflect.TypeOf(serveVertices[i].Plugin()).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
+		if !reflect.TypeOf(serveVertices[i].Plugin()).Implements(reflect.TypeFor[Service]()) {
 			continue
 		}
 

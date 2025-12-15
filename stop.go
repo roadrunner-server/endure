@@ -32,7 +32,7 @@ func (e *Endure) stop() error {
 			continue
 		}
 
-		if !reflect.TypeOf(vertices[i].Plugin()).Implements(reflect.TypeOf((*Service)(nil)).Elem()) {
+		if !reflect.TypeOf(vertices[i].Plugin()).Implements(reflect.TypeFor[Service]()) {
 			wg.Done()
 			continue
 		}

@@ -75,7 +75,7 @@ func (e *Endure) init() error {
 			return errors.E("Init function should return only error, `Init(args) error {}`")
 		}
 
-		if ret[0].Type() != reflect.TypeOf((*error)(nil)).Elem() {
+		if ret[0].Type() != reflect.TypeFor[error]() {
 			// fatal error, clean the graph
 			e.graph.Clean()
 			return errors.E("Init function return type should be the error")

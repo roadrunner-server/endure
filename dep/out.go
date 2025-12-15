@@ -29,7 +29,7 @@ func Bind(tp any, method any) *Out {
 
 	for i := range r.NumOut() {
 		// skip errors
-		if r.Out(i) == reflect.TypeOf((*error)(nil)).Elem() {
+		if r.Out(i) == reflect.TypeFor[error]() {
 			continue
 		}
 
