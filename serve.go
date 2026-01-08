@@ -36,12 +36,8 @@ func (e *Endure) serve() error {
 
 		serveMethod, _ := reflect.TypeOf(serveVertices[i].Plugin()).MethodByName(ServeMethodName)
 
-		var inVals []reflect.Value
-		inVals = append(inVals, reflect.ValueOf(serveVertices[i].Plugin()))
-
 		e.log.Debug("calling serve method", zap.String("plugin", serveVertices[i].ID().String()))
-
-		ret := serveMethod.Func.Call(inVals)[0].Interface()
+		ret := serveMethod.Func.Call([]reflect.Value{reflect.ValueOf(serveVertices[i].Plugin())})[0].Interface()
 		if ret != nil {
 			if errCh, ok := ret.(chan error); ok && errCh != nil {
 				// check if we have an error in the user's channel

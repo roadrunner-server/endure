@@ -41,7 +41,7 @@ func (e *Endure) stop() error {
 			defer wg.Done()
 			stopMethod, _ := reflect.TypeOf(vertices[i].Plugin()).MethodByName(StopMethodName)
 
-			var inVals []reflect.Value
+			inVals := make([]reflect.Value, 0, 2)
 			inVals = append(inVals, reflect.ValueOf(vertices[i].Plugin()))
 
 			e.log.Debug(
