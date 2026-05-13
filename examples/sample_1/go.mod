@@ -13,12 +13,12 @@ require (
 replace github.com/roadrunner-server/endure/v2 => ../../
 
 require (
-	github.com/fatih/color v1.18.0 // indirect
+	github.com/fatih/color v1.19.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/roadrunner-server/errors v1.4.1 // indirect
+	github.com/mattn/go-isatty v0.0.22 // indirect
+	github.com/roadrunner-server/errors v1.5.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.27.1 // indirect
+	go.uber.org/zap v1.28.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 )

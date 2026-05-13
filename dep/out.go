@@ -27,13 +27,13 @@ func Bind(tp any, method any) *Out {
 		panic("second argument should be a function")
 	}
 
-	for i := range r.NumOut() {
+	for out := range r.Outs() {
 		// skip errors
-		if r.Out(i) == reflect.TypeFor[error]() {
+		if out == reflect.TypeFor[error]() {
 			continue
 		}
 
-		if !r.Out(i).Implements(reflect.TypeOf(tp).Elem()) {
+		if !out.Implements(reflect.TypeOf(tp).Elem()) {
 			panic("provided method should return an implementation of the provided interface")
 		}
 	}
