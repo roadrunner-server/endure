@@ -15,5 +15,5 @@ require (
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )

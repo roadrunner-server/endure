@@ -4,6 +4,7 @@ import (
 	"context"
 	stderr "errors"
 	"reflect"
+	"slices"
 	"sync"
 
 	"github.com/roadrunner-server/errors"
@@ -26,13 +27,13 @@ func (e *Endure) stop() error {
 	wg.Add(len(vertices))
 
 	// reverse order
-	for i := len(vertices) - 1; i >= 0; i-- {
-		if !vertices[i].IsActive() {
+	for i, vertice := range slices.Backward(vertices) {
+		if !vertice.IsActive() {
 			wg.Done()
 			continue
 		}
 
-		if !reflect.TypeOf(vertices[i].Plugin()).Implements(reflect.TypeFor[Service]()) {
+		if !reflect.TypeOf(vertice.Plugin()).Implements(reflect.TypeFor[Service]()) {
 			wg.Done()
 			continue
 		}
