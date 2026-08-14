@@ -82,7 +82,7 @@ func (e *Endure) Register(vertex any) error {
 
 	// t.Kind() - ptr
 	// t.Elem().Kind() - Struct
-	if t.Kind() != reflect.Ptr {
+	if t.Kind() != reflect.Pointer {
 		return errors.E(op, errors.Register, errors.Errorf("you should pass pointer to the structure instead of value"))
 	}
 

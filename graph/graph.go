@@ -193,7 +193,7 @@ func (g *Graph) WriteDotString() {
 			dest := reflect.TypeOf(g.topologicalOrder[i].edges[j].dest).String()
 
 			if _, ok := seenEdges[src+dest]; !ok {
-				s.WriteString(fmt.Sprintf("\t\"%s\" -> \"%s\";\n", src, dest))
+				fmt.Fprintf(&s, "\t%q -> %q;\n", src, dest)
 				seenEdges[src+dest] = struct{}{}
 			}
 		}
