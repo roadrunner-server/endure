@@ -11,7 +11,7 @@ require (
 )
 
 require (
-	github.com/mattn/go-colorable v0.1.15 // indirect
+	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
