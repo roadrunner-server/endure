@@ -2,13 +2,13 @@ module github.com/roadrunner-server/endure/v2/tests
 
 go 1.27
 
-toolchain go1.27.1
+toolchain go1.27.2
 
 replace github.com/roadrunner-server/endure/v2 => ../
 
 require (
-	github.com/roadrunner-server/endure/v2 v2.6.2
-	github.com/roadrunner-server/errors v1.5.0
+	github.com/roadrunner-server/endure/v2 v2.7.0
+	github.com/roadrunner-server/errors v1.6.0
 	github.com/stretchr/testify v1.12.1
 )
 
@@ -19,5 +19,5 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 )

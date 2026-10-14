@@ -2,11 +2,13 @@ module samples
 
 go 1.27
 
+toolchain go1.27.2
+
 require (
 	github.com/NYTimes/gziphandler v1.1.1
 	github.com/gorilla/mux v1.8.1
-	github.com/roadrunner-server/endure/v2 v2.3.1
-	github.com/rs/cors v1.11.0
+	github.com/roadrunner-server/endure/v2 v2.7.0
+	github.com/rs/cors v1.11.1
 	go.etcd.io/bbolt v1.5.0
 )
 
@@ -16,8 +18,8 @@ require (
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
-	github.com/roadrunner-server/errors v1.5.0 // indirect
+	github.com/roadrunner-server/errors v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 )
