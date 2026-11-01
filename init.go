@@ -83,7 +83,7 @@ func (e *Endure) init() error {
 
 		if ret[0].Interface() != nil {
 			// may panic here?
-			if _, ok := ret[0].Interface().(error); !ok {
+			if _, ok := reflect.TypeAssert[error](ret[0]); !ok {
 				// fatal error, clean the graph
 				e.graph.Clean()
 				return errors.E("Init function should return only error, `Init(args) error {}`")
