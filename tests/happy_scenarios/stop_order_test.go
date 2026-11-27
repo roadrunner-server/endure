@@ -63,6 +63,13 @@ func (s *stopState) indexOf(event string) int {
 	return -1
 }
 
+func (s *stopState) reset() {
+	s.mu.Lock()
+	s.order = s.order[:0]
+	clear(s.stoppedCount)
+	s.mu.Unlock()
+}
+
 func assertStoppedBefore(t *testing.T, state *stopState, first, second, msg string) {
 	t.Helper()
 	firstIdx := state.indexOf(first)
@@ -300,6 +307,36 @@ func (p *stopCyclicMemberC) Serve() chan error            { return make(chan err
 func (p *stopCyclicMemberC) Stop(_ context.Context) error { return nil }
 func (p *stopCyclicMemberC) cycleC()                      {}
 
+type (
+	stopPadIface      interface{ padMarker() }
+	stopRaceSinkIface interface{ raceSink() }
+)
+
+type stopWeightedLoggerService struct {
+	stopLoggerService
+}
+
+func (p *stopWeightedLoggerService) Weight() uint { return 100 }
+
+type stopPad[T any] struct{}
+
+func (*stopPad[T]) Init() error { return nil }
+func (*stopPad[T]) padMarker()  {}
+
+type stopRaceSink struct{}
+
+func (*stopRaceSink) Init() error { return nil }
+func (*stopRaceSink) raceSink()   {}
+func (*stopRaceSink) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(_ any) {}, (*stopPadIface)(nil)),
+	}
+}
+
+type stopRaceBridge struct{}
+
+func (*stopRaceBridge) Init(_ stopLogIface, _ stopRaceSinkIface) error { return nil }
+
 func TestEndure_StopOrder(t *testing.T) {
 	t.Parallel()
 
@@ -460,6 +497,110 @@ func TestEndure_StopOrder(t *testing.T) {
 				tt.check(t, state, stopErr)
 			case <-time.After(5 * time.Second):
 				t.Fatal("Stop did not complete within 5s")
+			}
+		})
+	}
+}
+
+func TestEndure_StopDoesNotDoubleStopProvider(t *testing.T) {
+	t.Parallel()
+
+	const iterations = 200
+
+	tests := []struct {
+		name  string
+		setup func() (*stopState, []any)
+		check func(t *testing.T, state *stopState)
+	}{
+		{
+			name: "zero-delay service chain stops each plugin once",
+			setup: func() (*stopState, []any) {
+				state := newStopState()
+				return state, []any{
+					&stopLoggerService{state: state},
+					&stopDBService{state: state},
+					&stopHTTPService{state: state},
+				}
+			},
+			check: func(t *testing.T, state *stopState) {
+				assert.Equal(t, 1, state.stoppedCount["http"])
+				assert.Equal(t, 1, state.stoppedCount["db"])
+				assert.Equal(t, 1, state.stoppedCount["logger"])
+				assertStoppedBefore(t, state, "http:end", "db:start", "http must finish stopping before db starts")
+				assertStoppedBefore(t, state, "db:end", "logger:start", "db must finish stopping before logger starts")
+			},
+		},
+		{
+			name: "non-service dependent stops provider once",
+			setup: func() (*stopState, []any) {
+				state := newStopState()
+				return state, []any{
+					&stopLoggerService{state: state},
+					&stopNonServiceBridge{},
+				}
+			},
+			check: func(t *testing.T, state *stopState) {
+				assert.Equal(t, 1, state.stoppedCount["logger"])
+			},
+		},
+		{
+			name: "zero-delay collects diamond stops each plugin once",
+			setup: func() (*stopState, []any) {
+				state := newStopState()
+				return state, []any{
+					&stopLoggerService{state: state},
+					&stopOtelService{state: state},
+					&stopHTTPWithOtelService{state: state},
+				}
+			},
+			check: func(t *testing.T, state *stopState) {
+				assert.Equal(t, 1, state.stoppedCount["http"])
+				assert.Equal(t, 1, state.stoppedCount["otel"])
+				assert.Equal(t, 1, state.stoppedCount["logger"])
+				assertStoppedBefore(t, state, "http:end", "otel:start", "http must finish stopping before otel starts")
+				assertStoppedBefore(t, state, "otel:end", "logger:start", "otel must finish stopping before logger starts")
+			},
+		},
+		{
+			name: "provider separated from fast dependent by independent plugins stops once",
+			setup: func() (*stopState, []any) {
+				state := newStopState()
+				return state, []any{
+					&stopWeightedLoggerService{stopLoggerService: stopLoggerService{state: state}},
+					&stopPad[[1]byte]{}, &stopPad[[2]byte]{}, &stopPad[[3]byte]{}, &stopPad[[4]byte]{},
+					&stopPad[[5]byte]{}, &stopPad[[6]byte]{}, &stopPad[[7]byte]{}, &stopPad[[8]byte]{},
+					&stopPad[[9]byte]{}, &stopPad[[10]byte]{}, &stopPad[[11]byte]{}, &stopPad[[12]byte]{},
+					&stopPad[[13]byte]{}, &stopPad[[14]byte]{}, &stopPad[[15]byte]{}, &stopPad[[16]byte]{},
+					&stopPad[[17]byte]{}, &stopPad[[18]byte]{}, &stopPad[[19]byte]{}, &stopPad[[20]byte]{},
+					&stopPad[[21]byte]{}, &stopPad[[22]byte]{}, &stopPad[[23]byte]{}, &stopPad[[24]byte]{},
+					&stopPad[[25]byte]{}, &stopPad[[26]byte]{}, &stopPad[[27]byte]{}, &stopPad[[28]byte]{},
+					&stopPad[[29]byte]{}, &stopPad[[30]byte]{}, &stopPad[[31]byte]{}, &stopPad[[32]byte]{},
+					&stopRaceSink{},
+					&stopRaceBridge{},
+				}
+			},
+			check: func(t *testing.T, state *stopState) {
+				assert.Equal(t, 1, state.stoppedCount["logger"])
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			state, plugins := tt.setup()
+			c := endure.New(slog.LevelError, endure.GracefulShutdownTimeout(2*time.Second))
+			require.NoError(t, c.RegisterAll(plugins...))
+			require.NoError(t, c.Init())
+
+			_, err := c.Serve()
+			require.NoError(t, err)
+
+			for range iterations {
+				state.reset()
+				require.NoError(t, c.Stop())
+				tt.check(t, state)
 			}
 		})
 	}
