@@ -1,8 +1,7 @@
 # Changelog
 
-## [2.7.1](https://github.com/roadrunner-server/endure/compare/v2.7.0...v2.7.1) (2026-11-27)
+## 2.7.1 (2026-11-27)
 
+### 🎯 Core
 
-### Bug Fixes
-
-* **stop:** stop plugins in reverse dependency order ([4b7bb43](https://github.com/roadrunner-server/endure/commit/4b7bb43f4842ff7946bda3e59b390bbdac36a749))
+- 🐛 **Shutdown order**: Stop plugins in reverse dependency order so providers stay active until dependent plugins finish shutting down, while independent plugins still stop concurrently. See [PR #236](https://github.com/roadrunner-server/endure/pull/236) and [RoadRunner BUG #2471](https://github.com/roadrunner-server/roadrunner/issues/2471).
