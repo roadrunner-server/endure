@@ -35,6 +35,7 @@ func (e *Endure) stop() error {
 
 	remaining := make(map[*graph.Vertex]*atomic.Int32, len(active))
 	providers := make(map[*graph.Vertex][]*graph.Vertex, len(active))
+	roots := make([]*graph.Vertex, 0, len(active))
 	for _, u := range active {
 		var deps int32
 		for _, dest := range e.graph.ActiveDependents(u) {
@@ -43,6 +44,9 @@ func (e *Endure) stop() error {
 			}
 			deps++
 			providers[dest] = append(providers[dest], u)
+		}
+		if deps == 0 {
+			roots = append(roots, u)
 		}
 		cnt := &atomic.Int32{}
 		cnt.Store(deps)
@@ -93,10 +97,8 @@ func (e *Endure) stop() error {
 		}
 	}
 
-	for _, v := range slices.Backward(active) {
-		if remaining[v].Load() == 0 {
-			go stopVertex(v)
-		}
+	for _, v := range slices.Backward(roots) {
+		go stopVertex(v)
 	}
 
 	wg.Wait()
