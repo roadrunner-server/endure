@@ -6,63 +6,97 @@ import (
 	"reflect"
 	"slices"
 	"sync"
+	"sync/atomic"
 
+	"github.com/roadrunner-server/endure/v2/graph"
 	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
 
 func (e *Endure) stop() error {
-	/*
-		topological order
-	*/
 	vertices := e.graph.TopologicalOrder()
-
 	if len(vertices) == 0 {
 		return errors.E(errors.Str("error occurred, nothing to run"))
 	}
 
-	mu := new(sync.Mutex)
-	errs := make([]error, 0, 2)
-	wg := &sync.WaitGroup{}
-	wg.Add(len(vertices))
-
-	// reverse order
-	for i, vertice := range slices.Backward(vertices) {
-		if !vertice.IsActive() {
-			wg.Done()
+	active := make([]*graph.Vertex, 0, len(vertices))
+	activeSet := make(map[*graph.Vertex]struct{}, len(vertices))
+	for _, v := range vertices {
+		if !v.IsActive() {
 			continue
 		}
+		active = append(active, v)
+		activeSet[v] = struct{}{}
+	}
 
-		if !reflect.TypeOf(vertice.Plugin()).Implements(reflect.TypeFor[Service]()) {
-			wg.Done()
-			continue
+	if len(active) == 0 {
+		return nil
+	}
+
+	remaining := make(map[*graph.Vertex]*atomic.Int32, len(active))
+	providers := make(map[*graph.Vertex][]*graph.Vertex, len(active))
+	for _, u := range active {
+		var deps int32
+		for _, dest := range e.graph.ActiveDependents(u) {
+			if _, ok := activeSet[dest]; !ok {
+				continue
+			}
+			deps++
+			providers[dest] = append(providers[dest], u)
 		}
+		cnt := &atomic.Int32{}
+		cnt.Store(deps)
+		remaining[u] = cnt
+	}
 
-		go func(i int) {
-			defer wg.Done()
-			stopMethod, _ := reflect.TypeOf(vertices[i].Plugin()).MethodByName(StopMethodName)
+	var (
+		mu   sync.Mutex
+		errs []error
+		wg   sync.WaitGroup
+	)
+	wg.Add(len(active))
 
-			inVals := make([]reflect.Value, 0, 2)
-			inVals = append(inVals, reflect.ValueOf(vertices[i].Plugin()))
+	serviceType := reflect.TypeFor[Service]()
+
+	var stopVertex func(v *graph.Vertex)
+	stopVertex = func(v *graph.Vertex) {
+		defer wg.Done()
+
+		if reflect.TypeOf(v.Plugin()).Implements(serviceType) {
+			stopMethod, _ := reflect.TypeOf(v.Plugin()).MethodByName(StopMethodName)
 
 			e.log.Debug(
 				"calling stop function",
-				zap.String("plugin", vertices[i].ID().String()),
+				zap.String("plugin", v.ID().String()),
 			)
 
 			ctx, cancel := context.WithTimeout(context.Background(), e.stopTimeout)
-			inVals = append(inVals, reflect.ValueOf(ctx))
+			ret := stopMethod.Func.Call([]reflect.Value{
+				reflect.ValueOf(v.Plugin()),
+				reflect.ValueOf(ctx),
+			})[0].Interface()
+			cancel()
 
-			ret := stopMethod.Func.Call(inVals)[0].Interface()
 			if ret != nil {
-				e.log.Error("failed to stop the plugin", zap.String("name", vertices[i].ID().String()), zap.Error(ret.(error)))
+				err := ret.(error)
+				e.log.Error("failed to stop the plugin", zap.String("name", v.ID().String()), zap.Error(err))
 				mu.Lock()
-				errs = append(errs, ret.(error))
+				errs = append(errs, err)
 				mu.Unlock()
 			}
+		}
 
-			cancel()
-		}(i)
+		for _, provider := range providers[v] {
+			if remaining[provider].Add(-1) == 0 {
+				go stopVertex(provider)
+			}
+		}
+	}
+
+	for _, v := range slices.Backward(active) {
+		if remaining[v].Load() == 0 {
+			go stopVertex(v)
+		}
 	}
 
 	wg.Wait()

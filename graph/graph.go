@@ -72,6 +72,29 @@ func (g *Graph) TopologicalOrder() []*Vertex {
 	return g.topologicalOrder
 }
 
+// ActiveDependents returns the unique active vertices that directly depend on v.
+func (g *Graph) ActiveDependents(v *Vertex) []*Vertex {
+	if v == nil || len(v.edges) == 0 {
+		return nil
+	}
+
+	seen := make(map[*Vertex]struct{}, len(v.edges))
+	deps := make([]*Vertex, 0, len(v.edges))
+	for _, e := range v.edges {
+		dest := g.VertexById(e.dest)
+		if dest == nil || !dest.IsActive() || dest == v {
+			continue
+		}
+		if _, ok := seen[dest]; ok {
+			continue
+		}
+		seen[dest] = struct{}{}
+		deps = append(deps, dest)
+	}
+
+	return deps
+}
+
 func (g *Graph) Clean() {
 	g.topologicalOrder = nil
 	g.vertices = nil
